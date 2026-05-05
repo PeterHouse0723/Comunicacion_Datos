@@ -1,0 +1,191 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* IMAGEN DE FONDO */
+    background: url('../imagenes/Fondo_login.jpg') no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* EFECTO GLASSMORPHISM */
+.login-container {
+    background: rgba(255, 255, 255, 0.1); /* Fondo blanco casi transparente */
+    backdrop-filter: blur(12px); /* El efecto de vidrio empañado */
+    -webkit-backdrop-filter: blur(12px); /* Para compatibilidad con Safari */
+    padding: 50px 40px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Borde sutil */
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 420px;
+    color: white;
+}
+
+.login-container h1 {
+    text-align: center;
+    margin-bottom: 35px;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+/* Ocultamos los labels visualmente pero se mantienen en el HTML si los necesitas por accesibilidad */
+.form-group label {
+    display: none;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 30px; /* Bordes muy redondeados */
+    color: white;
+    font-size: 15px;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.form-group input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-login {
+    width: 100%;
+    padding: 15px;
+    background: #833956; /* Color vino tinto similar al de la imagen */
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.btn-login:hover {
+    background: #9c4467;
+    transform: translateY(-2px);
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+/* ENLACES Y TEXTOS INFERIORES */
+.form-links {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.form-links a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.form-links a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* LÍNEA DIVISORIA */
+.divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 25px 0;
+}
+
+/* REDES SOCIALES */
+.social-login {
+    text-align: center;
+}
+
+.social-login p {
+    font-size: 13px;
+    margin-bottom: 15px;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 1px;
+}
+
+.social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.social-icons .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 18px;
+    text-decoration: none;
+    transition: transform 0.3s;
+}
+
+.social-icons .icon:hover {
+    transform: scale(1.1);
+}
+
+.icon.google {
+    background: #ea4335; /* Rojo clásico de Google */
+}
+
+.icon.facebook {
+    background: #1877f2; /* Azul clásico de Facebook */
+}
+
+/* MENSAJE DE ERROR (Adaptado para fondo oscuro) */
+.error-message {
+    background-color: rgba(255, 0, 0, 0.2);
+    color: #ffcccc;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-left: 4px solid #ff4444;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+/* RESPONSIVE */
+@media (max-width: 480px) {
+    .login-container {
+        padding: 40px 20px;
+        border-radius: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+}

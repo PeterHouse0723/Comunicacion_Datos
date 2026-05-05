@@ -1,0 +1,324 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* IMAGEN DE FONDO (mismo que login) */
+    background: url('../imagenes/Fondo_login.jpg') no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* CONTENEDOR PRINCIPAL */
+.register-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 40px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+    color: white;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* ENCABEZADO */
+.form-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.form-header h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.form-header p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* MENSAJES DE ERROR Y ÉXITO */
+.error-message {
+    background-color: rgba(255, 0, 0, 0.2);
+    color: #ffcccc;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-left: 4px solid #ff4444;
+    display: none;
+}
+
+.success-message {
+    background-color: rgba(0, 255, 0, 0.2);
+    color: #ccffcc;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-left: 4px solid #44ff44;
+    display: none;
+}
+
+/* GRUPOS DE FORMULARIO */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* INPUTS Y SELECTS */
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* SELECT DROPDOWN */
+.form-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 40px;
+}
+
+.form-group select option {
+    background-color: #333;
+    color: white;
+}
+
+/* TEXTO DE AYUDA */
+.help-text {
+    display: block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 5px;
+}
+
+/* CONTENEDOR DE CONTRASEÑA CON TOGGLE */
+.password-input-container {
+    position: relative;
+    display: flex;
+}
+
+.password-input-container input {
+    width: 100%;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.3s;
+}
+
+.toggle-password:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* BARRA DE FORTALEZA */
+.password-strength {
+    margin-top: 10px;
+}
+
+.strength-bar {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+#strengthText {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* REQUISITOS DE CONTRASEÑA */
+.password-requirements {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+}
+
+.requirement-title {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.password-requirements ul {
+    list-style: none;
+}
+
+.requirement {
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 6px;
+    transition: color 0.3s;
+}
+
+.requirement i {
+    margin-right: 6px;
+    opacity: 0.3;
+}
+
+.requirement.valid {
+    color: #6bcf7f;
+}
+
+.requirement.valid i {
+    opacity: 1;
+}
+
+.requirement.invalid {
+    color: #ff6b6b;
+}
+
+.requirement.invalid i {
+    opacity: 1;
+}
+
+/* BOTÓN DE REGISTRO */
+.btn-register {
+    width: 100%;
+    padding: 14px;
+    background: #833956;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+    margin-top: 20px;
+}
+
+.btn-register:hover {
+    background: #9c4467;
+    transform: translateY(-2px);
+}
+
+.btn-register:active {
+    transform: translateY(0);
+}
+
+/* ENLACE A LOGIN */
+.login-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.login-link a {
+    color: #ffd1dc;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.login-link a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* SCROLLBAR PERSONALIZADO */
+.register-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.register-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.register-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+.register-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+    .register-container {
+        padding: 30px 20px;
+        border-radius: 15px;
+        max-height: 100vh;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .form-header h1 {
+        font-size: 24px;
+    }
+}
