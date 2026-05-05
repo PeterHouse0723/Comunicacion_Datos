@@ -32,9 +32,16 @@ def login():
     POST: Procesa login del usuario
     """
     if request.method == 'GET':
-        # Si ya está logueado, redirigir al dashboard
+        # Si ya está logueado, redirigir al dashboard según su rol
         if 'usuario_id' in session:
-            return redirect(url_for('dashboard'))
+            rol = session.get('role')
+            if rol in ['admin_global', 'admin_local']:
+                return redirect(url_for('dashboard.admin'))
+            elif rol == 'docente':
+                return redirect(url_for('dashboard.docente'))
+            elif rol == 'estudiante':
+                return redirect(url_for('dashboard.estudiante'))
+        
         return render_template('login.html')
     
     # POST: Procesar login
