@@ -11,7 +11,9 @@
     <div class="login-container">
         <h1>Welcome</h1>
         
-        <div class="error-message" id="errorMsg"></div>
+        {% if error %}
+        <div class="error-message show">{{ error }}</div>
+        {% endif %}
         
         <form id="loginForm" method="POST" action="{{ url_for('auth.login') }}">
             <div class="form-group">
@@ -20,6 +22,7 @@
                     id="email" 
                     name="email" 
                     placeholder="Email"
+                    value="{{ request.form.get('email', '') }}"
                     required
                 >
             </div>
@@ -39,7 +42,7 @@
         
         <div class="form-links">
             <a href="#">Forgot Password ?</a>
-            <a href="{{ url_for('auth.register') }}">Sign Up</a>
+            <a href="{{ url_for('auth.register', rol='estudiante') }}">Sign Up</a>
         </div>
 
         <div class="divider"></div>

@@ -17,7 +17,7 @@ body {
 
 /* EFECTO GLASSMORPHISM */
 .login-container {
-    background: rgba(255, 255, 255, 0.1); /* Fondo blanco casi transparente */
+    background: rgba(255, 255, 255, 0.18); /* Fondo más opaco para mejor legibilidad */
     backdrop-filter: blur(12px); /* El efecto de vidrio empañado */
     -webkit-backdrop-filter: blur(12px); /* Para compatibilidad con Safari */
     padding: 50px 40px;
@@ -49,19 +49,20 @@ body {
 .form-group input {
     width: 100%;
     padding: 15px 20px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.28); /* Más opaco para texto legible */
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 30px; /* Bordes muy redondeados */
     color: white;
     font-size: 15px;
     transition: background 0.3s, box-shadow 0.3s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Sombra sutil para profundidad */
 }
 
 .form-group input:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.35); /* Más opaco al enfocar */
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 15px rgba(131, 57, 86, 0.3); /* Sombra en color del botón */
 }
 
 .form-group input::placeholder {

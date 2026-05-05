@@ -1,11 +1,14 @@
 from flask import Flask, render_template, redirect, url_for
 from extensions import db, migrate
 from config import config
+from utils import encriptar_contraseña
 import os
 
-# Importar modelos después de db esté disponible
-from models import (Usuario, Role, Curso, Nota, Asistencia, 
-                    LoginAuditoria, Notificacion, AlertaRiesgoAcademico, CursoDocente)
+# Importar modelos después de que db esté disponible
+from models import (
+    Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso,
+    Clase, Nota, Asistencia, AlertaRiesgoAcademico, LoginAuditoria, Notificacion
+)
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -15,37 +18,56 @@ def create_app(config_name=None):
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.config.from_object(config[config_name])
     
-    # Inicializar BD
+    # Inicializar extensiones
     db.init_app(app)
     migrate.init_app(app, db)
     
     # Registrar blueprints (rutas)
     from routes.auth import auth_bp
+    from routes.dashboard import dashboard_bp
     app.register_blueprint(auth_bp)
+    app.register_blueprint(dashboard_bp)
     
     # Crear tablas si no existen
     with app.app_context():
         db.create_all()
         
-        # Crear roles por defecto si no existen
-        # Solo insertar si la tabla está vacía
+        # Crear institución y admin inicial si no existen
         try:
-            if db.session.query(Role).count() == 0:
-                roles_default = ['admin', 'docente', 'estudiante']
-                for rol_nombre in roles_default:
-                    rol = Role(
-                        nombre=rol_nombre,
-                        descripcion=f'Rol de {rol_nombre}'
-                    )
-                    db.session.add(rol)
+            institucion = Institucion.query.filter_by(nombre='Universidad Default').first()
+            if not institucion:
+                institucion = Institucion(
+                    nombre='Universidad Default',
+                    ciudad='Bogotá',
+                    pais='Colombia',
+                    activo=True
+                )
+                db.session.add(institucion)
                 db.session.commit()
-                print("✅ Roles creados exitosamente")
+                print("[OK] Institucion creada: Universidad Default")
+                
+                # Crear admin global
+                admin_global = Usuario(
+                    institucion_id=institucion.id,
+                    email='admin@universitario.edu',
+                    password=encriptar_contraseña('Admin123!'),
+                    nombre='Administrador',
+                    apellido='Global',
+                    role='admin_global',
+                    estado='activo'
+                )
+                db.session.add(admin_global)
+                db.session.commit()
+                print("[OK] Admin global creado")
+            else:
+                print("[INFO] Institucion ya existe")
         except Exception as e:
             db.session.rollback()
-            print(f"⚠️ Roles ya existen o error: {e}")
+            print(f"[WARN] Error al crear datos iniciales: {e}")
     
     @app.route('/')
     def index():
+        """Redirigir a login"""
         return redirect(url_for('auth.login'))
     
     return app
