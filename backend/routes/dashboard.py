@@ -19,18 +19,17 @@ def login_required(f):
     return decorated_function
 
 # ============================================================================
-# RUTA: Dashboard Admin
+# RUTA: Dashboard Admin (redirige al nuevo admin.dashboard)
 # ============================================================================
 
 @dashboard_bp.route('/admin')
 @login_required
 def admin():
-    """Dashboard para administradores"""
+    """Redirige al nuevo panel administrativo"""
     if session.get('role') not in ['admin_global', 'admin_local']:
         return redirect(url_for('auth.login'))
     
-    usuario = Usuario.query.get(session.get('usuario_id'))
-    return render_template('dashboard/admin.html', usuario=usuario)
+    return redirect(url_for('admin.dashboard'))
 
 # ============================================================================
 # RUTA: Dashboard Docente

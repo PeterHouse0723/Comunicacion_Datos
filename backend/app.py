@@ -25,14 +25,16 @@ def create_app(config_name=None):
     # Registrar blueprints (rutas)
     from routes.auth import auth_bp
     from routes.dashboard import dashboard_bp
+    from routes.admin import admin_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(admin_bp)
     
     # Crear tablas si no existen
     with app.app_context():
         db.create_all()
         
-        # Crear institución y admin inicial si no existen
+        # Crear institución y admins iniciales si no existen
         try:
             institucion = Institucion.query.filter_by(nombre='Universidad Default').first()
             if not institucion:
@@ -45,8 +47,11 @@ def create_app(config_name=None):
                 db.session.add(institucion)
                 db.session.commit()
                 print("[OK] Institucion creada: Universidad Default")
-                
-                # Crear admin global
+            else:
+                print("[INFO] Institucion ya existe")
+            
+            # Crear admin global si no existe
+            if not Usuario.query.filter_by(email='admin@universitario.edu').first():
                 admin_global = Usuario(
                     institucion_id=institucion.id,
                     email='admin@universitario.edu',
@@ -59,8 +64,22 @@ def create_app(config_name=None):
                 db.session.add(admin_global)
                 db.session.commit()
                 print("[OK] Admin global creado")
-            else:
-                print("[INFO] Institucion ya existe")
+            
+            # Crear admin local si no existe
+            if not Usuario.query.filter_by(email='admin.local@universitario.edu').first():
+                admin_local = Usuario(
+                    institucion_id=institucion.id,
+                    email='admin.local@universitario.edu',
+                    password=encriptar_contraseña('Admin123!'),
+                    nombre='Administrador',
+                    apellido='Local',
+                    role='admin_local',
+                    estado='activo'
+                )
+                db.session.add(admin_local)
+                db.session.commit()
+                print("[OK] Admin local creado")
+                
         except Exception as e:
             db.session.rollback()
             print(f"[WARN] Error al crear datos iniciales: {e}")

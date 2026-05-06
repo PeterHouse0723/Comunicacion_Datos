@@ -100,7 +100,7 @@ def login():
     
     # Redirigir según rol
     if usuario.role == 'admin_global' or usuario.role == 'admin_local':
-        return redirect(url_for('dashboard.admin'))
+        return redirect(url_for('admin.dashboard'))
     elif usuario.role == 'docente':
         return redirect(url_for('dashboard.docente'))
     elif usuario.role == 'estudiante':
@@ -157,7 +157,7 @@ def register():
             }), 400
         
         # 2. Validar que rol sea válido
-        if rol not in ['estudiante', 'docente']:
+        if rol not in ['estudiante', 'docente', 'admin_local']:
             return jsonify({
                 'success': False,
                 'error': 'Rol inválido'
@@ -220,7 +220,8 @@ def register():
             role=rol,
             # Si es docente: pendiente de aprobación
             # Si es estudiante: activo inmediatamente
-            estado='pendiente' if rol == 'docente' else 'activo'
+            # Si es admin_local: pendiente de aprobación
+            estado='pendiente' if rol in ['docente', 'admin_local'] else 'activo'
         )
         
         db.session.add(nuevo_usuario)

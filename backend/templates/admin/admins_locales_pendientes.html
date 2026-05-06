@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprobacion de Admins Locales - Sistema Academico</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-page">
+    <nav class="admin-navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('admin.dashboard') }}">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <h1>Aprobacion de Admins Locales</h1>
+        </div>
+        <div class="navbar-user">
+            <span class="user-email">{{ session.email }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="btn-logout">Salir</a>
+        </div>
+    </nav>
+
+    <div class="admin-container">
+        <main class="admin-content">
+            <div class="page-header">
+                <h2>Admins Locales Pendientes</h2>
+                <p>Total: <strong>{{ total }}</strong> admin(s)</p>
+            </div>
+
+            <div class="toast-notification" id="toast"></div>
+
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Institucion</th>
+                            <th>Fecha de Solicitud</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if admins %}
+                            {% for admin in admins %}
+                            <tr data-admin-id="{{ admin.id }}">
+                                <td>{{ admin.nombre }} {{ admin.apellido }}</td>
+                                <td>{{ admin.email }}</td>
+                                <td>{{ admin.institucion.nombre if admin.institucion else 'N/A' }}</td>
+                                <td>{{ admin.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td class="action-buttons">
+                                    <button type="button" class="btn-approve" onclick="aprobarAdmin({{ admin.id }})">
+                                        <i class="fas fa-check"></i> Aprobar
+                                    </button>
+                                    <button type="button" class="btn-reject" onclick="rechazarAdmin({{ admin.id }})">
+                                        <i class="fas fa-times"></i> Rechazar
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <i class="fas fa-check-circle"></i>
+                                <p>No hay admins locales pendientes</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="?page=1" class="page-btn">Primera</a>
+                    <a href="?page={{ page - 1 }}" class="page-btn">← Anterior</a>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <span class="page-num current">{{ p }}</span>
+                    {% else %}
+                        <a href="?page={{ p }}" class="page-num">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                    <a href="?page={{ page + 1 }}" class="page-btn">Siguiente →</a>
+                    <a href="?page={{ total_pages }}" class="page-btn">Ultima</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Rechazar Admin Local</h3>
+                <button type="button" class="modal-close" onclick="cerrarModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejectReason">Razon del rechazo</label>
+                    <textarea id="rejectReason" placeholder="Especifica la razon del rechazo..." rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn-reject" onclick="confirmarRechazo()">Rechazar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        let adminParaRechazar = null;
+
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            toast.className = 'toast-notification show';
+            toast.style.background = isSuccess ? '#4caf50' : '#f44336';
+            toast.innerHTML = `
+                <i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function aprobarAdmin(adminId) {
+            if (confirm('¿Estas seguro de que deseas aprobar este admin local?')) {
+                fetch(`{{ url_for('admin.aprobar_admin_local', admin_id=0) }}`.replace('0', adminId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showToast(data.mensaje, data.success);
+                    if (data.success) {
+                        document.querySelector(`tr[data-admin-id="${adminId}"]`).style.opacity = '0.5';
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                })
+                .catch(() => showToast('Error en la solicitud', false));
+            }
+        }
+
+        function rechazarAdmin(adminId) {
+            adminParaRechazar = adminId;
+            document.getElementById('rejectModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('rejectModal').style.display = 'none';
+            document.getElementById('rejectReason').value = '';
+            adminParaRechazar = null;
+        }
+
+        function confirmarRechazo() {
+            const razon = document.getElementById('rejectReason').value.trim();
+            if (!razon) {
+                showToast('Debes especificar una razon', false);
+                return;
+            }
+
+            fetch(`{{ url_for('admin.rechazar_admin_local', admin_id=0) }}`.replace('0', adminParaRechazar), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ razon })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje, data.success);
+                cerrarModal();
+                if (data.success) {
+                    document.querySelector(`tr[data-admin-id="${adminParaRechazar}"]`).style.opacity = '0.5';
+                    setTimeout(() => location.reload(), 1500);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        }
+    </script>
+</body>
+</html>

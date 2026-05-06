@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Cursos - Sistema Académico</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-page">
+    <!-- Navbar -->
+    <nav class="admin-navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('admin.dashboard') }}">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <h1>Gestión de Cursos</h1>
+        </div>
+        <div class="navbar-right">
+            <button class="btn-primary" onclick="abrirModalCrear()">
+                <i class="fas fa-plus"></i> Nuevo Curso
+            </button>
+            <a href="{{ url_for('auth.logout') }}" class="btn-logout">Salir</a>
+        </div>
+    </nav>
+
+    <div class="admin-container">
+        <main class="admin-content">
+            <!-- Header -->
+            <div class="page-header">
+                <h2>Mis Cursos</h2>
+                <p>Total: <strong>{{ total }}</strong> curso(s)</p>
+            </div>
+
+            <!-- Toast notification -->
+            <div class="toast-notification" id="toast"></div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Período</th>
+                            <th>Docente Principal</th>
+                            <th>Créditos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if cursos %}
+                            {% for curso in cursos %}
+                            <tr data-curso-id="{{ curso.id }}">
+                                <td><strong>{{ curso.codigo }}</strong></td>
+                                <td>{{ curso.nombre }}</td>
+                                <td>{{ curso.periodo.nombre if curso.periodo else 'N/A' }}</td>
+                                <td>{{ curso.docente_principal.nombre if curso.docente_principal else '-' }}</td>
+                                <td>{{ curso.creditos }}</td>
+                                <td class="action-buttons">
+                                    <button type="button" class="btn-edit" onclick="editarCurso({{ curso.id }}, '{{ curso.codigo }}', '{{ curso.nombre }}', '{{ curso.creditos }}', '{{ curso.descripcion }}', '{{ curso.periodo.nombre if curso.periodo else '' }}', '{{ curso.periodo.fecha_inicio.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.periodo.fecha_fin.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.docente_principal_id or '' }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn-delete" onclick="eliminarCurso({{ curso.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <i class="fas fa-book"></i>
+                                <p>No hay cursos creados. <a href="javascript:abrirModalCrear()">Crear nuevo</a></p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="?page=1" class="page-btn">Primera</a>
+                    <a href="?page={{ page - 1 }}" class="page-btn">← Anterior</a>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <span class="page-num current">{{ p }}</span>
+                    {% else %}
+                        <a href="?page={{ p }}" class="page-num">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                    <a href="?page={{ page + 1 }}" class="page-btn">Siguiente →</a>
+                    <a href="?page={{ total_pages }}" class="page-btn">Última</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <!-- Modal Crear/Editar Curso -->
+    <div id="cursoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nuevo Curso</h3>
+                <button type="button" class="modal-close" onclick="cerrarModal()">&times;</button>
+            </div>
+            <form id="cursoForm">
+                <div class="modal-body">
+                    <input type="hidden" id="cursoId">
+
+                    <div class="form-group">
+                        <label for="codigo">Código del Curso *</label>
+                        <input type="text" id="codigo" name="codigo" placeholder="ej: MAT101" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nombre">Nombre *</label>
+                        <input type="text" id="nombre" name="nombre" placeholder="ej: Cálculo I" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="periodo_nombre">Periodo Academico *</label>
+                            <input type="text" id="periodo_nombre" name="periodo_nombre" placeholder="ej: 2026-I" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="creditos">Creditos</label>
+                            <input type="number" id="creditos" name="creditos" value="3" min="1" max="6">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fecha_inicio">Fecha Inicio *</label>
+                            <input type="date" id="fecha_inicio" name="fecha_inicio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fecha_fin">Fecha Fin *</label>
+                            <input type="date" id="fecha_fin" name="fecha_fin" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="docente">Docente Principal</label>
+                        <select id="docente" name="docente_principal_id">
+                            <option value="">-- Selecciona --</option>
+                            {% for docente in docentes %}
+                                <option value="{{ docente.id }}">{{ docente.nombre }} {{ docente.apellido }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descripcion">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción del curso..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        let cursoEnEdicion = null;
+
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            toast.className = 'toast-notification show';
+            toast.style.background = isSuccess ? '#4caf50' : '#f44336';
+            toast.innerHTML = `
+                <i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function abrirModalCrear() {
+            cursoEnEdicion = null;
+            document.getElementById('cursoId').value = '';
+            document.getElementById('cursoForm').reset();
+            document.getElementById('modalTitle').textContent = 'Nuevo Curso';
+            document.getElementById('cursoModal').style.display = 'flex';
+        }
+
+        function editarCurso(id, codigo, nombre, creditos, descripcion, periodoNombre, fechaInicio, fechaFin, docenteId) {
+            cursoEnEdicion = id;
+            document.getElementById('cursoId').value = id;
+            document.getElementById('codigo').value = codigo;
+            document.getElementById('nombre').value = nombre;
+            document.getElementById('creditos').value = creditos;
+            document.getElementById('descripcion').value = descripcion;
+            document.getElementById('periodo_nombre').value = periodoNombre;
+            document.getElementById('fecha_inicio').value = fechaInicio;
+            document.getElementById('fecha_fin').value = fechaFin;
+            document.getElementById('docente').value = docenteId || '';
+            document.getElementById('modalTitle').textContent = 'Editar Curso';
+            document.getElementById('cursoModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('cursoModal').style.display = 'none';
+            cursoEnEdicion = null;
+        }
+
+        function eliminarCurso(cursoId) {
+            if (confirm('¿Estás seguro de que deseas eliminar este curso?')) {
+                fetch(`{{ url_for('admin.eliminar_curso', curso_id=0) }}`.replace('0', cursoId), {
+                    method: 'POST'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showToast(data.mensaje, data.success);
+                    if (data.success) {
+                        document.querySelector(`tr[data-curso-id="${cursoId}"]`).style.opacity = '0.5';
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                })
+                .catch(err => showToast('Error en la solicitud', false));
+            }
+        }
+
+        document.getElementById('cursoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = {
+                codigo: document.getElementById('codigo').value,
+                nombre: document.getElementById('nombre').value,
+                periodo_nombre: document.getElementById('periodo_nombre').value,
+                fecha_inicio: document.getElementById('fecha_inicio').value,
+                fecha_fin: document.getElementById('fecha_fin').value,
+                docente_principal_id: document.getElementById('docente').value || null,
+                creditos: document.getElementById('creditos').value,
+                descripcion: document.getElementById('descripcion').value
+            };
+
+            const url = cursoEnEdicion 
+                ? `{{ url_for('admin.actualizar_curso', curso_id=0) }}`.replace('0', cursoEnEdicion)
+                : `{{ url_for('admin.crear_curso') }}`;
+            
+            const method = cursoEnEdicion ? 'POST' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                const message = data.mensaje || data.error || 'No se pudo guardar el curso';
+                showToast(message, data.success);
+                if (data.success) {
+                    cerrarModal();
+                    setTimeout(() => location.reload(), 1500);
+                }
+            })
+            .catch(err => showToast('Error en la solicitud', false));
+        });
+    </script>
+</body>
+</html>

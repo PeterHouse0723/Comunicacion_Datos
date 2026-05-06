@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* MENÚ HAMBURGUESA */
+        .floating-menu { position: fixed; top: 20px; left: 20px; z-index: 1000; }
+
+        .menu-toggle {
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px); color: white; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .menu-toggle:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+
+        .menu-dropdown {
+            position: absolute; top: 60px; left: 0; width: 220px; padding: 10px 0;
+            border-radius: 15px; opacity: 0; visibility: hidden; transform: translateY(-10px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .menu-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .menu-dropdown a {
+            display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+            color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: all 0.2s ease;
+        }
+        .menu-dropdown a:hover { color: white; background: rgba(255, 255, 255, 0.05); }
+        .menu-dropdown a i { width: 20px; text-align: center; }
+        .menu-dropdown hr { border: 0; height: 1px; background: rgba(255, 255, 255, 0.1); margin: 5px 15px; }
+        .logout-link { color: #ff6b6b !important; }
+
+        /* NAVBAR Y PERFIL */
+        .admin-navbar {
+            position: fixed; top: 0; left: 0; right: 0; height: 70px;
+            display: flex; justify-content: flex-end; align-items: center; padding: 0 30px;
+            background: rgba(15, 12, 41, 0.6); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border); z-index: 500;
+        }
+
+        .profile-container { position: relative; }
+
+        .profile-btn {
+            background: none; border: none; color: white; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; font-family: inherit;
+        }
+        .profile-btn i { font-size: 10px; color: var(--text-secondary); transition: transform 0.3s; }
+        .profile-btn.active i { transform: rotate(180deg); }
+
+        .profile-info { text-align: right; }
+        .user-name { font-size: 14px; font-weight: 600; display: block; }
+        .user-role {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-secondary); background: rgba(255,255,255,0.1);
+            padding: 2px 8px; border-radius: 20px;
+        }
+
+        .profile-menu {
+            position: absolute; top: 50px; right: 0; width: 250px; padding: 15px 0;
+            border-radius: 15px; opacity: 0; visibility: hidden; transform: translateY(-10px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .profile-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .profile-menu-header {
+            padding: 0 15px 15px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;
+        }
+        .profile-menu-header p { font-size: 12px; color: var(--text-secondary); }
+
+        .profile-menu button {
+            width: 100%; text-align: left; padding: 10px 15px; background: none; border: none;
+            color: var(--text-secondary); font-size: 14px; cursor: pointer; display: flex;
+            align-items: center; gap: 10px; font-family: inherit; transition: 0.2s;
+        }
+        .profile-menu button:hover { color: white; background: rgba(255,255,255,0.05); }
+
+        /* MODAL CAMBIAR CONTRASEÑA */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center;
+            z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            width: 100%; max-width: 400px; padding: 30px; border-radius: 20px;
+            transform: scale(0.9); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        .modal-content h3 { margin-bottom: 20px; font-weight: 400; letter-spacing: 0.5px; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+        .form-group input {
+            width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            border-radius: 10px; color: white; font-family: inherit; font-size: 14px; outline: none; transition: 0.3s;
+        }
+        .form-group input:focus { border-color: rgba(255,255,255,0.3); }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-modal {
+            flex: 1; padding: 12px; border-radius: 10px; border: none; font-family: inherit;
+            font-size: 14px; cursor: pointer; transition: 0.3s;
+        }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-cancel:hover { background: rgba(255,255,255,0.2); }
+        .btn-save { background: rgba(52, 152, 219, 0.5); color: white; border: 1px solid rgba(52, 152, 219, 0.8) !important; }
+        .btn-save:hover { background: rgba(52, 152, 219, 0.7); }
+
+        .error-msg { color: #ff6b6b; font-size: 12px; margin-top: -10px; margin-bottom: 10px; display: none; }
+
+        /* CONTENIDO PRINCIPAL */
+        .admin-container {
+            padding-top: 120px; padding-bottom: 40px; display: flex;
+            justify-content: center; padding-left: 20px; padding-right: 20px;
+        }
+        .admin-content { width: 100%; max-width: 900px; }
+        .admin-header { text-align: center; margin-bottom: 50px; }
+        .admin-header h2 { font-size: 28px; font-weight: 300; letter-spacing: 1px; margin-bottom: 8px; }
+        .admin-header p { color: var(--text-secondary); font-size: 15px; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+        .stat-card {
+            padding: 25px; border-radius: 20px; cursor: pointer; transition: all 0.4s ease;
+            text-align: center; display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        .stat-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.1); box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
+        .stat-icon {
+            width: 50px; height: 50px; border-radius: 15px; display: flex;
+            align-items: center; justify-content: center; font-size: 20px; color: white;
+        }
+        .stat-info h3 { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
+        .stat-info p { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+
+    <!-- MENÚ HAMBURGUESA -->
+    <div class="floating-menu">
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        <div class="menu-dropdown glass" id="menuDropdown">
+            {% if usuario.role == 'admin_global' %}
+            <a href="/admin/admins-locales"><i class="fas fa-user-check"></i> Admins Locales</a>
+            {% else %}
+            <a href="/admin/docentes/pendientes"><i class="fas fa-check-circle"></i> Aprobar Docentes</a>
+            {% endif %}
+            <a href="/admin/cursos"><i class="fas fa-plus-circle"></i> Crear Curso</a>
+            {% if usuario.role == 'admin_global' %}
+            <a href="/admin/instituciones"><i class="fas fa-building"></i> Nueva Institución</a>
+            {% endif %}
+            <hr>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="admin-navbar">
+        <div class="profile-container">
+            <button class="profile-btn" id="profileBtn">
+                <div class="profile-info">
+                    <span class="user-name">{{ usuario.nombre }}</span>
+                    <span class="user-role">{{ usuario.role }}</span>
+                </div>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            
+            <!-- MENÚ DESPLEGABLE DEL PERFIL -->
+            <div class="profile-menu glass" id="profileMenu">
+                <div class="profile-menu-header">
+                    <p style="color: white; font-weight: 500;">{{ usuario.email }}</p>
+                    <p>Gestionar cuenta</p>
+                </div>
+                <button id="btnOpenPassModal">
+                    <i class="fas fa-lock" style="width: 20px; text-align: center;"></i> Cambiar Contraseña
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-link" style="display:flex; align-items:center; gap:10px; padding:10px 15px; text-decoration:none; font-size:14px;">
+                    <i class="fas fa-sign-out-alt" style="width: 20px; text-align: center;"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MODAL CAMBIAR CONTRASEÑA -->
+    <div class="modal-overlay" id="passModal">
+        <div class="modal-content glass">
+            <h3>Cambiar Contraseña</h3>
+            <form id="formChangePass">
+                <div class="form-group">
+                    <label>Contraseña Actual</label>
+                    <input type="password" id="currentPass" required>
+                </div>
+                <div class="form-group">
+                    <label>Nueva Contraseña</label>
+                    <input type="password" id="newPass" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Nueva Contraseña</label>
+                    <input type="password" id="confirmPass" required>
+                </div>
+                <div class="error-msg" id="passError"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancel" id="btnCloseModal">Cancelar</button>
+                    <button type="submit" class="btn-modal btn-save">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="admin-container">
+        <main class="admin-content">
+            <div class="admin-header">
+                <h2>Bienvenido</h2>
+                <p>Gestiona tu institución académica desde aquí</p>
+            </div>
+            <div class="stats-grid">
+                {% if usuario.role == 'admin_global' %}
+                <div class="stat-card glass" onclick="window.location.href='/admin/admins-locales/pendientes'">
+                    <div class="stat-icon" style="background: rgba(231, 76, 60, 0.3); border: 1px solid rgba(231, 76, 60, 0.5);"><i class="fas fa-user-check"></i></div>
+                    <div class="stat-info"><h3>{{ stats.docentes_pendientes }}</h3><p>Admins Locales Pendientes</p></div>
+                </div>
+                {% else %}
+                <div class="stat-card glass" onclick="window.location.href='/admin/docentes/pendientes'">
+                    <div class="stat-icon" style="background: rgba(231, 76, 60, 0.3); border: 1px solid rgba(231, 76, 60, 0.5);"><i class="fas fa-user-clock"></i></div>
+                    <div class="stat-info"><h3>{{ stats.docentes_pendientes }}</h3><p>Docentes Pendientes</p></div>
+                </div>
+                {% endif %}
+                <div class="stat-card glass" onclick="window.location.href='/admin/cursos'">
+                    <div class="stat-icon" style="background: rgba(52, 152, 219, 0.3); border: 1px solid rgba(52, 152, 219, 0.5);"><i class="fas fa-book"></i></div>
+                    <div class="stat-info"><h3>{{ stats.cursos }}</h3><p>Cursos Activos</p></div>
+                </div>
+                {% if usuario.role == 'admin_global' %}
+                <div class="stat-card glass" onclick="window.location.href='/admin/instituciones'">
+                    <div class="stat-icon" style="background: rgba(46, 204, 113, 0.3); border: 1px solid rgba(46, 204, 113, 0.5);"><i class="fas fa-building"></i></div>
+                    <div class="stat-info"><h3>{{ stats.instituciones }}</h3><p>Instituciones</p></div>
+                </div>
+                {% endif %}
+                {% if usuario.role == 'admin_global' %}
+                <div class="stat-card glass" onclick="window.location.href='/admin/admins-locales'">
+                    <div class="stat-icon" style="background: rgba(155, 89, 182, 0.3); border: 1px solid rgba(155, 89, 182, 0.5);"><i class="fas fa-users"></i></div>
+                    <div class="stat-info"><h3>{{ stats.usuarios }}</h3><p>Admins Locales</p></div>
+                </div>
+                {% else %}
+                <div class="stat-card glass">
+                    <div class="stat-icon" style="background: rgba(155, 89, 182, 0.3); border: 1px solid rgba(155, 89, 182, 0.5);"><i class="fas fa-users"></i></div>
+                    <div class="stat-info"><h3>{{ stats.usuarios }}</h3><p>Usuarios</p></div>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- LÓGICA MENÚ HAMBURGUESA ---
+        const menuToggle = document.getElementById('menuToggle');
+        const menuDropdown = document.getElementById('menuDropdown');
+        menuToggle.addEventListener('click', (e) => { e.stopPropagation(); menuDropdown.classList.toggle('active'); });
+
+        // --- LÓGICA MENÚ PERFIL ---
+        const profileBtn = document.getElementById('profileBtn');
+        const profileMenu = document.getElementById('profileMenu');
+        profileBtn.addEventListener('click', (e) => { e.stopPropagation(); profileMenu.classList.toggle('active'); profileBtn.classList.toggle('active'); });
+
+        // --- LÓGICA MODAL CONTRASEÑA ---
+        const passModal = document.getElementById('passModal');
+        const btnOpenPassModal = document.getElementById('btnOpenPassModal');
+        const btnCloseModal = document.getElementById('btnCloseModal');
+        const passError = document.getElementById('passError');
+
+        btnOpenPassModal.addEventListener('click', () => {
+            profileMenu.classList.remove('active');
+            passModal.classList.add('active');
+            document.getElementById('formChangePass').reset();
+            passError.style.display = 'none';
+        });
+
+        btnCloseModal.addEventListener('click', () => passModal.classList.remove('active'));
+
+        // Cerrar todo al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!menuDropdown.contains(e.target) && !menuToggle.contains(e.target)) menuDropdown.classList.remove('active');
+            if (!profileMenu.contains(e.target) && !profileBtn.contains(e.target)) profileMenu.classList.remove('active');
+            if (e.target === passModal) passModal.classList.remove('active');
+        });
+
+        // --- ENVIAR FORMULARIO CONTRASEÑA (AJAX) ---
+        document.getElementById('formChangePass').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            passError.style.display = 'none';
+            
+            const currentPass = document.getElementById('currentPass').value;
+            const newPass = document.getElementById('newPass').value;
+            const confirmPass = document.getElementById('confirmPass').value;
+
+            if(newPass !== confirmPass) {
+                passError.textContent = 'Las nuevas contraseñas no coinciden.';
+                passError.style.display = 'block';
+                return;
+            }
+
+            const btnSave = this.querySelector('.btn-save');
+            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            btnSave.disabled = true;
+
+            try {
+                const response = await fetch('/admin/perfil/cambiar-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ current_password: currentPass, new_password: newPass })
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                let data = { success: false, error: 'Respuesta invalida del servidor' };
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    data = { success: false, error: text || 'Respuesta invalida del servidor' };
+                }
+
+                if (data.success) {
+                    alert('Contraseña actualizada correctamente');
+                    passModal.classList.remove('active');
+                } else {
+                    passError.textContent = data.error || 'No se pudo actualizar la contraseña.';
+                    passError.style.display = 'block';
+                }
+            } catch (error) {
+                passError.textContent = 'Error de conexión.';
+                passError.style.display = 'block';
+            } finally {
+                btnSave.innerHTML = 'Guardar';
+                btnSave.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
