@@ -6,6 +6,66 @@
     <title>Login - Sistema de Asistencia Académica</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ESTILOS PARA FORZAR VISIBILIDAD (Anula los colores oscuros del fondo) -->
+    <style>
+        /* Forzar texto general a blanco */
+        body, h1 {
+            color: #000000 !important;
+        }
+        
+        /* Estilo de los inputs (Efecto vidrio para que se lea bien) */
+        input[type="email"], 
+        input[type="password"] {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px;
+            padding: 12px 15px;
+            outline: none;
+        }
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+        
+        /* Enlaces (Azul claro para que contrasten) */
+        .form-links a {
+            color: #a8c0ff !important;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .form-links a:hover {
+            color: #ffffff !important;
+            text-decoration: underline;
+        }
+        
+        /* Botón LOGIN */
+        .btn-login {
+            background: rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            letter-spacing: 2px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            background: rgba(255, 255, 255, 0.25) !important;
+        }
+        
+        /* Mensaje de error (Rojo suave legible) */
+        .error-message {
+            color: #ff6b6b !important;
+            background: rgba(255, 107, 107, 0.1) !important;
+            border: 1px solid rgba(255, 107, 107, 0.3) !important;
+            padding: 10px;
+            border-radius: 8px;
+            display: none; /* Oculto por defecto */
+        }
+        .error-message.show {
+            display: block !important; /* Se muestra cuando hay error */
+        }
+    </style>
 </head>
 <body>
     <div class="login-container">
@@ -44,22 +104,15 @@
             <a href="#">Forgot Password ?</a>
             <a href="{{ url_for('auth.register', rol='estudiante') }}">Sign Up</a>
         </div>
-
-        <div class="divider"></div>
-
-        <div class="social-login">
-            <p>OR LOGIN WITH</p>
-            <div class="social-icons">
-                <a href="#" class="icon google"><i class="fab fa-google"></i></a>
-                <a href="#" class="icon facebook"><i class="fab fa-facebook-f"></i></a>
-            </div>
-        </div>
     </div>
 
     <script>
+        // Corregido: Buscaba 'errorMsg' por ID, pero en el HTML era una clase
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.classList.remove('show');
+            const errorMsg = document.querySelector('.error-message');
+            if (errorMsg) {
+                errorMsg.classList.remove('show');
+            }
         });
     </script>
 </body>

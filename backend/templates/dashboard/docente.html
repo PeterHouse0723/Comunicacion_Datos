@@ -165,7 +165,75 @@
                 <h3>Alertas</h3>
                 <p>Ver estudiantes en riesgo académico</p>
             </div>
+
+            <div class="dashboard-card" onclick="abrirSolicitudModal()">
+                <i class="fas fa-user-plus"></i>
+                <h3>Solicitar estudiante</h3>
+                <p>Pedir al admin local agregar un estudiante a una materia</p>
+            </div>
         </div>
     </div>
+
+    <div id="solicitudModal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center;">
+        <div style="background: #fff; padding: 24px; border-radius: 12px; width: 100%; max-width: 420px;">
+            <h3 style="margin-bottom: 16px; color: #333;">Solicitud de estudiante</h3>
+            <form id="solicitudForm">
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; margin-bottom:6px; font-size: 13px;">Materia *</label>
+                    <select id="materiaSelect" style="width:100%; padding:10px;" required>
+                        <option value="">Selecciona una materia</option>
+                        {% for materia in materias %}
+                            <option value="{{ materia.id }}">{{ materia.codigo }} - {{ materia.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; margin-bottom:6px; font-size: 13px;">Email del estudiante *</label>
+                    <input id="estudianteEmail" type="email" style="width:100%; padding:10px;" placeholder="correo@ejemplo.com" required>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; margin-bottom:6px; font-size: 13px;">Motivo</label>
+                    <textarea id="motivo" style="width:100%; padding:10px;" rows="3" placeholder="Opcional"></textarea>
+                </div>
+                <div style="display:flex; gap: 10px; justify-content:flex-end;">
+                    <button type="button" onclick="cerrarSolicitudModal()" style="padding:8px 14px;">Cancelar</button>
+                    <button type="submit" style="padding:8px 14px; background:#667eea; color:#fff; border:none;">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirSolicitudModal() {
+            document.getElementById('solicitudModal').style.display = 'flex';
+        }
+
+        function cerrarSolicitudModal() {
+            document.getElementById('solicitudModal').style.display = 'none';
+        }
+
+        document.getElementById('solicitudForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const materiaId = document.getElementById('materiaSelect').value;
+            const email = document.getElementById('estudianteEmail').value;
+            const motivo = document.getElementById('motivo').value;
+
+            fetch("{{ url_for('dashboard.solicitar_estudiante_materia') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ materia_id: materiaId, email, motivo })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje || data.error || 'No se pudo enviar la solicitud');
+                if (data.success) {
+                    cerrarSolicitudModal();
+                    document.getElementById('solicitudForm').reset();
+                }
+            })
+            .catch(() => alert('Error en la solicitud'));
+        });
+    </script>
 </body>
 </html>

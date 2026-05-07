@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materias - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a class="active" href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ usuario.email }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>Materias</h2>
+                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-shield"></i>
+                    <span>{{ usuario.role }}</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Listado de materias</h3>
+                        <p>Total: <strong>{{ total }}</strong> materia(s)</p>
+                    </div>
+                    <div class="action-bar">
+                        <button class="btn btn-primary" onclick="abrirModalCrear()">
+                            <i class="fas fa-plus"></i> Nueva materia
+                        </button>
+                        <button class="btn btn-outline" onclick="abrirModalCarga()">
+                            <i class="fas fa-file-upload"></i> Cargar lista
+                        </button>
+                        <button class="btn btn-outline" onclick="abrirModalAsignar()">
+                            <i class="fas fa-user-tie"></i> Asignar docente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Periodo</th>
+                                <th>Docente principal</th>
+                                <th>Estudiantes</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if cursos %}
+                                {% for curso in cursos %}
+                                <tr data-curso-id="{{ curso.id }}">
+                                    <td><strong>{{ curso.codigo }}</strong></td>
+                                    <td>{{ curso.nombre }}</td>
+                                    <td>{{ curso.periodo.nombre if curso.periodo else 'N/A' }}</td>
+                                    <td>{{ curso.docente_principal.nombre if curso.docente_principal else 'Sin asignar' }}</td>
+                                    <td>{{ curso.estudiantes|length }}</td>
+                                    <td>
+                                        <div class="action-bar">
+                                            <a class="btn btn-outline" href="{{ url_for('admin.detalle_curso_admin_local', curso_id=curso.id) }}">
+                                                <i class="fas fa-eye"></i> Ver
+                                            </a>
+                                            <button class="btn btn-outline" onclick="editarMateria({{ curso.id }}, '{{ curso.codigo }}', '{{ curso.nombre }}', '{{ curso.creditos }}', '{{ curso.descripcion }}', '{{ curso.periodo.nombre if curso.periodo else '' }}', '{{ curso.periodo.fecha_inicio.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.periodo.fecha_fin.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.docente_principal_id or '' }}')">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-outline" onclick="abrirModalAsignar('{{ curso.id }}')">
+                                                <i class="fas fa-user-tie"></i>
+                                            </button>
+                                            <button class="btn btn-outline" onclick="abrirModalCarga('{{ curso.id }}')">
+                                                <i class="fas fa-upload"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="list-empty">No hay materias creadas aún.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-notification" id="toast"></div>
+
+    <div id="cursoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nueva Materia</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal('cursoModal')">Cerrar</button>
+            </div>
+            <form id="cursoForm">
+                <div class="modal-body">
+                    <input type="hidden" id="cursoId">
+                    <div class="form-group">
+                        <label for="codigo">Código de la Materia *</label>
+                        <input type="text" id="codigo" name="codigo" placeholder="ej: MAT101" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nombre">Nombre *</label>
+                        <input type="text" id="nombre" name="nombre" placeholder="ej: Cálculo I" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="periodo_nombre">Periodo Académico *</label>
+                            <input type="text" id="periodo_nombre" name="periodo_nombre" placeholder="ej: 2026-I" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="creditos">Créditos</label>
+                            <input type="number" id="creditos" name="creditos" value="3" min="1" max="6">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fecha_inicio">Fecha Inicio *</label>
+                            <input type="date" id="fecha_inicio" name="fecha_inicio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fecha_fin">Fecha Fin *</label>
+                            <input type="date" id="fecha_fin" name="fecha_fin" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="docente">Docente Principal</label>
+                        <select id="docente" name="docente_principal_id">
+                            <option value="">-- Selecciona --</option>
+                            {% for docente in docentes %}
+                                <option value="{{ docente.id }}">{{ docente.nombre }} {{ docente.apellido }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="descripcion">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción de la materia..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('cursoModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="cargaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cargar lista de estudiantes</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal('cargaModal')">Cerrar</button>
+            </div>
+            <form id="cargaForm">
+                <div class="modal-body">
+                    <input type="hidden" id="cursoCargaId">
+                    <div class="form-group">
+                        <label for="cursoSeleccion">Materia *</label>
+                        <select id="cursoSeleccion" required>
+                            <option value="">Selecciona una materia</option>
+                            {% for curso in cursos %}
+                                <option value="{{ curso.id }}">{{ curso.codigo }} - {{ curso.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="archivo">Archivo CSV *</label>
+                        <input type="file" id="archivo" accept=".csv" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Formato esperado</label>
+                        <textarea rows="3" readonly>email,nombre,apellido</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('cargaModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Subir lista</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="docenteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Asignar docente</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal('docenteModal')">Cerrar</button>
+            </div>
+            <form id="docenteForm">
+                <div class="modal-body">
+                    <input type="hidden" id="cursoDocenteId">
+                    <div class="form-group">
+                        <label for="cursoDocente">Materia *</label>
+                        <select id="cursoDocente" required>
+                            <option value="">Selecciona una materia</option>
+                            {% for curso in cursos %}
+                                <option value="{{ curso.id }}">{{ curso.codigo }} - {{ curso.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="docenteSelect">Docente principal *</label>
+                        <select id="docenteSelect" required>
+                            <option value="">Selecciona un docente</option>
+                            {% for docente in docentes %}
+                                <option value="{{ docente.id }}">{{ docente.nombre }} {{ docente.apellido }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('docenteModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        let cursoEnEdicion = null;
+
+        function abrirModalCrear() {
+            cursoEnEdicion = null;
+            document.getElementById('cursoForm').reset();
+            document.getElementById('cursoId').value = '';
+            document.getElementById('modalTitle').textContent = 'Nueva Materia';
+            document.getElementById('cursoModal').style.display = 'flex';
+        }
+
+        function abrirModalCarga(cursoId = '') {
+            document.getElementById('cargaForm').reset();
+            document.getElementById('cursoSeleccion').value = cursoId || '';
+            document.getElementById('cargaModal').style.display = 'flex';
+        }
+
+        function abrirModalAsignar(cursoId = '') {
+            document.getElementById('docenteForm').reset();
+            document.getElementById('cursoDocente').value = cursoId || '';
+            document.getElementById('docenteModal').style.display = 'flex';
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function editarMateria(id, codigo, nombre, creditos, descripcion, periodoNombre, fechaInicio, fechaFin, docenteId) {
+            cursoEnEdicion = id;
+            document.getElementById('cursoId').value = id;
+            document.getElementById('codigo').value = codigo;
+            document.getElementById('nombre').value = nombre;
+            document.getElementById('creditos').value = creditos;
+            document.getElementById('descripcion').value = descripcion;
+            document.getElementById('periodo_nombre').value = periodoNombre;
+            document.getElementById('fecha_inicio').value = fechaInicio;
+            document.getElementById('fecha_fin').value = fechaFin;
+            document.getElementById('docente').value = docenteId || '';
+            document.getElementById('modalTitle').textContent = 'Editar Materia';
+            document.getElementById('cursoModal').style.display = 'flex';
+        }
+
+        document.getElementById('cursoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = {
+                codigo: document.getElementById('codigo').value,
+                nombre: document.getElementById('nombre').value,
+                periodo_nombre: document.getElementById('periodo_nombre').value,
+                fecha_inicio: document.getElementById('fecha_inicio').value,
+                fecha_fin: document.getElementById('fecha_fin').value,
+                docente_principal_id: document.getElementById('docente').value || null,
+                creditos: document.getElementById('creditos').value,
+                descripcion: document.getElementById('descripcion').value
+            };
+
+            const url = cursoEnEdicion
+                ? `{{ url_for('admin.actualizar_curso', curso_id=0) }}`.replace('0', cursoEnEdicion)
+                : `{{ url_for('admin.crear_curso') }}`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                const message = data.mensaje || data.error || 'No se pudo guardar el curso';
+                showToast(message, data.success);
+                if (data.success) {
+                    cerrarModal('cursoModal');
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        });
+
+        document.getElementById('cargaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const cursoId = document.getElementById('cursoSeleccion').value;
+            const archivoInput = document.getElementById('archivo');
+            const archivo = archivoInput.files[0];
+
+            if (!cursoId || !archivo) {
+                showToast('Selecciona la materia y el archivo', false);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('archivo', archivo);
+
+            fetch(`{{ url_for('admin.cargar_estudiantes', curso_id=0) }}`.replace('0', cursoId), {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo cargar', data.success);
+                if (data.success) {
+                    cerrarModal('cargaModal');
+                    archivoInput.value = '';
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        });
+
+        document.getElementById('docenteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const cursoId = document.getElementById('cursoDocente').value;
+            const docenteId = document.getElementById('docenteSelect').value;
+
+            if (!cursoId || !docenteId) {
+                showToast('Selecciona la materia y el docente', false);
+                return;
+            }
+
+            fetch(`{{ url_for('admin.asignar_docente_principal', curso_id=0) }}`.replace('0', cursoId), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docente_id: docenteId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo asignar', data.success);
+                if (data.success) {
+                    cerrarModal('docenteModal');
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        });
+    </script>
+</body>
+</html>

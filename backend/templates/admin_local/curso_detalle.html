@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle Materia - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a class="active" href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ curso.institucion.nombre if curso.institucion else 'Institución no definida' }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>{{ curso.codigo }} - {{ curso.nombre }}</h2>
+                    <p>{{ curso.periodo.nombre if curso.periodo else 'Periodo no definido' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-users"></i>
+                    <span>{{ total_estudiantes }} estudiantes</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Detalle de la materia</h3>
+                        <p>Administra docentes y estudiantes de esta materia.</p>
+                    </div>
+                    <div class="action-bar">
+                        <button class="btn btn-outline" onclick="abrirModalAsignar()">
+                            <i class="fas fa-user-tie"></i> Cambiar docente
+                        </button>
+                        <button class="btn btn-outline" onclick="abrirModalCarga()">
+                            <i class="fas fa-file-upload"></i> Cargar lista
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon accent-1"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <h3>Docente principal</h3>
+                        <small>{{ (curso.docente_principal.nombre ~ ' ' ~ curso.docente_principal.apellido) if curso.docente_principal else 'Sin asignar' }}</small>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon accent-2"><i class="fas fa-calendar"></i></div>
+                        <h3>Periodo</h3>
+                        <small>{{ curso.periodo.nombre if curso.periodo else 'N/A' }}</small>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon accent-3"><i class="fas fa-layer-group"></i></div>
+                        <h3>Créditos</h3>
+                        <small>{{ curso.creditos }}</small>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon accent-4"><i class="fas fa-file-alt"></i></div>
+                        <h3>Estado</h3>
+                        <small>{{ 'Activo' if curso.activo else 'Inactivo' }}</small>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 24px;">
+                    <div>
+                        <h3>Estudiantes inscritos</h3>
+                        <p>Administra las listas de estudiantes de esta materia.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if estudiantes %}
+                                {% for estudiante in estudiantes %}
+                                <tr>
+                                    <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
+                                    <td>{{ estudiante.email }}</td>
+                                    <td>
+                                        <div class="status-cell">
+                                            <span class="badge">{{ estudiante.estado }}</span>
+                                            <div class="row-menu" data-student-id="{{ estudiante.id }}">
+                                                <button type="button" class="row-menu-btn" aria-label="Acciones">
+                                                    <span class="menu-line"></span>
+                                                    <span class="menu-line"></span>
+                                                    <span class="menu-line"></span>
+                                                </button>
+                                                <div class="row-menu-list">
+                                                    <button type="button" class="row-menu-item" data-action="edit">Editar estudiante</button>
+                                                    <button type="button" class="row-menu-item" data-action="toggle">Cambiar estado</button>
+                                                    <button type="button" class="row-menu-item danger" data-action="delete">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="list-empty">No hay estudiantes inscritos aún.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-notification" id="toast"></div>
+
+    <div id="cargaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cargar lista de estudiantes</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal('cargaModal')">Cerrar</button>
+            </div>
+            <form id="cargaForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Materia</label>
+                        <input type="text" value="{{ curso.codigo }} - {{ curso.nombre }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="archivo">Archivo CSV *</label>
+                        <input type="file" id="archivo" accept=".csv" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Formato esperado</label>
+                        <textarea rows="3" readonly>email,nombre,apellido</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('cargaModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Subir lista</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="docenteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cambiar docente principal</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal('docenteModal')">Cerrar</button>
+            </div>
+            <form id="docenteForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="docenteSelect">Docente principal *</label>
+                        <select id="docenteSelect" required>
+                            <option value="">Selecciona un docente</option>
+                            {% for docente in docentes %}
+                                <option value="{{ docente.id }}">{{ docente.nombre }} {{ docente.apellido }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('docenteModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        function abrirModalCarga() {
+            document.getElementById('cargaForm').reset();
+            document.getElementById('cargaModal').style.display = 'flex';
+        }
+
+        function abrirModalAsignar() {
+            document.getElementById('docenteForm').reset();
+            document.getElementById('docenteModal').style.display = 'flex';
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        document.getElementById('cargaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const archivoInput = document.getElementById('archivo');
+            const archivo = archivoInput.files[0];
+
+            if (!archivo) {
+                showToast('Selecciona un archivo', false);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('archivo', archivo);
+
+            fetch(`{{ url_for('admin.cargar_estudiantes', curso_id=curso.id) }}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo cargar', data.success);
+                if (data.success) {
+                    cerrarModal('cargaModal');
+                    archivoInput.value = '';
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        });
+
+        document.getElementById('docenteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const docenteId = document.getElementById('docenteSelect').value;
+            if (!docenteId) {
+                showToast('Selecciona un docente', false);
+                return;
+            }
+
+            fetch(`{{ url_for('admin.asignar_docente_principal', curso_id=curso.id) }}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docente_id: docenteId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo asignar', data.success);
+                if (data.success) {
+                    cerrarModal('docenteModal');
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        });
+
+        const menus = document.querySelectorAll('.row-menu');
+        menus.forEach(menu => {
+            const button = menu.querySelector('.row-menu-btn');
+            const list = menu.querySelector('.row-menu-list');
+
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.row-menu-list.active').forEach(active => {
+                    if (active !== list) {
+                        active.classList.remove('active');
+                    }
+                });
+                list.classList.toggle('active');
+            });
+
+            list.querySelectorAll('.row-menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    list.classList.remove('active');
+                    showToast('Accion pendiente de configurar', false);
+                });
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.row-menu-list.active').forEach(active => {
+                active.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

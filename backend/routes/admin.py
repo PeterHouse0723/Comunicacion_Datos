@@ -1,10 +1,12 @@
 """Rutas administrativas - Admin Global"""
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from extensions import db
-from models import Usuario, Institucion, Curso, Periodo, CursoDocente
+from models import Usuario, Institucion, Curso, Periodo, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria
 from utils import validar_email, validar_contraseña, encriptar_contraseña, verificar_contraseña
 from functools import wraps
 from datetime import datetime
+import csv
+import io
 import math
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -60,16 +62,18 @@ def dashboard():
             estado='pendiente',
             institucion_id=usuario.institucion_id
         ).count()
-        instituciones_count = Institucion.query.filter_by(activo=True).count()
         cursos_count = Curso.query.filter_by(activo=True).count()
+        usuarios_count = Usuario.query.filter_by(institucion_id=usuario.institucion_id).count()
 
         stats = {
             'docentes_pendientes': docentes_pendientes,
-            'instituciones': instituciones_count,
             'cursos': cursos_count,
-            'usuarios': Usuario.query.count()
+            'usuarios': usuarios_count
         }
     
+    if usuario.role == 'admin_local':
+        return render_template('admin_local/dashboard.html', stats=stats, usuario=usuario)
+
     return render_template('admin/dashboard.html', stats=stats, usuario=usuario)
 
 # ============================================================================
@@ -101,11 +105,168 @@ def docentes_pendientes():
     
     total_pages = math.ceil(total / per_page)
     
-    return render_template('admin/docentes_pendientes.html', 
-                          docentes=docentes, 
-                          page=page, 
+    template_name = 'admin/docentes_pendientes.html'
+    if usuario.role == 'admin_local':
+        template_name = 'admin_local/docentes_pendientes.html'
+
+    return render_template(template_name,
+                          docentes=docentes,
+                          page=page,
                           total_pages=total_pages,
-                          total=total)
+                          total=total,
+                          usuario=usuario)
+
+# ============================================================================
+# RUTA: LISTADO DE USUARIOS (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/usuarios')
+@admin_required
+def usuarios_admin_local():
+    """Listar usuarios de la institución (solo admin_local)"""
+    usuario = Usuario.query.get(session['usuario_id'])
+    if usuario.role != 'admin_local':
+        return redirect(url_for('admin.dashboard'))
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
+    query = Usuario.query.filter_by(institucion_id=usuario.institucion_id, role='docente')
+    total = query.count()
+    usuarios = query.order_by(Usuario.fecha_creacion.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    ).items
+    total_pages = math.ceil(total / per_page)
+
+    return render_template(
+        'admin_local/usuarios.html',
+        usuarios=usuarios,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        usuario=usuario
+    )
+
+# ============================================================================
+# RUTA: SOLICITUDES DE ESTUDIANTES (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/solicitudes-estudiantes')
+@admin_required
+def solicitudes_estudiantes_admin_local():
+    """Listar solicitudes de estudiantes por materia (admin_local)"""
+    usuario = Usuario.query.get(session['usuario_id'])
+    if usuario.role != 'admin_local':
+        return redirect(url_for('admin.dashboard'))
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    estado = request.args.get('estado', 'pendiente')
+
+    query = SolicitudEstudianteMateria.query.join(Curso).filter(
+        Curso.institucion_id == usuario.institucion_id
+    )
+
+    if estado in ['pendiente', 'aprobado', 'rechazado']:
+        query = query.filter(SolicitudEstudianteMateria.estado == estado)
+
+    total = query.count()
+    solicitudes = query.order_by(SolicitudEstudianteMateria.fecha_solicitud.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    ).items
+    total_pages = math.ceil(total / per_page)
+
+    return render_template(
+        'admin_local/solicitudes_estudiantes.html',
+        solicitudes=solicitudes,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        estado=estado,
+        usuario=usuario
+    )
+
+# ============================================================================
+# RUTA: APROBAR SOLICITUD (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/solicitudes-estudiantes/<int:solicitud_id>/aprobar', methods=['POST'])
+@admin_required
+def aprobar_solicitud_estudiante(solicitud_id):
+    """Aprobar solicitud de estudiante (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        solicitud = SolicitudEstudianteMateria.query.get(solicitud_id)
+        if not solicitud or solicitud.estado != 'pendiente':
+            return jsonify({'success': False, 'error': 'Solicitud inválida'}), 404
+
+        if solicitud.curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        existe = EstudianteCurso.query.filter_by(
+            estudiante_id=solicitud.estudiante_id,
+            curso_id=solicitud.curso_id
+        ).first()
+        if not existe:
+            db.session.add(EstudianteCurso(
+                estudiante_id=solicitud.estudiante_id,
+                curso_id=solicitud.curso_id
+            ))
+
+        solicitud.estado = 'aprobado'
+        solicitud.admin_local_id = usuario.id
+        solicitud.fecha_resolucion = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'success': True, 'mensaje': 'Solicitud aprobada'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al aprobar solicitud: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# RUTA: RECHAZAR SOLICITUD (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/solicitudes-estudiantes/<int:solicitud_id>/rechazar', methods=['POST'])
+@admin_required
+def rechazar_solicitud_estudiante(solicitud_id):
+    """Rechazar solicitud de estudiante (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        data = request.get_json() or {}
+        razon = data.get('razon', '').strip()
+
+        solicitud = SolicitudEstudianteMateria.query.get(solicitud_id)
+        if not solicitud or solicitud.estado != 'pendiente':
+            return jsonify({'success': False, 'error': 'Solicitud inválida'}), 404
+
+        if solicitud.curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        solicitud.estado = 'rechazado'
+        solicitud.respuesta = razon
+        solicitud.admin_local_id = usuario.id
+        solicitud.fecha_resolucion = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'success': True, 'mensaje': 'Solicitud rechazada'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al rechazar solicitud: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
 # RUTA: APROBAR DOCENTE (AJAX)
@@ -382,15 +543,56 @@ def cursos():
     periodos = Periodo.query.filter_by(activo=True).all()
     
     # Obtener docentes disponibles
-    docentes = Usuario.query.filter_by(role='docente', estado='activo').all()
+    docentes_query = Usuario.query.filter_by(role='docente', estado='activo')
+    if usuario.role == 'admin_local':
+        docentes_query = docentes_query.filter_by(institucion_id=usuario.institucion_id)
+    docentes = docentes_query.all()
     
-    return render_template('admin/cursos.html',
+    template_name = 'admin/cursos.html'
+    if usuario.role == 'admin_local':
+        template_name = 'admin_local/cursos.html'
+
+    return render_template(template_name,
                           cursos=cursos_list,
                           page=page,
                           total_pages=total_pages,
                           total=total,
                           periodos=periodos,
-                          docentes=docentes)
+                          docentes=docentes,
+                          usuario=usuario)
+
+# ============================================================================
+# RUTA: DETALLE DE CURSO (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/cursos/<int:curso_id>/detalle')
+@admin_required
+def detalle_curso_admin_local(curso_id):
+    """Vista de detalle del curso para admin local"""
+    usuario = Usuario.query.get(session['usuario_id'])
+    if usuario.role != 'admin_local':
+        return redirect(url_for('admin.dashboard'))
+
+    curso = Curso.query.get(curso_id)
+    if not curso or curso.institucion_id != usuario.institucion_id:
+        return redirect(url_for('admin.cursos'))
+
+    docentes_disponibles = Usuario.query.filter_by(
+        role='docente',
+        estado='activo',
+        institucion_id=usuario.institucion_id
+    ).all()
+
+    estudiantes_rel = EstudianteCurso.query.filter_by(curso_id=curso_id).all()
+    estudiantes = [rel.estudiante for rel in estudiantes_rel]
+
+    return render_template(
+        'admin_local/curso_detalle.html',
+        curso=curso,
+        docentes=docentes_disponibles,
+        estudiantes=estudiantes,
+        total_estudiantes=len(estudiantes)
+    )
 
 # ============================================================================
 # RUTA: CREAR CURSO (AJAX)
@@ -450,6 +652,23 @@ def crear_curso():
         
         db.session.flush()
         
+        docente_principal = None
+        if docente_principal_id:
+            try:
+                docente_principal_id = int(docente_principal_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Docente inválido'}), 400
+
+            docente_principal = Usuario.query.get(docente_principal_id)
+            if not docente_principal or docente_principal.role != 'docente':
+                return jsonify({'success': False, 'error': 'Docente no encontrado'}), 404
+
+            if docente_principal.estado != 'activo':
+                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
+
+            if usuario.role == 'admin_local' and docente_principal.institucion_id != usuario.institucion_id:
+                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
+
         # Crear curso
         nuevo_curso = Curso(
             institucion_id=institucion_id,
@@ -458,7 +677,7 @@ def crear_curso():
             codigo=codigo,
             creditos=creditos,
             descripcion=descripcion,
-            docente_principal_id=docente_principal_id,
+            docente_principal_id=docente_principal.id if docente_principal else None,
             activo=True
         )
         
@@ -476,6 +695,149 @@ def crear_curso():
     except Exception as e:
         db.session.rollback()
         print(f"[ERROR] Error al crear curso: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# RUTA: ASIGNAR DOCENTE PRINCIPAL A CURSO (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/cursos/<int:curso_id>/asignar-docente', methods=['POST'])
+@admin_required
+def asignar_docente_principal(curso_id):
+    """Asignar docente principal a un curso (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        data = request.get_json() or {}
+        docente_id = data.get('docente_id')
+        if not docente_id:
+            return jsonify({'success': False, 'error': 'Docente requerido'}), 400
+
+        curso = Curso.query.get(curso_id)
+        if not curso or curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'Materia no encontrada'}), 404
+
+        docente = Usuario.query.get(docente_id)
+        if not docente or docente.role != 'docente':
+            return jsonify({'success': False, 'error': 'Docente no encontrado'}), 404
+
+        if docente.estado != 'activo' or docente.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
+
+        if curso.docente_principal_id == docente.id:
+            return jsonify({'success': True, 'mensaje': 'Docente ya asignado'}), 200
+
+        curso.docente_principal_id = docente.id
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'mensaje': 'Docente asignado correctamente'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al asignar docente: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# RUTA: CARGAR LISTA DE ESTUDIANTES (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/cursos/<int:curso_id>/cargar-estudiantes', methods=['POST'])
+@admin_required
+def cargar_estudiantes(curso_id):
+    """Cargar estudiantes desde CSV en una materia (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        curso = Curso.query.get(curso_id)
+        if not curso or curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'Materia no encontrada'}), 404
+
+        archivo = request.files.get('archivo')
+        if not archivo or not archivo.filename:
+            return jsonify({'success': False, 'error': 'Archivo requerido'}), 400
+
+        content = io.TextIOWrapper(archivo.stream, encoding='utf-8-sig')
+        reader = csv.DictReader(content)
+
+        requeridos = {'email', 'nombre', 'apellido'}
+        if not reader.fieldnames or not requeridos.issubset(set(n.strip().lower() for n in reader.fieldnames)):
+            return jsonify({'success': False, 'error': 'Formato CSV invalido'}), 400
+
+        creados = 0
+        inscritos = 0
+        omitidos = 0
+        errores = 0
+        vistos = set()
+
+        for row in reader:
+            email = (row.get('email') or '').strip().lower()
+            nombre = (row.get('nombre') or '').strip()
+            apellido = (row.get('apellido') or '').strip()
+
+            if not email or not nombre or not apellido:
+                errores += 1
+                continue
+
+            if email in vistos:
+                omitidos += 1
+                continue
+            vistos.add(email)
+
+            es_valido, _ = validar_email(email)
+            if not es_valido:
+                errores += 1
+                continue
+
+            estudiante = Usuario.query.filter_by(email=email).first()
+            if estudiante:
+                if estudiante.role != 'estudiante' or estudiante.institucion_id != usuario.institucion_id:
+                    errores += 1
+                    continue
+            else:
+                estudiante = Usuario(
+                    institucion_id=usuario.institucion_id,
+                    email=email,
+                    password=encriptar_contraseña('Estudiante123!'),
+                    nombre=nombre,
+                    apellido=apellido,
+                    role='estudiante',
+                    estado='activo'
+                )
+                db.session.add(estudiante)
+                db.session.flush()
+                creados += 1
+
+            existe = EstudianteCurso.query.filter_by(
+                estudiante_id=estudiante.id,
+                curso_id=curso.id
+            ).first()
+            if existe:
+                omitidos += 1
+                continue
+
+            db.session.add(EstudianteCurso(
+                estudiante_id=estudiante.id,
+                curso_id=curso.id
+            ))
+            inscritos += 1
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'mensaje': f'Carga finalizada. Creados: {creados}, inscritos: {inscritos}, omitidos: {omitidos}, errores: {errores}'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al cargar estudiantes: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
@@ -506,7 +868,26 @@ def actualizar_curso(curso_id):
         curso.codigo = data.get('codigo', curso.codigo).strip()
         curso.creditos = data.get('creditos', curso.creditos)
         curso.descripcion = data.get('descripcion', curso.descripcion).strip()
-        curso.docente_principal_id = data.get('docente_principal_id', curso.docente_principal_id)
+        docente_principal_id = data.get('docente_principal_id', curso.docente_principal_id)
+        if docente_principal_id:
+            try:
+                docente_principal_id = int(docente_principal_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Docente inválido'}), 400
+
+            docente_principal = Usuario.query.get(docente_principal_id)
+            if not docente_principal or docente_principal.role != 'docente':
+                return jsonify({'success': False, 'error': 'Docente no encontrado'}), 404
+
+            if docente_principal.estado != 'activo':
+                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
+
+            if usuario.role == 'admin_local' and docente_principal.institucion_id != usuario.institucion_id:
+                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
+
+            curso.docente_principal_id = docente_principal.id
+        else:
+            curso.docente_principal_id = None
 
         if periodo_nombre and fecha_inicio and fecha_fin:
             try:

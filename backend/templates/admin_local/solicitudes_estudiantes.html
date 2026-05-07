@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitudes de Estudiantes - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a class="active" href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a href="{{ url_for('admin.usuarios_admin_local') }}"><i class="fas fa-users"></i> Usuarios</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ usuario.email }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>Solicitudes de estudiantes</h2>
+                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-user-plus"></i>
+                    <span>{{ total }} solicitudes</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Listado de solicitudes</h3>
+                        <p>Aprueba o rechaza solicitudes de docentes para agregar estudiantes.</p>
+                    </div>
+                    <div class="action-bar">
+                        <a class="btn btn-outline" href="?estado=pendiente">Pendientes</a>
+                        <a class="btn btn-outline" href="?estado=aprobado">Aprobadas</a>
+                        <a class="btn btn-outline" href="?estado=rechazado">Rechazadas</a>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Materia</th>
+                                <th>Docente</th>
+                                <th>Estudiante</th>
+                                <th>Motivo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if solicitudes %}
+                                {% for solicitud in solicitudes %}
+                                <tr data-solicitud-id="{{ solicitud.id }}">
+                                    <td>{{ solicitud.curso.codigo }} - {{ solicitud.curso.nombre }}</td>
+                                    <td>{{ solicitud.docente.nombre }} {{ solicitud.docente.apellido }}</td>
+                                    <td>{{ solicitud.estudiante.nombre }} {{ solicitud.estudiante.apellido }}</td>
+                                    <td>{{ solicitud.motivo or '-' }}</td>
+                                    <td><span class="badge">{{ solicitud.estado }}</span></td>
+                                    <td>
+                                        {% if solicitud.estado == 'pendiente' %}
+                                        <div class="action-bar">
+                                            <button class="btn btn-primary" onclick="aprobarSolicitud({{ solicitud.id }})">
+                                                <i class="fas fa-check"></i> Aprobar
+                                            </button>
+                                            <button class="btn btn-danger" onclick="rechazarSolicitud({{ solicitud.id }})">
+                                                <i class="fas fa-times"></i> Rechazar
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <span>-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="list-empty">No hay solicitudes en este estado.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if total_pages > 1 %}
+                <div style="margin-top: 16px;" class="action-bar">
+                    {% if page > 1 %}
+                        <a class="btn btn-outline" href="?estado={{ estado }}&page=1">Primera</a>
+                        <a class="btn btn-outline" href="?estado={{ estado }}&page={{ page - 1 }}">Anterior</a>
+                    {% endif %}
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <span class="btn btn-primary">{{ p }}</span>
+                        {% else %}
+                            <a class="btn btn-outline" href="?estado={{ estado }}&page={{ p }}">{{ p }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page < total_pages %}
+                        <a class="btn btn-outline" href="?estado={{ estado }}&page={{ page + 1 }}">Siguiente</a>
+                        <a class="btn btn-outline" href="?estado={{ estado }}&page={{ total_pages }}">Última</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-notification" id="toast"></div>
+
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Rechazar solicitud</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal()">Cerrar</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejectReason">Razón del rechazo</label>
+                    <textarea id="rejectReason" rows="4" placeholder="Especifica la razón del rechazo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarRechazo()">Rechazar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        let solicitudParaRechazar = null;
+
+        function aprobarSolicitud(id) {
+            fetch(`{{ url_for('admin.aprobar_solicitud_estudiante', solicitud_id=0) }}`.replace('0', id), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo aprobar', data.success);
+                if (data.success) {
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        }
+
+        function rechazarSolicitud(id) {
+            solicitudParaRechazar = id;
+            document.getElementById('rejectModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('rejectModal').style.display = 'none';
+            document.getElementById('rejectReason').value = '';
+            solicitudParaRechazar = null;
+        }
+
+        function confirmarRechazo() {
+            const razon = document.getElementById('rejectReason').value.trim();
+            if (!razon) {
+                showToast('Debes especificar una razón', false);
+                return;
+            }
+
+            fetch(`{{ url_for('admin.rechazar_solicitud_estudiante', solicitud_id=0) }}`.replace('0', solicitudParaRechazar), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ razon })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo rechazar', data.success);
+                if (data.success) {
+                    cerrarModal();
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        }
+    </script>
+</body>
+</html>

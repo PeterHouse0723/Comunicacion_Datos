@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a class="active" href="{{ url_for('admin.usuarios_admin_local') }}"><i class="fas fa-users"></i> Usuarios</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ usuario.email }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>Docentes</h2>
+                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-users"></i>
+                    <span>{{ total }} docentes</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Listado de docentes</h3>
+                        <p>Docentes vinculados a tu institución.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Fecha registro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if usuarios %}
+                                {% for usr in usuarios %}
+                                <tr>
+                                    <td>{{ usr.nombre }} {{ usr.apellido }}</td>
+                                    <td>{{ usr.email }}</td>
+                                    <td><span class="badge">{{ usr.role }}</span></td>
+                                    <td>{{ usr.estado }}</td>
+                                    <td>
+                                        <div class="status-cell">
+                                            <span>{{ usr.fecha_creacion.strftime('%d/%m/%Y') }}</span>
+                                            <div class="row-menu" data-docente-id="{{ usr.id }}">
+                                                <button type="button" class="row-menu-btn" aria-label="Acciones">
+                                                    <span class="menu-line"></span>
+                                                    <span class="menu-line"></span>
+                                                    <span class="menu-line"></span>
+                                                </button>
+                                                <div class="row-menu-list">
+                                                    <button type="button" class="row-menu-item" data-action="edit">Editar docente</button>
+                                                    <button type="button" class="row-menu-item" data-action="toggle">Cambiar estado</button>
+                                                    <button type="button" class="row-menu-item danger" data-action="delete">Eliminar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="list-empty">No hay docentes registrados.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if total_pages > 1 %}
+                <div style="margin-top: 16px;" class="action-bar">
+                    {% if page > 1 %}
+                        <a class="btn btn-outline" href="?page=1">Primera</a>
+                        <a class="btn btn-outline" href="?page={{ page - 1 }}">Anterior</a>
+                    {% endif %}
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <span class="btn btn-primary">{{ p }}</span>
+                        {% else %}
+                            <a class="btn btn-outline" href="?page={{ p }}">{{ p }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page < total_pages %}
+                        <a class="btn btn-outline" href="?page={{ page + 1 }}">Siguiente</a>
+                        <a class="btn btn-outline" href="?page={{ total_pages }}">Última</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-notification" id="toast"></div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        const menus = document.querySelectorAll('.row-menu');
+        menus.forEach(menu => {
+            const button = menu.querySelector('.row-menu-btn');
+            const list = menu.querySelector('.row-menu-list');
+
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.row-menu-list.active').forEach(active => {
+                    if (active !== list) {
+                        active.classList.remove('active');
+                    }
+                });
+                list.classList.toggle('active');
+            });
+
+            list.querySelectorAll('.row-menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    list.classList.remove('active');
+                    showToast('Accion pendiente de configurar', false);
+                });
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.row-menu-list.active').forEach(active => {
+                active.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

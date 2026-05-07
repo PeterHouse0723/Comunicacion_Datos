@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docentes Pendientes - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a class="active" href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ usuario.email }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>Docentes pendientes</h2>
+                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-user-check"></i>
+                    <span>{{ total }} pendientes</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Solicitudes de docentes</h3>
+                        <p>Aprueba o rechaza docentes que se registraron en tu institución.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if docentes %}
+                                {% for docente in docentes %}
+                                <tr data-docente-id="{{ docente.id }}">
+                                    <td>{{ docente.nombre }} {{ docente.apellido }}</td>
+                                    <td>{{ docente.email }}</td>
+                                    <td>{{ docente.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        <div class="action-bar">
+                                            <button type="button" class="btn btn-primary" onclick="aprobarDocente({{ docente.id }})">
+                                                <i class="fas fa-check"></i> Aprobar
+                                            </button>
+                                            <button type="button" class="btn btn-danger" onclick="rechazarDocente({{ docente.id }})">
+                                                <i class="fas fa-times"></i> Rechazar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="list-empty">No hay docentes pendientes.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if total_pages > 1 %}
+                <div style="margin-top: 16px;" class="action-bar">
+                    {% if page > 1 %}
+                        <a class="btn btn-outline" href="?page=1">Primera</a>
+                        <a class="btn btn-outline" href="?page={{ page - 1 }}">Anterior</a>
+                    {% endif %}
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <span class="btn btn-primary">{{ p }}</span>
+                        {% else %}
+                            <a class="btn btn-outline" href="?page={{ p }}">{{ p }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page < total_pages %}
+                        <a class="btn btn-outline" href="?page={{ page + 1 }}">Siguiente</a>
+                        <a class="btn btn-outline" href="?page={{ total_pages }}">Última</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-notification" id="toast"></div>
+
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Rechazar docente</h3>
+                <button type="button" class="btn btn-outline" onclick="cerrarModal()">Cerrar</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejectReason">Razón del rechazo</label>
+                    <textarea id="rejectReason" rows="4" placeholder="Especifica la razón del rechazo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarRechazo()">Rechazar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        let docenteParaRechazar = null;
+
+        function aprobarDocente(docenteId) {
+            if (!confirm('¿Deseas aprobar este docente?')) {
+                return;
+            }
+
+            fetch(`{{ url_for('admin.aprobar_docente', docente_id=0) }}`.replace('0', docenteId), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo aprobar', data.success);
+                if (data.success) {
+                    document.querySelector(`tr[data-docente-id="${docenteId}"]`).style.opacity = '0.5';
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        }
+
+        function rechazarDocente(docenteId) {
+            docenteParaRechazar = docenteId;
+            document.getElementById('rejectModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('rejectModal').style.display = 'none';
+            document.getElementById('rejectReason').value = '';
+            docenteParaRechazar = null;
+        }
+
+        function confirmarRechazo() {
+            const razon = document.getElementById('rejectReason').value.trim();
+            if (!razon) {
+                showToast('Debes especificar una razón', false);
+                return;
+            }
+
+            fetch(`{{ url_for('admin.rechazar_docente', docente_id=0) }}`.replace('0', docenteParaRechazar), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ razon })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.mensaje || data.error || 'No se pudo rechazar', data.success);
+                cerrarModal();
+                if (data.success) {
+                    document.querySelector(`tr[data-docente-id="${docenteParaRechazar}"]`).style.opacity = '0.5';
+                    setTimeout(() => location.reload(), 1200);
+                }
+            })
+            .catch(() => showToast('Error en la solicitud', false));
+        }
+    </script>
+</body>
+</html>

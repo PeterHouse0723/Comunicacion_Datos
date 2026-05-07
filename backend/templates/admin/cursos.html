@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Cursos - Sistema Académico</title>
+    <title>Gestión de Materias - Sistema Académico</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -14,11 +14,11 @@
             <a href="{{ url_for('admin.dashboard') }}">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
-            <h1>Gestión de Cursos</h1>
+            <h1>Gestión de Materias</h1>
         </div>
         <div class="navbar-right">
             <button class="btn-primary" onclick="abrirModalCrear()">
-                <i class="fas fa-plus"></i> Nuevo Curso
+                <i class="fas fa-plus"></i> Nueva Materia
             </button>
             <a href="{{ url_for('auth.logout') }}" class="btn-logout">Salir</a>
         </div>
@@ -28,8 +28,8 @@
         <main class="admin-content">
             <!-- Header -->
             <div class="page-header">
-                <h2>Mis Cursos</h2>
-                <p>Total: <strong>{{ total }}</strong> curso(s)</p>
+                <h2>Mis Materias</h2>
+                <p>Total: <strong>{{ total }}</strong> materia(s)</p>
             </div>
 
             <!-- Toast notification -->
@@ -71,7 +71,7 @@
                         <tr>
                             <td colspan="6" class="empty-state">
                                 <i class="fas fa-book"></i>
-                                <p>No hay cursos creados. <a href="javascript:abrirModalCrear()">Crear nuevo</a></p>
+                                <p>No hay materias creadas. <a href="javascript:abrirModalCrear()">Crear nueva</a></p>
                             </td>
                         </tr>
                         {% endif %}
@@ -116,7 +116,7 @@
                     <input type="hidden" id="cursoId">
 
                     <div class="form-group">
-                        <label for="codigo">Código del Curso *</label>
+                        <label for="codigo">Código de la Materia *</label>
                         <input type="text" id="codigo" name="codigo" placeholder="ej: MAT101" required>
                     </div>
 
@@ -160,7 +160,7 @@
 
                     <div class="form-group">
                         <label for="descripcion">Descripción</label>
-                        <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción del curso..."></textarea>
+                        <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción de la materia..."></textarea>
                     </div>
                 </div>
 
@@ -193,7 +193,7 @@
             cursoEnEdicion = null;
             document.getElementById('cursoId').value = '';
             document.getElementById('cursoForm').reset();
-            document.getElementById('modalTitle').textContent = 'Nuevo Curso';
+            document.getElementById('modalTitle').textContent = 'Nueva Materia';
             document.getElementById('cursoModal').style.display = 'flex';
         }
 
@@ -208,7 +208,7 @@
             document.getElementById('fecha_inicio').value = fechaInicio;
             document.getElementById('fecha_fin').value = fechaFin;
             document.getElementById('docente').value = docenteId || '';
-            document.getElementById('modalTitle').textContent = 'Editar Curso';
+            document.getElementById('modalTitle').textContent = 'Editar Materia';
             document.getElementById('cursoModal').style.display = 'flex';
         }
 
@@ -218,7 +218,7 @@
         }
 
         function eliminarCurso(cursoId) {
-            if (confirm('¿Estás seguro de que deseas eliminar este curso?')) {
+            if (confirm('¿Estás seguro de que deseas eliminar esta materia?')) {
                 fetch(`{{ url_for('admin.eliminar_curso', curso_id=0) }}`.replace('0', cursoId), {
                     method: 'POST'
                 })

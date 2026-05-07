@@ -176,7 +176,7 @@
             {% else %}
             <a href="/admin/docentes/pendientes"><i class="fas fa-check-circle"></i> Aprobar Docentes</a>
             {% endif %}
-            <a href="/admin/cursos"><i class="fas fa-plus-circle"></i> Crear Curso</a>
+            <a href="/admin/cursos"><i class="fas fa-plus-circle"></i> Crear Materia</a>
             {% if usuario.role == 'admin_global' %}
             <a href="/admin/instituciones"><i class="fas fa-building"></i> Nueva Institución</a>
             {% endif %}
@@ -259,7 +259,7 @@
                 {% endif %}
                 <div class="stat-card glass" onclick="window.location.href='/admin/cursos'">
                     <div class="stat-icon" style="background: rgba(52, 152, 219, 0.3); border: 1px solid rgba(52, 152, 219, 0.5);"><i class="fas fa-book"></i></div>
-                    <div class="stat-info"><h3>{{ stats.cursos }}</h3><p>Cursos Activos</p></div>
+                    <div class="stat-info"><h3>{{ stats.cursos }}</h3><p>Materias Activas</p></div>
                 </div>
                 {% if usuario.role == 'admin_global' %}
                 <div class="stat-card glass" onclick="window.location.href='/admin/instituciones'">

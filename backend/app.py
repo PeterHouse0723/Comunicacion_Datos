@@ -7,7 +7,8 @@ import os
 # Importar modelos después de que db esté disponible
 from models import (
     Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso,
-    Clase, Nota, Asistencia, AlertaRiesgoAcademico, LoginAuditoria, Notificacion
+    SolicitudEstudianteMateria, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
+    LoginAuditoria, Notificacion
 )
 
 def create_app(config_name=None):

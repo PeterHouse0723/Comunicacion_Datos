@@ -123,6 +123,7 @@ class Curso(db.Model):
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relaciones
+    docente_principal = db.relationship('Usuario', foreign_keys=[docente_principal_id])
     docentes = db.relationship('CursoDocente', backref='curso', lazy=True, cascade='all, delete-orphan')
     estudiantes = db.relationship('EstudianteCurso', backref='curso', lazy=True, cascade='all, delete-orphan')
     clases = db.relationship('Clase', backref='curso', lazy=True, cascade='all, delete-orphan')
@@ -170,6 +171,33 @@ class EstudianteCurso(db.Model):
     
     def __repr__(self):
         return f'<EstudianteCurso Est:{self.estudiante_id}, Curso:{self.curso_id}>'
+
+# ============================================================================
+# TABLA: SOLICITUD_ESTUDIANTE_MATERIA (Solicitud docente para agregar estudiante)
+# ============================================================================
+
+class SolicitudEstudianteMateria(db.Model):
+    """Solicitudes para agregar estudiantes a una materia"""
+    __tablename__ = 'solicitudes_estudiante_materia'
+
+    id = db.Column(db.Integer, primary_key=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    docente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    admin_local_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)
+    estado = db.Column(db.String(30), default='pendiente')  # pendiente, aprobado, rechazado
+    motivo = db.Column(db.Text)
+    respuesta = db.Column(db.Text)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_resolucion = db.Column(db.DateTime)
+
+    curso = db.relationship('Curso', backref='solicitudes_estudiantes', lazy=True)
+    estudiante = db.relationship('Usuario', foreign_keys=[estudiante_id])
+    docente = db.relationship('Usuario', foreign_keys=[docente_id])
+    admin_local = db.relationship('Usuario', foreign_keys=[admin_local_id])
+
+    def __repr__(self):
+        return f'<SolicitudEstudianteMateria Curso:{self.curso_id}, Est:{self.estudiante_id}, Estado:{self.estado}>'
 
 # ============================================================================
 # TABLA: CLASE (Clases dictadas en un curso)
