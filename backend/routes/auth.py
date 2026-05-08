@@ -55,19 +55,19 @@ def login():
     
     # Validaciones
     if not email or not password:
-    return render_template('login.html', error='Email y contraseña son requeridos'), 400
+        return render_template('login.html', error='Email y contraseña son requeridos'), 400
     
     # Buscar usuario por email
     usuario = Usuario.query.filter_by(email=email).first()
     
     if not usuario:
-    return render_template('login.html', error='Email o contraseña incorrectos'), 401
+        return render_template('login.html', error='Email o contraseña incorrectos'), 401
     
     # Verificar contraseña
     if usuario.role == 'estudiante' and password == DEFAULT_STUDENT_PASSWORD:
         pass
     elif not verificar_contraseña(password, usuario.password):
-    return render_template('login.html', error='Email o contraseña incorrectos'), 401
+        return render_template('login.html', error='Email o contraseña incorrectos'), 401
     
     # Verificar que el usuario esté activo
     if usuario.estado != 'activo':
@@ -298,7 +298,7 @@ def cambiar_contraseña_obligatorio():
     
     # Verificar contraseña actual
     # Si es primer login forzado (se ingreso con la clave inicial), omitimos la verificación
-        if not session.get('primer_login_pendiente'):
+    if not session.get('primer_login_pendiente'):
         if not verificar_contraseña(contraseña_actual, usuario.password):
             return render_template('cambiar_contraseña_obligatorio.html', 
                                  usuario=usuario, 
