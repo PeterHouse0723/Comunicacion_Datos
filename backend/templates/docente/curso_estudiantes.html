@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudiantes del Curso - Docente</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso.id) }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Listado de estudiantes</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab is-active">Estudiantes</a>
+        </div>
+
+        <div class="course-content">
+            {% if estudiantes %}
+                <div class="course-list">
+                    {% for estudiante in estudiantes %}
+                        <div class="course-list-row">
+                            <div>
+                                <strong>{{ estudiante.nombre }} {{ estudiante.apellido }}</strong>
+                                <div class="course-list-muted">{{ estudiante.email }}</div>
+                            </div>
+                            <span class="course-pill">Estudiante</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="course-empty">No hay estudiantes inscritos en este curso.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

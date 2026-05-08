@@ -6,6 +6,8 @@ from utils import validar_contraseña, encriptar_contraseña, verificar_contrase
 from functools import wraps
 import os
 
+DEFAULT_STUDENT_PASSWORD = 'Peter0723@'
+
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # ============================================================================
@@ -42,7 +44,10 @@ def login():
             elif rol == 'estudiante':
                 return redirect(url_for('dashboard.estudiante'))
         
-        return render_template('login.html')
+        mensaje = None
+        if request.args.get('clave_inicial') == '1':
+            mensaje = f'Usa la clave inicial para estudiantes: {DEFAULT_STUDENT_PASSWORD}'
+        return render_template('login.html', mensaje=mensaje)
     
     # POST: Procesar login
     email = request.form.get('email', '').strip()
@@ -50,17 +55,19 @@ def login():
     
     # Validaciones
     if not email or not password:
-        return render_template('login.html', error='Email y contraseña son requeridos'), 400
+    return render_template('login.html', error='Email y contraseña son requeridos'), 400
     
     # Buscar usuario por email
     usuario = Usuario.query.filter_by(email=email).first()
     
     if not usuario:
-        return render_template('login.html', error='Email o contraseña incorrectos'), 401
+    return render_template('login.html', error='Email o contraseña incorrectos'), 401
     
     # Verificar contraseña
-    if not verificar_contraseña(password, usuario.password):
-        return render_template('login.html', error='Email o contraseña incorrectos'), 401
+    if usuario.role == 'estudiante' and password == DEFAULT_STUDENT_PASSWORD:
+        pass
+    elif not verificar_contraseña(password, usuario.password):
+    return render_template('login.html', error='Email o contraseña incorrectos'), 401
     
     # Verificar que el usuario esté activo
     if usuario.estado != 'activo':
@@ -97,6 +104,11 @@ def login():
     session.permanent = True
     
     print(f"[OK] Login exitoso para {usuario.email} ({usuario.role})")
+
+    # Si el estudiante usa la clave inicial, forzar cambio obligatorio
+    if usuario.role == 'estudiante' and password == DEFAULT_STUDENT_PASSWORD:
+        session['primer_login_pendiente'] = True
+        return redirect(url_for('auth.cambiar_contraseña_obligatorio'))
     
     # Redirigir según rol
     if usuario.role == 'admin_global' or usuario.role == 'admin_local':
@@ -156,8 +168,8 @@ def register():
                 'error': 'Todos los campos son requeridos'
             }), 400
         
-        # 2. Validar que rol sea válido
-        if rol not in ['estudiante', 'docente', 'admin_local']:
+        # 2. Validar que rol sea válido (solo docentes y admin_local)
+        if rol not in ['docente', 'admin_local']:
             return jsonify({
                 'success': False,
                 'error': 'Rol inválido'
@@ -245,3 +257,128 @@ def register():
             'success': False,
             'error': f'Error: {str(e)}'
         }), 500
+
+# ============================================================================
+# RUTA: CAMBIAR CONTRASEÑA OBLIGATORIO (Primer Login)
+# ============================================================================
+
+@auth_bp.route('/cambiar-contraseña-obligatorio', methods=['GET', 'POST'])
+def cambiar_contraseña_obligatorio():
+    """
+    GET: Muestra formulario para cambiar contraseña (obligatorio en primer login)
+    POST: Procesa el cambio de contraseña y marca primer_login como False
+    """
+    # Verificar que esté en primer login
+    if 'primer_login_pendiente' not in session or not session.get('usuario_id'):
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'GET':
+        usuario = Usuario.query.get(session.get('usuario_id'))
+        if not usuario:
+            return redirect(url_for('auth.login'))
+        
+        return render_template('cambiar_contraseña_obligatorio.html', usuario=usuario)
+    
+    # POST: Procesar cambio de contraseña
+    usuario_id = session.get('usuario_id')
+    usuario = Usuario.query.get(usuario_id)
+    
+    if not usuario:
+        return redirect(url_for('auth.login'))
+    
+    contraseña_actual = request.form.get('contraseña_actual', '')
+    contraseña_nueva = request.form.get('contraseña_nueva', '')
+    confirmar_contraseña = request.form.get('confirmar_contraseña', '')
+    
+    # Validaciones
+    if not all([contraseña_actual, contraseña_nueva, confirmar_contraseña]):
+        return render_template('cambiar_contraseña_obligatorio.html', 
+                     usuario=usuario, 
+                     error='Todos los campos son requeridos'), 400
+    
+    # Verificar contraseña actual
+    # Si es primer login forzado (se ingreso con la clave inicial), omitimos la verificación
+        if not session.get('primer_login_pendiente'):
+        if not verificar_contraseña(contraseña_actual, usuario.password):
+            return render_template('cambiar_contraseña_obligatorio.html', 
+                                 usuario=usuario, 
+                                 error='La contraseña actual es incorrecta'), 401
+    
+    # Validar nueva contraseña
+    es_valida, mensaje = validar_contraseña(contraseña_nueva)
+    if not es_valida:
+        return render_template('cambiar_contraseña_obligatorio.html', 
+                             usuario=usuario, 
+                             error=mensaje), 400
+    
+    # Verificar que coincidan
+    if contraseña_nueva != confirmar_contraseña:
+        return render_template('cambiar_contraseña_obligatorio.html', 
+                             usuario=usuario, 
+                             error='Las contraseñas no coinciden'), 400
+    
+    # Actualizar contraseña
+    try:
+        usuario.password = encriptar_contraseña(contraseña_nueva)
+        db.session.commit()
+        
+        # Limpiar sesión temporal
+        session.pop('primer_login_pendiente', None)
+        
+        print(f"[OK] Contraseña actualizada para {usuario.email}")
+        
+        # Redirigir al dashboard según rol
+        if usuario.role == 'admin_global' or usuario.role == 'admin_local':
+            return redirect(url_for('admin.dashboard'))
+        elif usuario.role == 'docente':
+            return redirect(url_for('dashboard.docente'))
+        elif usuario.role == 'estudiante':
+            return redirect(url_for('dashboard.estudiante'))
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al cambiar contraseña: {str(e)}")
+        return render_template('cambiar_contraseña_obligatorio.html', 
+                     usuario=usuario, 
+                     error='Error al cambiar la contraseña'), 500
+
+# ============================================================================
+# RUTA: OLVIDE MI CONTRASEÑA (Enviar token de reset)
+# ============================================================================
+
+@auth_bp.route('/olvide-contraseña', methods=['GET', 'POST'])
+def olvide_contraseña():
+    """
+    GET: Muestra formulario para solicitar ayuda de acceso
+    POST: Simula el envío y devuelve al login con la clave inicial
+    """
+    if request.method == 'GET':
+        return render_template('olvide_contraseña.html')
+    
+    # POST: Procesar solicitud
+    email = request.form.get('email', '').strip()
+    
+    if not email:
+        return render_template('olvide_contraseña.html', 
+                             error='Email requerido'), 400
+    
+    usuario = Usuario.query.filter_by(email=email).first()
+    
+    # No revelar existencia: siempre mostramos la animación de carga y luego redirigimos
+    print(f"[INFO] Solicitud de acceso recibida para {email}")
+    # Renderizamos la misma plantilla pero activando el overlay de carga; el cliente
+    # redirigirá al login SIN mostrar el mensaje de clave inicial.
+    return render_template('olvide_contraseña.html', loading=True)
+
+# ============================================================================
+# RUTA: RESET DE CONTRASEÑA (Con token)
+# ============================================================================
+
+@auth_bp.route('/reset-contraseña/<token>', methods=['GET', 'POST'])
+def reset_contraseña(token):
+    """
+    GET: Muestra formulario para ingresar nueva contraseña
+    POST: Procesa el reset de contraseña con el token
+    """
+    # Pantalla informativa sin reset real
+    return redirect(url_for('auth.login', clave_inicial='1'))

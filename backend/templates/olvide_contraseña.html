@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; padding: 40px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #667eea; font-size: 24px; margin-bottom: 8px; }
+        .header p { color: #666; font-size: 14px; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c2c7; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info-box { background: #f7f9fb; border: 1px solid #e6e9f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: #666; line-height: 1.6; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px; }
+        input[type="email"] { width: 100%; padding: 10px 12px; border: 1px solid #d6dbe8; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+        input[type="email"]:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: #fff; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #e0e0e0; }
+        .btn-secondary:hover { background: #e8e8e8; }
+        .btn-group { display: flex; gap: 8px; }
+        .btn-group .btn { flex: 1; }
+        .link { text-align: center; margin-top: 16px; }
+        .link a { color: #667eea; text-decoration: none; font-size: 14px; }
+        .link a:hover { text-decoration: underline; }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.75);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-card {
+            width: 180px;
+            padding: 22px 18px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.18);
+            text-align: center;
+        }
+
+        .spinner {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 5px solid #dfe5ff;
+            border-top-color: #667eea;
+            margin: 0 auto 12px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .submit-feedback {
+            display: none;
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #eef4ff;
+            color: #324c9e;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .submit-feedback.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-card">
+            <div class="spinner"></div>
+            <div style="font-weight:600; color:#333;">Procesando...</div>
+            <div style="font-size:13px; color:#666; margin-top:4px;">Espera un momento</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-key"></i> Recuperar Contraseña</h1>
+            <p>Te enviaremos un link para que puedas resetear tu contraseña</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+            <div class="alert alert-success">{{ success }}</div>
+            <div style="text-align: center; margin-top: 20px;">
+                <p style="color: #666; margin-bottom: 16px;">Ahora vuelve al login y usa la clave inicial de estudiante: <strong>Peter0723@</strong></p>
+                <a href="{{ url_for('auth.login', clave_inicial='1') }}" class="btn btn-primary" style="display:inline-block; text-decoration:none; text-align:center;">Ir al login</a>
+            </div>
+        {% else %}
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i> Escribe tu correo registrado. Esto solo te devolverá al login para usar la clave inicial de estudiante.
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="tu@email.com">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Enviar Link de Reset</button>
+                <div id="submitFeedback" class="submit-feedback">Verificando tu correo registrado...</div>
+            </form>
+        {% endif %}
+
+        <div class="link">
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-arrow-left"></i> Volver al login</a>
+        </div>
+    </div>
+
+    <script>
+        const loading = {{ 'true' if loading else 'false' }};
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const form = document.querySelector('form');
+        const submitFeedback = document.getElementById('submitFeedback');
+
+        if (form) {
+            form.addEventListener('submit', function() {
+                if (submitFeedback) {
+                    submitFeedback.classList.add('active');
+                }
+                if (loadingOverlay) {
+                    setTimeout(() => loadingOverlay.classList.add('active'), 250);
+                }
+            });
+        }
+
+        if (loading) {
+            if (loadingOverlay) loadingOverlay.classList.add('active');
+            setTimeout(() => {
+                // Redirigir al login SIN mostrar la etiqueta de clave inicial
+                window.location.href = "{{ url_for('auth.login') }}";
+            }, 2200);
+        }
+    </script>
+</body>
+</html>

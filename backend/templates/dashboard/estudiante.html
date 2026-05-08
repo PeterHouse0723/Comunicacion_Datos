@@ -83,6 +83,12 @@
             cursor: pointer;
             transition: transform 0.3s, box-shadow 0.3s;
         }
+
+        .dashboard-card.link-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
         
         .dashboard-card:hover {
             transform: translateY(-5px);
@@ -105,6 +111,11 @@
             color: #666;
             font-size: 14px;
         }
+
+        .dashboard-card.alert-card {
+            border: 1px solid rgba(118, 75, 162, 0.18);
+            background: linear-gradient(180deg, #ffffff 0%, #fbf8ff 100%);
+        }
     </style>
 </head>
 <body>
@@ -121,32 +132,20 @@
     <div class="dashboard-container">
         <div class="welcome-box">
             <h2>Bienvenido a tu Portal, {{ usuario.nombre }}</h2>
-            <p>Accede a tus cursos, calificaciones, asistencia y alertas académicas desde aquí.</p>
+            <p>Accede a tus cursos y alertas académicas desde aquí.</p>
         </div>
         
         <div class="dashboard-grid">
-            <div class="dashboard-card">
+            <a href="{{ url_for('dashboard.cursos_estudiante') }}" class="dashboard-card link-card">
                 <i class="fas fa-book-open"></i>
                 <h3>Mis Cursos</h3>
-                <p>Ver los cursos en los que estoy inscrito</p>
-            </div>
-            
-            <div class="dashboard-card">
-                <i class="fas fa-star"></i>
-                <h3>Calificaciones</h3>
-                <p>Ver mis notas y promedios por curso</p>
-            </div>
-            
-            <div class="dashboard-card">
-                <i class="fas fa-check-circle"></i>
-                <h3>Asistencia</h3>
-                <p>Revisar mi registro de asistencia</p>
-            </div>
-            
-            <div class="dashboard-card">
+                <p>Ver los cursos inscritos y cargados en mi institución</p>
+            </a>
+
+            <div class="dashboard-card alert-card">
                 <i class="fas fa-bell"></i>
-                <h3>Alertas</h3>
-                <p>Ver alertas de riesgo académico</p>
+                <h3>Alertar</h3>
+                <p>Acceso al espacio de alertas académicas</p>
             </div>
         </div>
     </div>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resetear Contraseña</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; padding: 40px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #667eea; font-size: 24px; margin-bottom: 8px; }
+        .header p { color: #666; font-size: 14px; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c2c7; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info-box { background: #f7f9fb; border: 1px solid #e6e9f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; color: #666; line-height: 1.5; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px; }
+        input[type="password"] { width: 100%; padding: 10px 12px; border: 1px solid #d6dbe8; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+        input[type="password"]:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: #fff; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .requirement { font-size: 12px; margin: 4px 0; display: flex; align-items: center; gap: 8px; color: #666; }
+        .requirement.met { color: #2e7d32; }
+        .requirement i { width: 16px; text-align: center; }
+        .link { text-align: center; margin-top: 16px; }
+        .link a { color: #667eea; text-decoration: none; font-size: 14px; }
+        .link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-redo"></i> Resetear Contraseña</h1>
+            <p>Crea una nueva contraseña segura</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+            <div class="alert alert-success">{{ success }}</div>
+            <div style="text-align: center;">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Ir al Login</a>
+            </div>
+        {% else %}
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i> Tu contraseña debe cumplir con:
+                <ul style="margin-left: 24px; margin-top: 8px;">
+                    <li>Mínimo 8 caracteres</li>
+                    <li>Al menos 1 mayúscula (A-Z)</li>
+                    <li>Al menos 1 número (0-9)</li>
+                    <li>Al menos 1 carácter especial (!@#$%^&*)</li>
+                </ul>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="contraseña_nueva">Nueva Contraseña</label>
+                    <input type="password" id="contraseña_nueva" name="contraseña_nueva" required placeholder="Crea una contraseña segura">
+                    <div style="margin-top: 8px;">
+                        <div class="requirement" id="req-length"><i class="fas fa-times"></i> Mínimo 8 caracteres</div>
+                        <div class="requirement" id="req-upper"><i class="fas fa-times"></i> Al menos 1 mayúscula</div>
+                        <div class="requirement" id="req-number"><i class="fas fa-times"></i> Al menos 1 número</div>
+                        <div class="requirement" id="req-special"><i class="fas fa-times"></i> Al menos 1 carácter especial</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmar_contraseña">Confirmar Contraseña</label>
+                    <input type="password" id="confirmar_contraseña" name="confirmar_contraseña" required placeholder="Confirma tu nueva contraseña">
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btnEnviar">Resetear Contraseña</button>
+            </form>
+
+            <div class="link">
+                <a href="{{ url_for('auth.olvide_contraseña') }}">¿Necesitas otro link?</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        const inputNueva = document.getElementById('contraseña_nueva');
+        const btnEnviar = document.getElementById('btnEnviar');
+
+        if (inputNueva) {
+            inputNueva.addEventListener('input', function() {
+                const pwd = this.value;
+                const hasLength = pwd.length >= 8;
+                const hasUpper = /[A-Z]/.test(pwd);
+                const hasNumber = /[0-9]/.test(pwd);
+                const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+
+                updateRequirement('req-length', hasLength);
+                updateRequirement('req-upper', hasUpper);
+                updateRequirement('req-number', hasNumber);
+                updateRequirement('req-special', hasSpecial);
+
+                btnEnviar.disabled = !(hasLength && hasUpper && hasNumber && hasSpecial);
+            });
+        }
+
+        function updateRequirement(id, met) {
+            const elem = document.getElementById(id);
+            if (elem) {
+                if (met) {
+                    elem.classList.add('met');
+                    elem.querySelector('i').className = 'fas fa-check';
+                } else {
+                    elem.classList.remove('met');
+                    elem.querySelector('i').className = 'fas fa-times';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

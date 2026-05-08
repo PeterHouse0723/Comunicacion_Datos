@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Cursos - Docente</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.docente') }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <h2 class="courses-title">Vista general de curso</h2>
+
+        <form class="courses-toolbar" method="get" action="{{ url_for('dashboard.cursos_docente') }}">
+            <select name="filtro" aria-label="Filtro de cursos" onchange="this.form.submit()">
+                <option value="" {% if not filtro %}selected{% endif %}>Todos</option>
+                <option value="activos" {% if filtro == 'activos' %}selected{% endif %}>Activos</option>
+                <option value="inactivos" {% if filtro == 'inactivos' %}selected{% endif %}>Inactivos</option>
+            </select>
+            <div class="courses-search">
+                <input type="text" name="buscar" placeholder="Buscar" value="{{ buscar }}" list="cursosSugerencias">
+                <button type="submit" class="btn btn-primary btn-search">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+            <select name="ordenar" aria-label="Ordenar cursos" onchange="this.form.submit()">
+                <option value="nombre" {% if ordenar == 'nombre' %}selected{% endif %}>Ordenar por nombre del curso</option>
+                <option value="codigo" {% if ordenar == 'codigo' %}selected{% endif %}>Ordenar por codigo</option>
+            </select>
+            <select name="vista" aria-label="Vista" onchange="this.form.submit()">
+                <option value="tarjeta" {% if vista == 'tarjeta' %}selected{% endif %}>Tarjeta</option>
+                <option value="lista" {% if vista == 'lista' %}selected{% endif %}>Lista</option>
+            </select>
+        </form>
+        <datalist id="cursosSugerencias">
+            {% for materia in materias_sugerencias %}
+                <option value="{{ materia.codigo }}">{{ materia.codigo }} - {{ materia.nombre }}</option>
+                <option value="{{ materia.nombre }}">{{ materia.nombre }} ({{ materia.codigo }})</option>
+            {% endfor %}
+        </datalist>
+
+        <div class="courses-grid{% if vista == 'lista' %} courses-grid--list{% endif %}">
+            {% if materias %}
+                {% for materia in materias %}
+                    {% if loop.index0 % 3 == 0 %}
+                        {% set banner_class = 'course-banner--purple' %}
+                    {% elif loop.index0 % 3 == 1 %}
+                        {% set banner_class = 'course-banner--violet' %}
+                    {% else %}
+                        {% set banner_class = 'course-banner--teal' %}
+                    {% endif %}
+                    <a class="course-card course-card-link" href="{{ url_for('dashboard.curso_docente_detalle', curso_id=materia.id) }}">
+                        <div class="course-banner {{ banner_class }}">
+                            <span class="course-badge">{{ materia.codigo | default('CUR', true) | truncate(6, True, '') }}</span>
+                        </div>
+                        <div class="course-body">
+                            <div class="course-title">
+                                {{ materia.codigo | default('CUR', true) }}/{{ materia.nombre }}
+                            </div>
+                            <div class="course-meta">
+                                <span>{% if materia.activo %}Activo{% else %}Inactivo{% endif %}</span>
+                                <span class="course-actions"><i class="fas fa-ellipsis-v"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            {% else %}
+                {% if buscar %}
+                    <p>No se encontraron cursos para "{{ buscar }}".</p>
+                {% else %}
+                    <p>No hay cursos disponibles.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

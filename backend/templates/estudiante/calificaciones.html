@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Calificaciones - {{ curso.codigo }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-book"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Mis calificaciones</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}">Resumen</a>
+            <a class="course-tab is-active">Mis Calificaciones</a>
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_asistencia', curso_id=curso.id) }}">Mi Asistencia</a>
+        </div>
+
+        <div class="course-content">
+            {% if calificaciones %}
+                <table class="grades-table">
+                    <thead>
+                        <tr>
+                            <th>Evaluación</th>
+                            <th>Tipo</th>
+                            <th>Calificación</th>
+                            <th>Sobre</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for calif in calificaciones %}
+                            <tr>
+                                <td>{{ calif.nombre or 'Evaluación' }}</td>
+                                <td>{{ calif.tipo or 'Desconocido' }}</td>
+                                <td>
+                                    {% set score = calif.calificacion or 0 %}
+                                    {% if score >= 4 %}
+                                        <span class="grade-badge grade-badge--high">{{ score }}</span>
+                                    {% elif score >= 3 %}
+                                        <span class="grade-badge grade-badge--medium">{{ score }}</span>
+                                    {% else %}
+                                        <span class="grade-badge grade-badge--low">{{ score }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>5.0</td>
+                                <td>{{ calif.fecha_registro.strftime('%d/%m/%Y') if calif.fecha_registro else 'N/A' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if promedio %}
+                    <div style="margin-top: 20px; background: #f7f9fb; padding: 16px; border-radius: 10px; border-left: 4px solid var(--primary);">
+                        <div style="font-weight: 600; color: var(--primary);">Promedio General</div>
+                        <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 4px;">{{ promedio }}</div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="course-empty">
+                    <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 16px;"></i>
+                    <p>No hay calificaciones registradas aún.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

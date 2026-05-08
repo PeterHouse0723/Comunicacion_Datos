@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Estudiante</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+    <style>
+        .dashboard-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .dashboard-card.alert-card {
+            border: 1px solid rgba(118, 75, 162, 0.18);
+            background: linear-gradient(180deg, #ffffff 0%, #fbf8ff 100%);
+
+        .dashboard-card.link-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-book"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.logout') }}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="welcome-box">
+            <h2><i class="fas fa-graduation-cap"></i> Bienvenido, {{ usuario.nombre }}!</h2>
+            <p>Accede a tus cursos y alertas académicas desde aquí.</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <a href="{{ url_for('dashboard.cursos_estudiante') }}" class="dashboard-card link-card">
+                <i class="fas fa-list"></i>
+                <h3>Mis Cursos</h3>
+                <p>Ver los cursos inscritos y cargados en mi institución</p>
+            </a>
+            <div class="dashboard-card alert-card">
+                <i class="fas fa-bell"></i>
+                <h3>Alertar</h3>
+                <p>Acceso al espacio de alertas académicas</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

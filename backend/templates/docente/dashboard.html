@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docente Dashboard - Sistema Academico</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="welcome-box">
+            <h2>Bienvenido, {{ usuario.nombre }}</h2>
+
+            {% if usuario.estado == 'pendiente' %}
+            <div class="alert">
+                <i class="fas fa-info-circle"></i>
+                Tu cuenta está pendiente de aprobación por un administrador. Una vez aprobada, podrás gestionar tus cursos.
+            </div>
+            {% endif %}
+
+            <p>Desde aquí puedes gestionar tus cursos, visualizar alertas de riesgo académico y solicitar la inclusión de estudiantes.</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <a class="dashboard-card" href="{{ url_for('dashboard.cursos_docente') }}">
+                <i class="fas fa-book-open"></i>
+                <h3>Mis Cursos</h3>
+                <p>Accede a la lista de tus cursos asignados para gestionarlos.</p>
+            </a>
+
+            <a class="dashboard-card" href="#">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Alertas de Riesgo</h3>
+                <p>Consulta qué estudiantes presentan bajo rendimiento o inasistencias.</p>
+            </a>
+
+            <div class="dashboard-card" onclick="abrirSolicitudModal()" style="cursor: pointer;">
+                <i class="fas fa-user-plus"></i>
+                <h3>Solicitar Estudiante</h3>
+                <p>Pide al administrador agregar un estudiante a una de tus materias.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SOLICITUD -->
+    <div id="solicitudModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title">Solicitud de estudiante</h3>
+            <form id="solicitudForm">
+                <div class="form-group">
+                    <label for="materiaSelect">Materia *</label>
+                    <select id="materiaSelect" required>
+                        <option value="">Selecciona una materia</option>
+                        {% for materia in materias %}
+                            <option value="{{ materia.id }}">{{ materia.codigo }} - {{ materia.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="estudianteEmail">Email del estudiante *</label>
+                    <input id="estudianteEmail" type="email" placeholder="correo@ejemplo.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="motivo">Motivo (Opcional)</label>
+                    <textarea id="motivo" rows="3" placeholder="Escribe el motivo de la solicitud..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="cerrarSolicitudModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirSolicitudModal() {
+            document.getElementById('solicitudModal').classList.add('modal-visible');
+        }
+
+        function cerrarSolicitudModal() {
+            document.getElementById('solicitudModal').classList.remove('modal-visible');
+        }
+
+        // Cerrar modal si se hace clic fuera del cuadro
+        window.addEventListener('click', function(e) {
+            if (e.target === document.getElementById('solicitudModal')) {
+                cerrarSolicitudModal();
+            }
+        });
+
+        document.getElementById('solicitudForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const materiaId = document.getElementById('materiaSelect').value;
+            const email = document.getElementById('estudianteEmail').value;
+            const motivo = document.getElementById('motivo').value;
+
+            fetch("{{ url_for('dashboard.solicitar_estudiante_materia') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ materia_id: materiaId, email, motivo })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje || data.error || 'No se pudo enviar la solicitud');
+                if (data.success) {
+                    cerrarSolicitudModal();
+                    document.getElementById('solicitudForm').reset();
+                }
+            })
+            .catch(() => alert('Error en la conexión'));
+        });
+    </script>
+</body>
+</html>

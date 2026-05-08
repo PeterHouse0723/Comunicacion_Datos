@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencia - {{ curso.codigo }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+    <style>
+        /* Estilos de filas y switches */
+        .attendance-row{display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid #e6e9f0;border-radius:10px;margin-bottom:10px;background:#fff}
+        .student-info strong{font-size:15px}
+        .attendance-actions{display:flex;gap:16px;align-items:center}
+        .toggle-wrapper{display:flex;flex-direction:column;align-items:center}
+        .att-switch{position:relative;width:46px;height:24px;border-radius:24px;background:#e6e6e6;border:none;padding:0;cursor:pointer}
+        .att-switch .att-slider{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .22s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);}
+        .att-switch.active.green{background:#4caf50}.att-switch.active.red{background:#f44336}.att-switch.active.blue{background:#2196f3}
+        .att-switch.active .att-slider{transform:translateX(22px)}
+        
+        /* Contenedor del botón e historial */
+        .calendar-wrapper { position: relative; }
+        
+        /* Calendario Flotante */
+        .floating-calendar {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+            z-index: 1000;
+            width: 240px;
+            animation: fadeIn 0.2s ease;
+        }
+        .floating-calendar.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .floating-calendar label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .floating-calendar input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .floating-calendar input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .floating-calendar input[type="date"]::-webkit-inner-spin-button,
+        .floating-calendar input[type="date"]::-webkit-calendar-picker-indicator { opacity: 1; cursor: pointer; }
+
+        .btn-retomar {
+            width: 100%;
+            padding: 8px;
+            background: #fff5f5;
+            color: #c53030;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-retomar:hover { background: #fed7d7; }
+    </style>
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title"><i class="fas fa-chalkboard-user"></i> Panel de Docente</div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso.id) }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Registro de asistencia</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab is-active">Asistencia</a>
+            
+            <!-- Botón con Calendario Flotante -->
+            <div class="calendar-wrapper">
+                <button id="btnHistorialTop" class="btn" style="margin-left:12px; border-radius:8px; display:flex; align-items:center; gap:6px;">
+                    <i class="fas fa-calendar-alt"></i> Historial
+                </button>
+                <div id="floatingCalendar" class="floating-calendar">
+                    <label>Seleccionar fecha</label>
+                    <input id="historialFecha" type="date" />
+                    <button id="btnRetomarFecha" class="btn-retomar">
+                        <i class="fas fa-eraser"></i> Retomar (Limpiar)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="course-content">
+            <div class="attendance-list">
+                {% if estudiantes %}
+                    {% for estudiante in estudiantes %}
+                        {% set asistencia = asistencias_map.get(estudiante.id) %}
+                        <div class="attendance-row" data-estudiante-id="{{ estudiante.id }}">
+                            <div class="student-info">
+                                <strong>{{ estudiante.nombre }} {{ estudiante.apellido }}</strong>
+                                <div class="course-list-muted">{{ estudiante.email }}</div>
+                            </div>
+
+                            <div class="attendance-actions">
+                                <div class="toggle-wrapper">
+                                    <span class="toggle-label">Asistió</span>
+                                    <button class="att-switch green {% if asistencia and asistencia.presente %}active{% endif %}" data-estado="asistio" aria-pressed="{{ 'true' if asistencia and asistencia.presente else 'false' }}"><span class="att-slider"></span></button>
+                                </div>
+                                <div class="toggle-wrapper">
+                                    <span class="toggle-label">Inasistencia</span>
+                                    <button class="att-switch red {% if asistencia and not asistencia.presente and not asistencia.justificacion %}active{% endif %}" data-estado="no_asistio" aria-pressed="{{ 'true' if asistencia and not asistencia.presente and not asistencia.justificacion else 'false' }}"><span class="att-slider"></span></button>
+                                </div>
+                                <div class="toggle-wrapper">
+                                    <span class="toggle-label">Acuerdo</span>
+                                    <button class="att-switch blue {% if asistencia and asistencia.justificacion == 'acuerdo' %}active{% endif %}" data-estado="acuerdo" aria-pressed="{{ 'true' if asistencia and asistencia.justificacion == 'acuerdo' else 'false' }}"><span class="att-slider"></span></button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="course-empty">No hay estudiantes inscritos en este curso.</div>
+                {% endif %}
+            </div>
+
+            <div class="attendance-controls" style="display:flex;gap:12px;align-items:flex-start;margin-top:16px;">
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Fecha de la clase</label>
+                    <input id="fechaClase" type="date" value="{{ fecha_default }}" style="padding:8px 10px;border:1px solid #d6dbe8;border-radius:8px;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Descripción / Observaciones</label>
+                    <textarea id="descripcionClase" rows="2" placeholder="Notas sobre la clase (opcional)" style="width:100%;padding:8px 10px;border:1px solid #d6dbe8;border-radius:8px"></textarea>
+                </div>
+                <div style="display:flex;align-items:flex-end;">
+                    <button id="btnGuardarAsistencia" class="btn btn-primary" type="button">Guardar asistencia</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // mapa inicial de asistencias por estudiante
+        const asistenciasInicial = {};
+        {% for sid, a in asistencias_map.items() %}
+            asistenciasInicial[{{ sid }}] = "{% if a.presente %}asistio{% elif a.justificacion == 'acuerdo' %}acuerdo{% else %}no_asistio{% endif %}";
+        {% endfor %}
+
+        async function marcarAsistencia(estudianteId, estado, btn){
+            try{
+                const previo = asistenciasInicial[estudianteId];
+                let razon = '';
+                if (previo && previo !== estado){
+                    razon = prompt('Ingrese la razón por la modificación de la asistencia (opcional):','');
+                    if (razon === null) return; // cancel
+                }
+                btn.disabled = true;
+                const res = await fetch("{{ url_for('dashboard.curso_docente_asistencia_registrar', curso_id=curso.id) }}",{
+                    method:'POST',headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ estudiante_id: estudianteId, estado, razon })
+                });
+                const data = await res.json();
+                if (data.success){
+                    asistenciasInicial[estudianteId] = estado;
+                    const row = btn.closest('.attendance-row');
+                    row.querySelectorAll('.att-switch').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-pressed','false');});
+                    btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+                } else {
+                    alert(data.error||'Error al guardar asistencia');
+                }
+            }catch(e){alert('Error en la petición');}
+            finally{btn.disabled=false}
+        }
+
+        document.addEventListener('DOMContentLoaded', function(){
+            const fechaInput = document.getElementById('fechaClase');
+            const btnHistorial = document.getElementById('btnHistorialTop');
+            const floatingCalendar = document.getElementById('floatingCalendar');
+            const historialInput = document.getElementById('historialFecha');
+            const btnRetomar = document.getElementById('btnRetomarFecha');
+            let fechasDisponibles = [];
+
+            // ====================================================================
+            // FUNCIÓN CENTRALIZADA PARA CARGAR ASISTENCIAS (Soluciona el bug)
+            // ====================================================================
+            async function cargarAsistencias(fecha) {
+                if (!fecha) return;
+                try {
+                    const res = await fetch(`{{ url_for('dashboard.curso_docente_asistencia_por_fecha', curso_id=curso.id) }}?fecha=${fecha}`);
+                    const data = await res.json();
+                    
+                    if (data.success){
+                        // Limpiar switches visualmente
+                        document.querySelectorAll('.attendance-row').forEach(row=>{
+                            row.querySelectorAll('.att-switch').forEach(b=>{
+                                b.classList.remove('active');
+                                b.setAttribute('aria-pressed','false');
+                            });
+                        });
+                        
+                        const mapa = {};
+                        data.asistencias.forEach(a=> mapa[a.estudiante_id]=a.estado);
+                        
+                        // Pintar los switches correctos
+                        document.querySelectorAll('.attendance-row').forEach(row=>{
+                            const id = parseInt(row.getAttribute('data-estudiante-id'));
+                            const estado = mapa[id];
+                            if (estado){ 
+                                const btn = row.querySelector(`.att-switch[data-estado="${estado}"]`); 
+                                if (btn){ 
+                                    btn.classList.add('active'); 
+                                    btn.setAttribute('aria-pressed','true'); 
+                                }
+                            }
+                        });
+                        
+                        // Actualizar mapa en memoria
+                        Object.keys(asistenciasInicial).forEach(k=>{asistenciasInicial[k]=undefined});
+                        data.asistencias.forEach(a=>{asistenciasInicial[a.estudiante_id]=a.estado});
+                        
+                        if (data.descripcion !== undefined) {
+                            document.getElementById('descripcionClase').value = data.descripcion || '';
+                        }
+                    } else {
+                        // Mostrar alerta si el backend devuelve un error controlado
+                        alert("Error al cargar: " + (data.error || 'Error desconocido'));
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert("Error de conexión con el servidor al intentar cargar la fecha.");
+                }
+            }
+
+            // 1. ABRIR/CERRAR CALENDARIO FLOTANTE
+            btnHistorial.addEventListener('click', async function(e){
+                e.stopPropagation(); 
+                const isOpen = floatingCalendar.classList.contains('active');
+                
+                if (!isOpen) {
+                    try{
+                        const res = await fetch(`{{ url_for('dashboard.curso_docente_asistencia_fechas', curso_id=curso.id) }}`);
+                        const data = await res.json();
+                        if (data.success){ 
+                            fechasDisponibles = data.fechas.map(f=>f.fecha); 
+                            if (fechasDisponibles.length) historialInput.value = fechasDisponibles[0]; 
+                        }
+                    }catch(e){console.error(e)}
+                    floatingCalendar.classList.add('active');
+                } else {
+                    floatingCalendar.classList.remove('active');
+                }
+            });
+
+            // Cerrar calendario si haces clic fuera
+            document.addEventListener('click', function(e){
+                if (!floatingCalendar.contains(e.target) && e.target !== btnHistorial) {
+                    floatingCalendar.classList.remove('active');
+                }
+            });
+
+            // 2. CUANDO SE SELECCIONA UNA FECHA EN EL CALENDARIO FLOTANTE
+            historialInput.addEventListener('change', function(){
+                const fecha = this.value; 
+                if (!fecha) return;
+                
+                if (fechasDisponibles.length && !fechasDisponibles.includes(fecha)){
+                    if (!confirm('No hay registro guardado para esa fecha. ¿Desea cargar igual la fecha seleccionada?')) return;
+                }
+                
+                // Actualizar fecha principal visualmente
+                document.getElementById('fechaClase').value = fecha;
+                
+                // Cerrar el calendario flotante
+                floatingCalendar.classList.remove('active');
+                
+                // EJECUTAR CARGA DIRECTAMENTE (Sin usar dispatchEvent)
+                cargarAsistencias(fecha);
+            });
+
+            // 3. SI EL USUARIO CAMBIA LA FECHA MANUALMENTE EN EL INPUT DE ABAJO
+            fechaInput.addEventListener('change', function(){
+                cargarAsistencias(this.value);
+            });
+
+            // 4. BOTÓN RETOMAR (LIMPIAR)
+            btnRetomar.addEventListener('click', async function(){
+                const fecha = historialInput.value || document.getElementById('fechaClase').value;
+                if (!fecha) return alert('Selecciona una fecha primero');
+                if (!confirm('Esto eliminará las asistencias registradas en esa fecha para cargarlas de nuevo. ¿Continuar?')) return;
+                
+                try{
+                    const res = await fetch(`{{ url_for('dashboard.curso_docente_asistencia_reset', curso_id=curso.id) }}`,{
+                        method:'POST',headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ fecha })
+                    });
+                    const data = await res.json();
+                    if (data.success){
+                        alert('Asistencias reiniciadas. Ahora puedes tomar la asistencia de nuevo.');
+                        document.getElementById('fechaClase').value = fecha;
+                        document.querySelectorAll('.attendance-row').forEach(row=>{ 
+                            row.querySelectorAll('.att-switch').forEach(b=>{ 
+                                b.classList.remove('active'); 
+                                b.setAttribute('aria-pressed','false'); 
+                            }); 
+                        });
+                        Object.keys(asistenciasInicial).forEach(k=>{ asistenciasInicial[k]=undefined });
+                        floatingCalendar.classList.remove('active'); 
+                    } else alert(data.error||'No se pudo reiniciar');
+                }catch(e){alert('Error en la petición')}
+            });
+
+            // 5. CLICK HANDLERS PARA LOS SWITCHES INDIVIDUALES
+            document.querySelectorAll('.attendance-row').forEach(row=>{
+                row.querySelectorAll('.att-switch').forEach(btn=>{
+                    btn.addEventListener('click', ()=>{
+                        const estudianteId = row.getAttribute('data-estudiante-id');
+                        const estado = btn.getAttribute('data-estado');
+                        marcarAsistencia(estudianteId, estado, btn);
+                    });
+                });
+            });
+
+            // 6. GUARDAR EN LOTE
+            document.getElementById('btnGuardarAsistencia').addEventListener('click', async function(){
+                const fecha = document.getElementById('fechaClase').value;
+                const descripcion = document.getElementById('descripcionClase').value;
+                const lista = [];
+                document.querySelectorAll('.attendance-row').forEach(row=>{
+                    const id = parseInt(row.getAttribute('data-estudiante-id'));
+                    const activo = row.querySelector('.att-switch.active');
+                    const estado = activo ? activo.getAttribute('data-estado') : 'no_asistio';
+                    lista.push({ estudiante_id: id, estado });
+                });
+                try{
+                    this.disabled = true;
+                    const res = await fetch(`{{ url_for('dashboard.curso_docente_asistencia_guardar', curso_id=curso.id) }}`,{
+                        method:'POST',headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ fecha, descripcion, asistencias: lista })
+                    });
+                    const data = await res.json();
+                    if (data.success){ 
+                        alert('Asistencia guardada exitosamente.'); 
+                        lista.forEach(item=>{asistenciasInicial[item.estudiante_id]=item.estado}); 
+                    }
+                    else alert(data.error||'Error al guardar asistencia');
+                }catch(e){alert('Error en la petición')}
+                finally{ this.disabled=false }
+            });
+
+        });
+    </script>
+</body>
+</html>

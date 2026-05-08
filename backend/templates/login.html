@@ -74,6 +74,12 @@
         {% if error %}
         <div class="error-message show">{{ error }}</div>
         {% endif %}
+
+        {% if mensaje %}
+        <div class="error-message show" style="color:#2e7d32 !important; background:rgba(46,125,50,0.12) !important; border-color:rgba(46,125,50,0.3) !important;">
+            {{ mensaje }}
+        </div>
+        {% endif %}
         
         <form id="loginForm" method="POST" action="{{ url_for('auth.login') }}">
             <div class="form-group">
@@ -101,7 +107,7 @@
         </form>
         
         <div class="form-links">
-            <a href="#">Forgot Password ?</a>
+            <a href="{{ url_for('auth.olvide_contraseña') }}">Forgot Password ?</a>
             <a href="{{ url_for('auth.register', rol='estudiante') }}">Sign Up</a>
         </div>
     </div>

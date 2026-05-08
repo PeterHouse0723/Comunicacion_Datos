@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Asistencia - {{ curso.codigo }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-book"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Mi asistencia</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}">Resumen</a>
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_calificaciones', curso_id=curso.id) }}">Mis Calificaciones</a>
+            <a class="course-tab is-active">Mi Asistencia</a>
+        </div>
+
+        <div class="course-content">
+            {% if asistencias %}
+                <div style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                    <div style="background: #d4f4dd; padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 12px; color: #2e7d32; font-weight: 600;">Asistencias</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #2e7d32;">{{ asistencias_count.presente or 0 }}</div>
+                    </div>
+                    <div style="background: #f8d7da; padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 12px; color: #721c24; font-weight: 600;">Inasistencias</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #721c24;">{{ asistencias_count.ausente or 0 }}</div>
+                    </div>
+                    <div style="background: #d1ecf1; padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 12px; color: #0c5460; font-weight: 600;">Justificadas</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #0c5460;">{{ asistencias_count.justificada or 0 }}</div>
+                    </div>
+                </div>
+
+                <table class="attendance-view-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Tema/Descripción</th>
+                            <th>Justificación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asist in asistencias %}
+                            <tr>
+                                <td>{{ asist.fecha.strftime('%d/%m/%Y') if asist.fecha else 'N/A' }}</td>
+                                <td>
+                                    {% if asist.presente %}
+                                        <span class="attendance-badge attendance-badge--present">Presente</span>
+                                    {% elif asist.justificacion == 'acuerdo' %}
+                                        <span class="attendance-badge attendance-badge--justified">Acuerdo</span>
+                                    {% else %}
+                                        <span class="attendance-badge attendance-badge--absent">Ausente</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ asist.tema or 'Sin descripción' }}</td>
+                                <td>{{ asist.justificacion or '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="course-empty">
+                    <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 16px;"></i>
+                    <p>No hay registros de asistencia aún.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

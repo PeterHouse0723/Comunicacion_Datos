@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ curso.nombre }} - Estudiante</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-book"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.estudiante') }}"><i class="fas fa-arrow-left"></i> Volver al dashboard</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Detalles del curso</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab is-active">Resumen</a>
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_calificaciones', curso_id=curso.id) }}">Mis Calificaciones</a>
+            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_asistencia', curso_id=curso.id) }}">Mi Asistencia</a>
+        </div>
+
+        <div class="course-content">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div style="background: #f7f9fb; padding: 16px; border-radius: 10px; border: 1px solid #e6e9f0;">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 4px;">Docente</div>
+                    <div style="font-weight: 600; color: #333;">{{ docente.nombre if docente else 'N/A' }}</div>
+                </div>
+                <div style="background: #f7f9fb; padding: 16px; border-radius: 10px; border: 1px solid #e6e9f0;">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 4px;">Semestre</div>
+                    <div style="font-weight: 600; color: #333;">{{ curso.semestre if curso.semestre else 'N/A' }}</div>
+                </div>
+                <div style="background: #f7f9fb; padding: 16px; border-radius: 10px; border: 1px solid #e6e9f0;">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 4px;">Créditos</div>
+                    <div style="font-weight: 600; color: #333;">{{ curso.creditos if curso.creditos else 'N/A' }}</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px;">
+                <h3 style="margin-bottom: 12px;">Descripción del Curso</h3>
+                <p style="color: #666; line-height: 1.6;">{{ curso.descripcion or 'No hay descripción disponible.' }}</p>
+            </div>
+
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <a href="{{ url_for('dashboard.curso_estudiante_calificaciones', curso_id=curso.id) }}" class="btn btn-primary" style="text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-star"></i> Ver mis calificaciones
+                </a>
+                <a href="{{ url_for('dashboard.curso_estudiante_asistencia', curso_id=curso.id) }}" class="btn btn-primary" style="text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-check-circle"></i> Ver mi asistencia
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
