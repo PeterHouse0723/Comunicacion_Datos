@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Alertas - {{ usuario.nombre }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+    <style>
+        .alerts-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background: #fff;
+            border: 1px solid #e8e8f2;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(20, 20, 40, 0.04);
+        }
+        .summary-card strong {
+            display: block;
+            font-size: 28px;
+            line-height: 1.1;
+            margin-top: 6px;
+        }
+        .summary-card.active strong { color: #b42318; }
+        .summary-card.total strong { color: #1d4ed8; }
+        .summary-card.resolved strong { color: #15803d; }
+        .alert-list {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+        }
+        .alert-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            padding: 18px;
+        }
+        .alert-item.active {
+            border-color: rgba(180, 35, 24, 0.25);
+            background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);
+        }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .alert-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge.active { background: #fee2e2; color: #991b1b; }
+        .badge.resolved { background: #dcfce7; color: #166534; }
+        .alert-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+            color: #4b5563;
+            font-size: 14px;
+        }
+        .alert-meta div {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 16px;
+            color: #6b7280;
+            background: #fff;
+            border: 1px dashed #d1d5db;
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-bell"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.estudiante') }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>Mis Alertas</h2>
+                <p>Seguimiento de inasistencia y riesgo académico</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab" href="{{ url_for('dashboard.cursos_estudiante') }}">Mis Cursos</a>
+            <a class="course-tab is-active">Alertas</a>
+        </div>
+
+        <div class="alerts-summary">
+            <div class="summary-card active">
+                <span>Alertas activas</span>
+                <strong>{{ alertas_activas|length }}</strong>
+            </div>
+            <div class="summary-card total">
+                <span>Total de alertas</span>
+                <strong>{{ total_alertas }}</strong>
+            </div>
+            <div class="summary-card resolved">
+                <span>Alertas resueltas</span>
+                <strong>{{ total_alertas - (alertas_activas|length) }}</strong>
+            </div>
+        </div>
+
+        <div class="course-content">
+            {% if alertas %}
+                <div class="alert-list">
+                    {% for alerta in alertas %}
+                        <article class="alert-item {{ 'active' if alerta.estado == 'activa' else '' }}">
+                            <div class="alert-header">
+                                <div class="alert-title">
+                                    <i class="fas fa-exclamation-triangle" style="color: {{ '#b42318' if alerta.estado == 'activa' else '#15803d' }};"></i>
+                                    <span>{{ alerta.curso.nombre if alerta.curso else 'Curso no disponible' }}</span>
+                                </div>
+                                <span class="badge {{ 'active' if alerta.estado == 'activa' else 'resolved' }}">
+                                    {{ 'Activa' if alerta.estado == 'activa' else 'Resuelta' }}
+                                </span>
+                            </div>
+
+                            <p style="margin: 0; color: #374151;">{{ alerta.descripcion or 'Sin descripción de la alerta.' }}</p>
+
+                            <div class="alert-meta">
+                                <div>
+                                    <strong style="display:block; color:#111827;">Tipo</strong>
+                                    <span>{{ alerta.tipo_alerta or 'N/A' }}</span>
+                                </div>
+                                <div>
+                                    <strong style="display:block; color:#111827;">Inasistencia</strong>
+                                    <span>{{ alerta.porcentaje_inasistencia or 0 }}%</span>
+                                </div>
+                                <div>
+                                    <strong style="display:block; color:#111827;">Fecha</strong>
+                                    <span>{{ alerta.fecha_alerta.strftime('%d/%m/%Y %H:%M') if alerta.fecha_alerta else 'N/A' }}</span>
+                                </div>
+                                <div>
+                                    <strong style="display:block; color:#111827;">Estado</strong>
+                                    <span>{{ alerta.estado }}</span>
+                                </div>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-shield-alt" style="font-size: 40px; margin-bottom: 12px;"></i>
+                    <h3 style="margin: 0 0 8px;">Sin alertas por ahora</h3>
+                    <p style="margin: 0;">Si tu porcentaje de inasistencia supera el 30%, verás la alerta aquí.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

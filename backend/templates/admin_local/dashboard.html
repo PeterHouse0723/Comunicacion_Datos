@@ -18,8 +18,8 @@
                 <a class="active" href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
                 <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
                 <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.usuarios_admin_local') }}"><i class="fas fa-users"></i> Usuarios</a>
                 <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
-                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-file-upload"></i> Cargar Listas</a>
                 <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
             </nav>
             <div class="sidebar-footer">
@@ -64,7 +64,7 @@
                         <h3>{{ stats.docentes_pendientes }}</h3>
                         <small>Docentes pendientes</small>
                     </a>
-                    <a class="card card-link" href="{{ url_for('admin.cursos') }}">
+                    <a class="card card-link" href="{{ url_for('admin.cursos', estado='activas') }}">
                         <div class="card-icon accent-2"><i class="fas fa-book"></i></div>
                         <h3>{{ stats.cursos }}</h3>
                         <small>Materias activas</small>

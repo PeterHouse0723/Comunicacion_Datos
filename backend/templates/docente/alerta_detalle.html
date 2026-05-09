@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alertas de Riesgo - {{ curso.codigo }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{{ url_for('dashboard.alertas_docente') }}"><i class="fas fa-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+                <p>Estudiantes con riesgo por inasistencia</p>
+            </div>
+        </div>
+
+        <div class="course-tabs">
+            <a class="course-tab" href="{{ url_for('dashboard.cursos_docente') }}">Mis Cursos</a>
+            <a class="course-tab" href="{{ url_for('dashboard.alertas_docente') }}">Alertas</a>
+            <a class="course-tab is-active">Detalle</a>
+        </div>
+
+        <div class="alerts-summary">
+            <div class="summary-card danger">
+                <span>Estudiantes en riesgo</span>
+                <strong>{{ riesgos_total }}</strong>
+            </div>
+            <div class="summary-card warning">
+                <span>Total inscritos</span>
+                <strong>{{ estudiantes_total }}</strong>
+            </div>
+            <div class="summary-card success">
+                <span>Materia</span>
+                <strong>{{ curso.codigo }}</strong>
+            </div>
+        </div>
+
+        <div class="course-content">
+            {% if riesgos %}
+                <div class="risk-list">
+                    {% for riesgo in riesgos %}
+                        <div class="risk-row {{ 'critical' if riesgo.es_riesgo_critico else '' }}">
+                            <div class="risk-row-main">
+                                <div class="risk-student">
+                                    <div class="risk-avatar {{ 'danger' if riesgo.es_riesgo_critico else 'warning' }}">
+                                        {{ riesgo.estudiante.nombre[0] | upper }}{{ riesgo.estudiante.apellido[0] | upper }}
+                                    </div>
+                                    <div>
+                                        <div class="risk-student-name">{{ riesgo.estudiante.nombre }} {{ riesgo.estudiante.apellido }}</div>
+                                        <div class="risk-student-email">{{ riesgo.estudiante.email }}</div>
+                                    </div>
+                                </div>
+                                <div class="risk-badges">
+                                    {% if riesgo.es_riesgo_critico %}
+                                        <span class="risk-badge danger"><i class="fas fa-triangle-exclamation"></i> Crítico</span>
+                                    {% else %}
+                                        <span class="risk-badge warning"><i class="fas fa-circle-exclamation"></i> Seguimiento</span>
+                                    {% endif %}
+                                    <span class="risk-badge neutral"><i class="fas fa-percent"></i> {{ riesgo.porcentaje_inasistencia }}%</span>
+                                    <span class="risk-badge neutral"><i class="fas fa-ban"></i> Racha {{ riesgo.racha_inasistencias }}</span>
+                                </div>
+                            </div>
+                            <div class="risk-row-details">
+                                <div class="risk-reasons">
+                                    {% for razon in riesgo.razones %}
+                                        <span><i class="fas fa-angle-right"></i> {{ razon }}</span>
+                                    {% endfor %}
+                                </div>
+                                <div class="risk-stats">
+                                    <div class="risk-stat">
+                                        <strong>{{ riesgo.resumen.clases_registradas }}</strong>
+                                        <small>Clases</small>
+                                    </div>
+                                    <div class="risk-stat">
+                                        <strong>{{ riesgo.resumen.ausentes + riesgo.resumen.justificadas }}</strong>
+                                        <small>Faltas</small>
+                                    </div>
+                                    <div class="risk-stat">
+                                        <strong>{{ riesgo.ultima_fecha.strftime('%d/%m/%y') if riesgo.ultima_fecha else '—' }}</strong>
+                                        <small>Última clase</small>
+                                    </div>
+                                    <div class="risk-stat">
+                                        <strong class="{{ 'estado-activa' if riesgo.alerta_activa else 'estado-seguimiento' }}">
+                                            {{ 'Alerta' if riesgo.alerta_activa else 'Seguimiento' }}
+                                        </strong>
+                                        <small>Estado</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="risk-empty">
+                    <i class="fas fa-shield-halved"></i>
+                    <h3>Sin estudiantes en riesgo</h3>
+                    <p>Por ahora nadie supera el umbral de alerta ni acumula más de 2 inasistencias seguidas.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

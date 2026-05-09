@@ -1,7 +1,8 @@
 """Modelos de base de datos - Sistema Académico Multi-Institución"""
 from extensions import db
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from enum import Enum
+from sqlalchemy import func
 
 # ============================================================================
 # ENUMS Y CONSTANTES
@@ -121,6 +122,10 @@ class Curso(db.Model):
     docente_principal_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    # Días de la semana en que se dicta la materia (enteros 0=Lunes .. 6=Domingo), ej: "0,2,4"
+    dias_semana = db.Column(db.String(20))
+    # Número de sesiones por semana (opcional, puede derivarse de `dias_semana`)
+    sesiones_por_semana = db.Column(db.Integer, default=0)
     
     # Relaciones
     docente_principal = db.relationship('Usuario', foreign_keys=[docente_principal_id])
@@ -133,6 +138,157 @@ class Curso(db.Model):
     
     def __repr__(self):
         return f'<Curso {self.codigo} - {self.nombre}>'
+
+    def get_dias_semana_list(self):
+        """Devuelve la lista de enteros que representan los días de la semana.
+
+        Formato almacenado: cadena separada por comas con valores 0..6
+        """
+        if not self.dias_semana:
+            return []
+        try:
+            return [int(x) for x in self.dias_semana.split(',') if x.strip() != '']
+        except ValueError:
+            return []
+
+    def estimar_total_clases(self):
+        """Estima el número total de clases en el periodo según `dias_semana` y fechas del `Periodo`.
+
+        Recorre las fechas entre `periodo.fecha_inicio` y `periodo.fecha_fin` y cuenta los días
+        cuyo `weekday()` está en la lista `dias_semana`.
+        """
+        if not self.periodo:
+            return 0
+        dias = self.get_dias_semana_list()
+        if not dias:
+            return 0
+        start = self.periodo.fecha_inicio
+        end = self.periodo.fecha_fin
+        delta = timedelta(days=1)
+        cur = start
+        count = 0
+        while cur <= end:
+            if cur.weekday() in dias:
+                count += 1
+            cur = cur + delta
+        return count
+
+    def generar_clases(self, crear_si_no_existen=True):
+        """Genera registros `Clase` para cada fecha prevista en el periodo.
+
+        Si `crear_si_no_existen` es True no duplicará clases ya existentes.
+        Devuelve la cantidad de clases creadas.
+        """
+        dias = self.get_dias_semana_list()
+        if not dias or not self.periodo:
+            return 0
+        start = self.periodo.fecha_inicio
+        end = self.periodo.fecha_fin
+        delta = timedelta(days=1)
+        cur = start
+        creadas = 0
+        while cur <= end:
+            if cur.weekday() in dias:
+                exists = Clase.query.filter_by(curso_id=self.id, fecha=cur).first()
+                if exists and crear_si_no_existen:
+                    cur = cur + delta
+                    continue
+                nueva = Clase(curso_id=self.id, periodo_id=self.periodo_id, fecha=cur)
+                db.session.add(nueva)
+                creadas += 1
+            cur = cur + delta
+        db.session.commit()
+        return creadas
+
+    def total_clases_programadas(self):
+        """Cantidad total de clases planificadas para el semestre según días de clase."""
+        return self.estimar_total_clases()
+
+    def resumen_asistencia_estudiante(self, estudiante_id):
+        """Calcula un resumen de asistencia del estudiante sobre las clases programadas del curso.
+
+        Devuelve un diccionario con:
+        - total_clases_programadas
+        - clases_registradas
+        - presentes
+        - ausentes
+        - justificadas
+        - porcentaje_asistencia
+        - porcentaje_inasistencia
+        - porcentaje_registro
+        """
+        total_programadas = self.total_clases_programadas()
+
+        asistencias = Asistencia.query.filter_by(
+            estudiante_id=estudiante_id,
+            curso_id=self.id
+        ).all()
+
+        presentes = 0
+        ausentes = 0
+        justificadas = 0
+        clases_registradas = 0
+
+        for asistencia in asistencias:
+            clases_registradas += 1
+            if asistencia.presente:
+                presentes += 1
+            elif asistencia.justificacion:
+                justificadas += 1
+            else:
+                ausentes += 1
+
+        porcentaje_asistencia = round((presentes / total_programadas) * 100, 2) if total_programadas else 0.0
+        porcentaje_inasistencia = round(((ausentes + justificadas) / total_programadas) * 100, 2) if total_programadas else 0.0
+        porcentaje_registro = round((clases_registradas / total_programadas) * 100, 2) if total_programadas else 0.0
+
+        return {
+            'total_clases_programadas': total_programadas,
+            'clases_registradas': clases_registradas,
+            'presentes': presentes,
+            'ausentes': ausentes,
+            'justificadas': justificadas,
+            'porcentaje_asistencia': porcentaje_asistencia,
+            'porcentaje_inasistencia': porcentaje_inasistencia,
+            'porcentaje_registro': porcentaje_registro,
+        }
+
+    def sincronizar_alerta_inasistencia(self, estudiante_id, usuario_responsable_id=None, umbral=30.0):
+        """Crea o actualiza una alerta de riesgo por inasistencia según el porcentaje calculado."""
+        resumen = self.resumen_asistencia_estudiante(estudiante_id)
+        porcentaje = resumen['porcentaje_inasistencia']
+        alerta = AlertaRiesgoAcademico.query.filter_by(
+            estudiante_id=estudiante_id,
+            curso_id=self.id,
+            tipo_alerta='inasistencia',
+            estado='activa'
+        ).first()
+
+        if porcentaje >= umbral:
+            if not alerta:
+                alerta = AlertaRiesgoAcademico(
+                    estudiante_id=estudiante_id,
+                    curso_id=self.id,
+                    tipo_alerta='inasistencia',
+                    porcentaje_inasistencia=porcentaje,
+                    descripcion=f'Inasistencia del {porcentaje}% sobre el total de clases programadas.',
+                    estado='activa'
+                )
+                db.session.add(alerta)
+            else:
+                alerta.porcentaje_inasistencia = porcentaje
+                alerta.descripcion = f'Inasistencia del {porcentaje}% sobre el total de clases programadas.'
+                alerta.estado = 'activa'
+            alerta.promedio_actual = None
+            alerta.total_notas_bajas = alerta.total_notas_bajas or 0
+            if usuario_responsable_id:
+                alerta.descripcion = f'Inasistencia del {porcentaje}% sobre el total de clases programadas. Responsable: {usuario_responsable_id}'
+        else:
+            if alerta:
+                alerta.porcentaje_inasistencia = porcentaje
+                alerta.descripcion = f'Inasistencia actual del {porcentaje}%, por debajo del umbral.'
+                alerta.estado = 'resuelta'
+        return resumen
 
 # ============================================================================
 # TABLA: CURSO_DOCENTE (Relación M2M: Docentes-Cursos)

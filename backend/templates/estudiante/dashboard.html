@@ -15,12 +15,24 @@
         .dashboard-card.alert-card {
             border: 1px solid rgba(118, 75, 162, 0.18);
             background: linear-gradient(180deg, #ffffff 0%, #fbf8ff 100%);
+        }
 
         .dashboard-card.link-card {
             display: block;
             text-decoration: none;
             color: inherit;
         }
+
+        .dashboard-card .count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.06);
+            font-weight: 700;
+            margin-bottom: 12px;
         }
     </style>
 </head>
@@ -47,11 +59,12 @@
                 <h3>Mis Cursos</h3>
                 <p>Ver los cursos inscritos y cargados en mi institución</p>
             </a>
-            <div class="dashboard-card alert-card">
+            <a href="{{ url_for('dashboard.alertas_estudiante') }}" class="dashboard-card alert-card link-card">
                 <i class="fas fa-bell"></i>
                 <h3>Alertar</h3>
+                <div class="count-badge">{{ alertas_activas_count or 0 }}</div>
                 <p>Acceso al espacio de alertas académicas</p>
-            </div>
+            </a>
         </div>
     </div>
 </body>

@@ -45,6 +45,9 @@
                         <p>Total: <strong>{{ total }}</strong> materia(s)</p>
                     </div>
                     <div class="action-bar">
+                        <a class="btn btn-outline" href="{{ url_for('admin.cursos', estado='todas') }}">Todas</a>
+                        <a class="btn btn-outline" href="{{ url_for('admin.cursos', estado='activas') }}">Activas</a>
+                        <a class="btn btn-outline" href="{{ url_for('admin.cursos', estado='inactivas') }}">Inactivas</a>
                         <button class="btn btn-primary" onclick="abrirModalCrear()">
                             <i class="fas fa-plus"></i> Nueva materia
                         </button>
@@ -65,6 +68,7 @@
                                 <th>Nombre</th>
                                 <th>Periodo</th>
                                 <th>Docente principal</th>
+                                <th>Estado</th>
                                 <th>Estudiantes</th>
                                 <th>Acciones</th>
                             </tr>
@@ -77,6 +81,11 @@
                                     <td>{{ curso.nombre }}</td>
                                     <td>{{ curso.periodo.nombre if curso.periodo else 'N/A' }}</td>
                                     <td>{{ curso.docente_principal.nombre if curso.docente_principal else 'Sin asignar' }}</td>
+                                    <td>
+                                        <span class="badge {{ 'badge-success' if curso.activo else 'badge-muted' }}">
+                                            {{ 'Activa' if curso.activo else 'Inactiva' }}
+                                        </span>
+                                    </td>
                                     <td>{{ curso.estudiantes|length }}</td>
                                     <td>
                                         <div class="action-bar">
@@ -98,7 +107,7 @@
                                 {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="6" class="list-empty">No hay materias creadas aún.</td>
+                                <td colspan="7" class="list-empty">No hay materias creadas aún para este filtro.</td>
                             </tr>
                             {% endif %}
                         </tbody>

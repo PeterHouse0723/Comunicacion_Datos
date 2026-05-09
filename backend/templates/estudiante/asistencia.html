@@ -33,6 +33,27 @@
         </div>
 
         <div class="course-content">
+            <div style="margin-bottom: 20px; padding: 14px; border-radius: 10px; background: #f7f7fb; border: 1px solid #e5e5ef;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">Clases programadas</div>
+                        <div style="font-size: 22px; font-weight: 700;">{{ resumen_asistencia.total_clases_programadas or 0 }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">Porcentaje asistencia</div>
+                        <div style="font-size: 22px; font-weight: 700; color: #2e7d32;">{{ resumen_asistencia.porcentaje_asistencia or 0 }}%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">Porcentaje inasistencia</div>
+                        <div style="font-size: 22px; font-weight: 700; color: #b71c1c;">{{ resumen_asistencia.porcentaje_inasistencia or 0 }}%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #666; font-weight: 600;">Clases registradas</div>
+                        <div style="font-size: 22px; font-weight: 700;">{{ resumen_asistencia.clases_registradas or 0 }}</div>
+                    </div>
+                </div>
+            </div>
+
             {% if asistencias %}
                 <div style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
                     <div style="background: #d4f4dd; padding: 12px; border-radius: 8px; text-align: center;">

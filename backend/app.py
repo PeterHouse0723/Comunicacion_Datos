@@ -3,6 +3,7 @@ from extensions import db, migrate
 from config import config
 from utils import encriptar_contraseña
 import os
+from sqlalchemy import text
 
 # Importar modelos después de que db esté disponible
 from models import (
@@ -34,7 +35,21 @@ def create_app(config_name=None):
     # Crear tablas si no existen
     with app.app_context():
         db.create_all()
-        
+
+        # Asegurar columnas añadidas por cambios de modelo (SQLite ALTER TABLE ADD COLUMN)
+        try:
+            existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
+            if 'dias_semana' not in existing:
+                db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
+                print('[OK] Columna añadida: cursos.dias_semana')
+            if 'sesiones_por_semana' not in existing:
+                db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
+                print('[OK] Columna añadida: cursos.sesiones_por_semana')
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
+
         # Crear institución y admins iniciales si no existen
         try:
             institucion = Institucion.query.filter_by(nombre='Universidad Default').first()

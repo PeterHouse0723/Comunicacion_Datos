@@ -2,9 +2,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, Nota, Asistencia, Clase
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, Nota, Asistencia, Clase, AlertaRiesgoAcademico
 from extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_, func
 from datetime import date
 
@@ -50,6 +50,59 @@ def docente():
     usuario = Usuario.query.get(session.get('usuario_id'))
     materias = Curso.query.filter_by(docente_principal_id=usuario.id, activo=True).all()
     return render_template('docente/dashboard.html', usuario=usuario, materias=materias)
+
+
+@dashboard_bp.route('/docente/alertas')
+@login_required
+def alertas_docente():
+    """Listado de materias del docente con alertas de asistencia."""
+    if session.get('role') != 'docente':
+        return redirect(url_for('auth.login'))
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    materias = _obtener_cursos_docente(usuario)
+    total_estudiantes_en_riesgo = 0
+
+    for materia in materias:
+        riesgos = _obtener_estudiantes_en_riesgo(materia)
+        materia.riesgos_count = len(riesgos)
+        materia.riesgos_activos = riesgos
+        total_estudiantes_en_riesgo += len(riesgos)
+
+    materias_con_riesgo = sum(1 for materia in materias if getattr(materia, 'riesgos_count', 0) > 0)
+
+    return render_template(
+        'docente/alertas.html',
+        usuario=usuario,
+        materias=materias,
+        materias_con_riesgo=materias_con_riesgo,
+        total_estudiantes_en_riesgo=total_estudiantes_en_riesgo,
+    )
+
+
+@dashboard_bp.route('/docente/alertas/<int:curso_id>')
+@login_required
+def alerta_docente_detalle(curso_id):
+    """Detalle de alertas por materia para docentes."""
+    if session.get('role') != 'docente':
+        return redirect(url_for('auth.login'))
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    curso = _obtener_curso_docente(curso_id, usuario.id)
+    if not curso:
+        return redirect(url_for('dashboard.alertas_docente'))
+
+    estudiantes_rel = EstudianteCurso.query.filter_by(curso_id=curso.id).all()
+    riesgos = _obtener_estudiantes_en_riesgo(curso)
+
+    return render_template(
+        'docente/alerta_detalle.html',
+        usuario=usuario,
+        curso=curso,
+        estudiantes_total=len(estudiantes_rel),
+        riesgos=riesgos,
+        riesgos_total=len(riesgos),
+    )
 
 # ============================================================================
 # RUTA: Cursos Docente
@@ -142,6 +195,99 @@ def _obtener_cursos_estudiante(usuario):
     return cursos
 
 
+def _calcular_racha_inasistencias(curso_id, estudiante_id):
+    """Calcula la racha actual de inasistencias consecutivas del estudiante en un curso."""
+    asistencias = (
+        Asistencia.query.join(Clase)
+        .filter(
+            Asistencia.curso_id == curso_id,
+            Asistencia.estudiante_id == estudiante_id,
+        )
+        .order_by(Clase.fecha.desc(), Clase.id.desc())
+        .all()
+    )
+
+    racha = 0
+    ultima_fecha = None
+    for asistencia in asistencias:
+        ultima_fecha = asistencia.clase.fecha if asistencia.clase else ultima_fecha
+        if asistencia.presente:
+            break
+        racha += 1
+
+    return racha, ultima_fecha
+
+
+def _resumen_riesgo_docente(curso, estudiante):
+    """Construye el resumen de riesgo por asistencia para un estudiante."""
+    resumen = curso.resumen_asistencia_estudiante(estudiante.id)
+    racha_inasistencias, ultima_fecha = _calcular_racha_inasistencias(curso.id, estudiante.id)
+
+    alerta_activa = AlertaRiesgoAcademico.query.filter_by(
+        estudiante_id=estudiante.id,
+        curso_id=curso.id,
+        tipo_alerta='inasistencia',
+        estado='activa'
+    ).first()
+
+    porcentaje_inasistencia = resumen['porcentaje_inasistencia']
+    razones = []
+
+    if alerta_activa:
+        razones.append(alerta_activa.descripcion or 'Alerta activa de inasistencia.')
+    elif porcentaje_inasistencia >= 35.0:
+        razones.append(f'Inasistencia acumulada del {porcentaje_inasistencia}%')
+
+    if racha_inasistencias > 2:
+        razones.append(f'{racha_inasistencias} inasistencias seguidas')
+
+    if not razones:
+        return None
+
+    return {
+        'estudiante': estudiante,
+        'resumen': resumen,
+        'alerta_activa': alerta_activa,
+        'porcentaje_inasistencia': porcentaje_inasistencia,
+        'racha_inasistencias': racha_inasistencias,
+        'ultima_fecha': ultima_fecha,
+        'razones': razones,
+        'es_riesgo_critico': racha_inasistencias > 2 or porcentaje_inasistencia >= 35.0,
+    }
+
+
+def _obtener_estudiantes_en_riesgo(curso):
+    """Devuelve los estudiantes del curso que están en riesgo por inasistencia."""
+    estudiantes_rel = EstudianteCurso.query.filter_by(curso_id=curso.id).all()
+    riesgos = []
+
+    for rel in estudiantes_rel:
+        info = _resumen_riesgo_docente(curso, rel.estudiante)
+        if info:
+            riesgos.append(info)
+
+    riesgos.sort(
+        key=lambda item: (
+            item['es_riesgo_critico'],
+            item['racha_inasistencias'],
+            item['porcentaje_inasistencia'],
+            (item['estudiante'].apellido or '').lower(),
+            (item['estudiante'].nombre or '').lower(),
+        ),
+        reverse=True,
+    )
+    return riesgos
+
+
+def _obtener_cursos_docente(usuario):
+    """Cursos asignados al docente."""
+    return (
+        Curso.query.filter_by(docente_principal_id=usuario.id)
+        .order_by(Curso.activo.desc(), Curso.nombre.asc())
+        .all()
+    )
+
+
 @dashboard_bp.route('/docente/cursos/<int:curso_id>')
 @login_required
 def curso_docente_detalle(curso_id):
@@ -229,7 +375,7 @@ def curso_docente_asistencia(curso_id):
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia/registrar', methods=['POST'])
 @login_required
 def curso_docente_asistencia_registrar(curso_id):
-    """Registrar o actualizar asistencia para un estudiante en una clase (crea clase para hoy si no existe)."""
+    """Registrar o actualizar asistencia para un estudiante en una clase (crea clase para la fecha seleccionada si no existe)."""
     if session.get('role') != 'docente':
         return redirect(url_for('auth.login'))
 
@@ -242,14 +388,27 @@ def curso_docente_asistencia_registrar(curso_id):
     estudiante_id = data.get('estudiante_id')
     estado = data.get('estado')  # 'asistio', 'no_asistio', 'acuerdo'
     razon = (data.get('razon') or '').strip()
+    fecha_str = (data.get('fecha') or '').strip()
     if not estudiante_id or estado not in {'asistio', 'no_asistio', 'acuerdo'}:
         return ({'success': False, 'error': 'Datos inválidos'}, 400)
 
     from models import Clase, Asistencia
-    hoy = date.today()
-    clase = Clase.query.filter_by(curso_id=curso.id, fecha=hoy).first()
+    if fecha_str:
+        try:
+            fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            return ({'success': False, 'error': 'Fecha inválida'}, 400)
+    else:
+        fecha_obj = date.today()
+
+    clase = Clase.query.filter_by(curso_id=curso.id, fecha=fecha_obj).first()
     if not clase:
-        clase = Clase(curso_id=curso.id, periodo_id=curso.periodo_id, fecha=hoy)
+        # Si el curso tiene dias_semana definidos, solo permitir crear clase si la fecha seleccionada es uno de esos días
+        dias_definidos = curso.get_dias_semana_list() if hasattr(curso, 'get_dias_semana_list') else []
+        if dias_definidos and fecha_obj.weekday() not in dias_definidos:
+            return ({'success': False, 'error': 'La fecha seleccionada no corresponde a un día de clase programado para este curso'}, 400)
+
+        clase = Clase(curso_id=curso.id, periodo_id=curso.periodo_id, fecha=fecha_obj)
         db.session.add(clase)
         db.session.flush()  # obtener id
 
@@ -274,6 +433,12 @@ def curso_docente_asistencia_registrar(curso_id):
     except Exception as e:
         db.session.rollback()
         return ({'success': False, 'error': 'Error al guardar'}, 500)
+
+    try:
+        curso.sincronizar_alerta_inasistencia(estudiante_id, usuario.id)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     return ({'success': True, 'estado': estado, 'clase_id': clase.id}, 200)
 
@@ -317,7 +482,7 @@ def curso_docente_asistencia_por_fecha(curso_id):
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia/guardar', methods=['POST'])
 @login_required
 def curso_docente_asistencia_guardar(curso_id):
-    """Guardar asistencia en lote para una fecha (crea clase si no existe). Payload: {fecha, descripcion, asistencias:[{estudiante_id, estado}]}
+    """Guardar asistencia en lote para una fecha (crea clase si no existe). Payload: {fecha, descripcion, asistencias:[{estudiante_id, estado, justificacion}]}
     """
     if session.get('role') != 'docente':
         return redirect(url_for('auth.login'))
@@ -343,6 +508,10 @@ def curso_docente_asistencia_guardar(curso_id):
     from models import Clase, Asistencia
     clase = Clase.query.filter_by(curso_id=curso.id, fecha=fecha_obj).first()
     if not clase:
+        dias_definidos = curso.get_dias_semana_list() if hasattr(curso, 'get_dias_semana_list') else []
+        if dias_definidos and fecha_obj.weekday() not in dias_definidos:
+            return ({'success': False, 'error': 'La fecha indicada no corresponde a un día de clase programado para este curso'}, 400)
+
         clase = Clase(curso_id=curso.id, periodo_id=curso.periodo_id, fecha=fecha_obj)
         db.session.add(clase)
         db.session.flush()
@@ -354,6 +523,7 @@ def curso_docente_asistencia_guardar(curso_id):
     for item in asistencias_list:
         estudiante_id = item.get('estudiante_id')
         estado = item.get('estado')
+        justificacion = (item.get('justificacion') or '').strip()
         if not estudiante_id or estado not in {'asistio', 'no_asistio', 'acuerdo'}:
             continue
 
@@ -367,10 +537,10 @@ def curso_docente_asistencia_guardar(curso_id):
             asistencia.justificacion = None
         elif estado == 'no_asistio':
             asistencia.presente = False
-            asistencia.justificacion = None
-        else:
+            asistencia.justificacion = justificacion if justificacion else None
+        else:  # acuerdo
             asistencia.presente = False
-            asistencia.justificacion = 'acuerdo'
+            asistencia.justificacion = justificacion if justificacion else 'acuerdo'
 
         asistencia.fecha_registro = datetime.utcnow()
         updated += 1
@@ -381,13 +551,22 @@ def curso_docente_asistencia_guardar(curso_id):
         db.session.rollback()
         return ({'success': False, 'error': 'Error al guardar en bloque'}, 500)
 
+    try:
+        for item in asistencias_list:
+            estudiante_id = item.get('estudiante_id')
+            if estudiante_id:
+                curso.sincronizar_alerta_inasistencia(estudiante_id, usuario.id)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     return ({'success': True, 'updated': updated, 'clase_id': clase.id}, 200)
 
 
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia/fechas')
 @login_required
 def curso_docente_asistencia_fechas(curso_id):
-    """Devuelve las fechas de clases (historial) para un curso."""
+    """Devuelve el calendario de clases programadas para un curso con su estado."""
     if session.get('role') != 'docente':
         return redirect(url_for('auth.login'))
 
@@ -396,10 +575,44 @@ def curso_docente_asistencia_fechas(curso_id):
     if not curso:
         return ({'success': False, 'error': 'Curso no encontrado'}, 404)
 
-    from models import Clase
-    clases = Clase.query.filter_by(curso_id=curso.id).order_by(Clase.fecha.desc()).all()
-    lista = [{'id': c.id, 'fecha': c.fecha.isoformat(), 'descripcion': getattr(c, 'tema', '') or ''} for c in clases]
-    return ({'success': True, 'fechas': lista}, 200)
+    dias_definidos = curso.get_dias_semana_list() if hasattr(curso, 'get_dias_semana_list') else []
+    if not dias_definidos or not curso.periodo:
+        return ({'success': False, 'error': 'Este curso no tiene días de clase configurados'}, 400)
+
+    from models import Clase, Asistencia
+    clases = Clase.query.filter_by(curso_id=curso.id).all()
+    clases_por_fecha = {c.fecha: c for c in clases}
+    hoy = date.today()
+
+    calendario = []
+    current = curso.periodo.fecha_inicio
+    while current <= curso.periodo.fecha_fin:
+        if current.weekday() in dias_definidos:
+            clase = clases_por_fecha.get(current)
+            asistencias_count = 0
+            if clase:
+                asistencias_count = Asistencia.query.filter_by(clase_id=clase.id).count()
+
+            if current > hoy:
+                estado = 'pendiente'
+            elif clase and asistencias_count > 0:
+                estado = 'tomada'
+            else:
+                estado = 'sin_tomar'
+
+            calendario.append({
+                'fecha': current.isoformat(),
+                'dia': current.day,
+                'mes': current.month,
+                'anio': current.year,
+                'estado': estado,
+                'clase_id': clase.id if clase else None,
+                'descripcion': getattr(clase, 'tema', '') or '',
+            })
+        current = current + timedelta(days=1)
+
+    calendario.sort(key=lambda item: item['fecha'])
+    return ({'success': True, 'calendario': calendario, 'dias_programados': dias_definidos}, 200)
 
 
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia/reset', methods=['POST'])
@@ -503,7 +716,22 @@ def estudiante():
         return redirect(url_for('auth.login'))
     
     usuario = Usuario.query.get(session.get('usuario_id'))
-    return render_template('estudiante/dashboard.html', usuario=usuario)
+    alertas_query = (
+        AlertaRiesgoAcademico.query.join(Curso)
+        .filter(
+            AlertaRiesgoAcademico.estudiante_id == usuario.id,
+            Curso.institucion_id == usuario.institucion_id
+        )
+    )
+    alertas_activas_count = alertas_query.filter(AlertaRiesgoAcademico.estado == 'activa').count()
+    alertas_totales_count = alertas_query.count()
+
+    return render_template(
+        'estudiante/dashboard.html',
+        usuario=usuario,
+        alertas_activas_count=alertas_activas_count,
+        alertas_totales_count=alertas_totales_count,
+    )
 
 
 @dashboard_bp.route('/estudiante/dashboard')
@@ -523,6 +751,34 @@ def cursos_estudiante():
 
     cursos = _obtener_cursos_estudiante(usuario)
     return render_template('estudiante/cursos.html', usuario=usuario, cursos=cursos)
+
+
+@dashboard_bp.route('/estudiante/alertas')
+@login_required
+def alertas_estudiante():
+    """Listar alertas académicas del estudiante."""
+    usuario = _obtener_usuario_estudiante()
+    if not usuario:
+        return redirect(url_for('auth.login'))
+
+    alertas = (
+        AlertaRiesgoAcademico.query.join(Curso)
+        .filter(
+            AlertaRiesgoAcademico.estudiante_id == usuario.id,
+            Curso.institucion_id == usuario.institucion_id
+        )
+        .order_by(AlertaRiesgoAcademico.fecha_alerta.desc())
+        .all()
+    )
+
+    alertas_activas = [alerta for alerta in alertas if alerta.estado == 'activa']
+    return render_template(
+        'estudiante/alertas.html',
+        usuario=usuario,
+        alertas=alertas,
+        alertas_activas=alertas_activas,
+        total_alertas=len(alertas),
+    )
 
 
 @dashboard_bp.route('/estudiante/cursos/<int:curso_id>')
@@ -590,6 +846,8 @@ def curso_estudiante_asistencia(curso_id):
     if not curso:
         return redirect(url_for('dashboard.cursos_estudiante'))
 
+    resumen = curso.resumen_asistencia_estudiante(usuario.id)
+
     asistencias_db = (
         Asistencia.query.filter_by(estudiante_id=usuario.id, curso_id=curso.id)
         .order_by(Asistencia.fecha_registro.desc())
@@ -597,18 +855,15 @@ def curso_estudiante_asistencia(curso_id):
     )
 
     asistencias = []
-    conteo = SimpleNamespace(presente=0, ausente=0, justificada=0)
+    conteo = SimpleNamespace(
+        presente=resumen['presentes'],
+        ausente=resumen['ausentes'],
+        justificada=resumen['justificadas']
+    )
     for asistencia in asistencias_db:
         clase = asistencia.clase
         tema = clase.tema if clase else None
         fecha = clase.fecha if clase else asistencia.fecha_registro
-
-        if asistencia.presente:
-            conteo.presente += 1
-        elif asistencia.justificacion == 'acuerdo' or asistencia.justificacion:
-            conteo.justificada += 1
-        else:
-            conteo.ausente += 1
 
         asistencias.append({
             'fecha': fecha,
@@ -623,4 +878,5 @@ def curso_estudiante_asistencia(curso_id):
         curso=curso,
         asistencias=asistencias,
         asistencias_count=conteo,
+        resumen_asistencia=resumen,
     )

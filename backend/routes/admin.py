@@ -29,7 +29,7 @@ def admin_required(f):
         if not usuario or usuario.role not in ['admin_global', 'admin_local']:
             if request.is_json:
                 return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
-            return redirect(url_for('dashboard.index'))
+            return redirect(url_for('auth.login'))
         
         return f(*args, **kwargs)
     return decorated_function
@@ -62,8 +62,14 @@ def dashboard():
             estado='pendiente',
             institucion_id=usuario.institucion_id
         ).count()
-        cursos_count = Curso.query.filter_by(activo=True).count()
-        usuarios_count = Usuario.query.filter_by(institucion_id=usuario.institucion_id).count()
+        cursos_count = Curso.query.filter_by(
+            institucion_id=usuario.institucion_id,
+            activo=True
+        ).count()
+        usuarios_count = Usuario.query.filter_by(
+            institucion_id=usuario.institucion_id,
+            role='docente'
+        ).count()
 
         stats = {
             'docentes_pendientes': docentes_pendientes,
@@ -525,6 +531,7 @@ def cursos():
     """Listar cursos con paginación"""
     page = request.args.get('page', 1, type=int)
     per_page = 10
+    estado = (request.args.get('estado') or 'todas').strip().lower()
     
     usuario = Usuario.query.get(session['usuario_id'])
     
@@ -533,6 +540,13 @@ def cursos():
         query = Curso.query.filter_by(institucion_id=usuario.institucion_id)
     else:
         query = Curso.query
+
+    if estado == 'activas':
+        query = query.filter(Curso.activo.is_(True))
+    elif estado == 'inactivas':
+        query = query.filter(Curso.activo.is_(False))
+
+    query = query.order_by(Curso.activo.desc(), Curso.nombre.asc())
     
     total = query.count()
     cursos_list = query.paginate(page=page, per_page=per_page, error_out=False).items
@@ -547,6 +561,10 @@ def cursos():
     if usuario.role == 'admin_local':
         docentes_query = docentes_query.filter_by(institucion_id=usuario.institucion_id)
     docentes = docentes_query.all()
+
+    instituciones = []
+    if usuario.role == 'admin_global':
+        instituciones = Institucion.query.filter_by(activo=True).order_by(Institucion.nombre.asc()).all()
     
     template_name = 'admin/cursos.html'
     if usuario.role == 'admin_local':
@@ -557,8 +575,10 @@ def cursos():
                           page=page,
                           total_pages=total_pages,
                           total=total,
+                          estado=estado,
                           periodos=periodos,
                           docentes=docentes,
+                          instituciones=instituciones,
                           usuario=usuario)
 
 # ============================================================================
@@ -614,8 +634,11 @@ def crear_curso():
         fecha_inicio = data.get('fecha_inicio', '').strip()
         fecha_fin = data.get('fecha_fin', '').strip()
         docente_principal_id = data.get('docente_principal_id')
+        institucion_id = data.get('institucion_id')
         creditos = data.get('creditos', 3)
         descripcion = data.get('descripcion', '').strip()
+        dias_semana = data.get('dias_semana', '').strip()
+        sesiones_por_semana = data.get('sesiones_por_semana', 0)
         
         if not all([nombre, codigo, periodo_nombre, fecha_inicio, fecha_fin]):
             return jsonify({'success': False, 'error': 'Campos requeridos vacíos'}), 400
@@ -629,7 +652,19 @@ def crear_curso():
         if fin < inicio:
             return jsonify({'success': False, 'error': 'La fecha fin debe ser mayor a la fecha inicio'}), 400
 
-        institucion_id = usuario.institucion_id
+        if usuario.role == 'admin_global':
+            if not institucion_id:
+                return jsonify({'success': False, 'error': 'Debes seleccionar una institución'}), 400
+            try:
+                institucion_id = int(institucion_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Institución inválida'}), 400
+
+            institucion = Institucion.query.get(institucion_id)
+            if not institucion or not institucion.activo:
+                return jsonify({'success': False, 'error': 'Institución no disponible'}), 404
+        else:
+            institucion_id = usuario.institucion_id
 
         periodo = Periodo.query.filter_by(
             institucion_id=institucion_id,
@@ -677,6 +712,8 @@ def crear_curso():
             codigo=codigo,
             creditos=creditos,
             descripcion=descripcion,
+            dias_semana=dias_semana or None,
+            sesiones_por_semana=sessions_per_week if (sessions_per_week := (int(sesiones_por_semana) if isinstance(sesiones_por_semana, int) or (isinstance(sesiones_por_semana, str) and sesiones_por_semana.isdigit()) else 0)) is not None else 0,
             docente_principal_id=docente_principal.id if docente_principal else None,
             activo=True
         )
@@ -858,6 +895,19 @@ def actualizar_curso(curso_id):
         usuario = Usuario.query.get(session['usuario_id'])
         if usuario.role == 'admin_local' and usuario.institucion_id != curso.institucion_id:
             return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        institucion_id = curso.institucion_id
+        institucion_id_nueva = data.get('institucion_id')
+        if usuario.role == 'admin_global' and institucion_id_nueva is not None:
+            try:
+                institucion_id_nueva = int(institucion_id_nueva)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Institución inválida'}), 400
+
+            institucion = Institucion.query.get(institucion_id_nueva)
+            if not institucion or not institucion.activo:
+                return jsonify({'success': False, 'error': 'Institución no disponible'}), 404
+            institucion_id = institucion.id
         
         periodo_nombre = data.get('periodo_nombre', '').strip()
         fecha_inicio = data.get('fecha_inicio', '').strip()
@@ -868,6 +918,18 @@ def actualizar_curso(curso_id):
         curso.codigo = data.get('codigo', curso.codigo).strip()
         curso.creditos = data.get('creditos', curso.creditos)
         curso.descripcion = data.get('descripcion', curso.descripcion).strip()
+        # Actualizar dias de clase y sesiones por semana si vienen
+        dias_semana = data.get('dias_semana')
+        sesiones_por_semana = data.get('sesiones_por_semana')
+        if dias_semana is not None:
+            curso.dias_semana = dias_semana or None
+        if sesiones_por_semana is not None:
+            try:
+                curso.sesiones_por_semana = int(sesiones_por_semana)
+            except (TypeError, ValueError):
+                curso.sesiones_por_semana = 0
+
+        curso.institucion_id = institucion_id
         docente_principal_id = data.get('docente_principal_id', curso.docente_principal_id)
         if docente_principal_id:
             try:
@@ -882,7 +944,7 @@ def actualizar_curso(curso_id):
             if docente_principal.estado != 'activo':
                 return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
 
-            if usuario.role == 'admin_local' and docente_principal.institucion_id != usuario.institucion_id:
+            if docente_principal.institucion_id != institucion_id:
                 return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
 
             curso.docente_principal_id = docente_principal.id
@@ -900,7 +962,7 @@ def actualizar_curso(curso_id):
                 return jsonify({'success': False, 'error': 'La fecha fin debe ser mayor a la fecha inicio'}), 400
 
             periodo = Periodo.query.filter_by(
-                institucion_id=curso.institucion_id,
+                institucion_id=institucion_id,
                 nombre=periodo_nombre
             ).first()
 
