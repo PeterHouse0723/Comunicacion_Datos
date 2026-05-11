@@ -333,28 +333,58 @@
             const archivoInput = document.getElementById('archivo');
             const archivo = archivoInput.files[0];
 
+            console.log('Iniciando carga de estudiantes...', { cursoId, archivo: archivo?.name });
+
             if (!cursoId || !archivo) {
                 showToast('Selecciona la materia y el archivo', false);
+                console.error('Validación fallida: cursoId o archivo faltante');
                 return;
             }
+
+            // Validar tamaño del archivo (máximo 5MB)
+            if (archivo.size > 5 * 1024 * 1024) {
+                showToast('El archivo es demasiado grande (máximo 5MB)', false);
+                return;
+            }
+
+            console.log(`Enviando archivo: ${archivo.name} (${archivo.size} bytes)`);
 
             const formData = new FormData();
             formData.append('archivo', archivo);
 
-            fetch(`{{ url_for('admin.cargar_estudiantes', curso_id=0) }}`.replace('0', cursoId), {
+            const url = `{{ url_for('admin.cargar_estudiantes', curso_id=0) }}`.replace('0', cursoId);
+            console.log('URL de destino:', url);
+
+            fetch(url, {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.json())
-            .then(data => {
-                showToast(data.mensaje || data.error || 'No se pudo cargar', data.success);
+            .then(res => {
+                console.log('Respuesta recibida - Status:', res.status);
+                return res.json().then(data => ({
+                    status: res.status,
+                    data: data
+                }));
+            })
+            .then(({ status, data }) => {
+                console.log('Datos JSON parseados:', data);
+                
+                const mensaje = data.mensaje || data.error || 'No se pudo procesar la solicitud';
+                showToast(mensaje, data.success);
+                
                 if (data.success) {
                     cerrarModal('cargaModal');
                     archivoInput.value = '';
+                    console.log('Carga exitosa, recargando página en 1.2s...');
                     setTimeout(() => location.reload(), 1200);
+                } else {
+                    console.error('Error en la carga:', data.error);
                 }
             })
-            .catch(() => showToast('Error en la solicitud', false));
+            .catch(error => {
+                console.error('Error de red o parseo:', error);
+                showToast('Error en la solicitud: ' + error.message, false);
+            });
         });
 
         document.getElementById('docenteForm').addEventListener('submit', function(e) {

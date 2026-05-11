@@ -27,10 +27,24 @@ class ProductionConfig(Config):
     """Configuración para producción"""
     DEBUG = False
     # En Render, DATABASE_URL viene automáticamente cuando agregues PostgreSQL
-    SQLALCHEMY_DATABASE_URI = os.getenv(
+    db_url = os.getenv(
         'DATABASE_URL',
         'postgresql://user:password@localhost:5432/academico'
     )
+    SQLALCHEMY_DATABASE_URI = db_url
+    
+    # Configuración para PostgreSQL con SSL en Render
+    if 'postgresql' in db_url:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'connect_args': {
+                'sslmode': 'require',
+            },
+            'pool_pre_ping': True,      # Verificar conexión antes de usar
+            'pool_recycle': 3600,       # Reciclar conexiones cada hora
+            'pool_size': 10,
+            'max_overflow': 20,
+        }
+    
     # Cookies seguras en HTTPS
     SESSION_COOKIE_SECURE = True
 

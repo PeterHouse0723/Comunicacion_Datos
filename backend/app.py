@@ -36,16 +36,37 @@ def create_app(config_name=None):
     with app.app_context():
         db.create_all()
 
-        # Asegurar columnas añadidas por cambios de modelo (SQLite ALTER TABLE ADD COLUMN)
+        # Asegurar columnas añadidas por cambios de modelo
+        # Detectar si es SQLite o PostgreSQL
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        is_postgresql = 'postgresql' in db_url
+        
         try:
-            existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
-            if 'dias_semana' not in existing:
-                db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
-                print('[OK] Columna añadida: cursos.dias_semana')
-            if 'sesiones_por_semana' not in existing:
-                db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
-                print('[OK] Columna añadida: cursos.sesiones_por_semana')
-            db.session.commit()
+            if is_postgresql:
+                # Para PostgreSQL, usar information_schema
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                existing_columns = {col['name'] for col in inspector.get_columns('cursos')}
+                
+                if 'dias_semana' not in existing_columns:
+                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
+                    db.session.commit()
+                    print('[OK] Columna añadida: cursos.dias_semana')
+                
+                if 'sesiones_por_semana' not in existing_columns:
+                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
+                    db.session.commit()
+                    print('[OK] Columna añadida: cursos.sesiones_por_semana')
+            else:
+                # Para SQLite, usar PRAGMA
+                existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
+                if 'dias_semana' not in existing:
+                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
+                    print('[OK] Columna añadida: cursos.dias_semana')
+                if 'sesiones_por_semana' not in existing:
+                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
+                    print('[OK] Columna añadida: cursos.sesiones_por_semana')
+                db.session.commit()
         except Exception as e:
             db.session.rollback()
             print(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
