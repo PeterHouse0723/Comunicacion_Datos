@@ -786,170 +786,177 @@ def asignar_docente_principal(curso_id):
 @admin_bp.route('/cursos/<int:curso_id>/cargar-estudiantes', methods=['POST'])
 @admin_required
 def cargar_estudiantes(curso_id):
-    """Cargar estudiantes desde CSV en una materia (admin_local)"""
+    """Cargar estudiantes desde CSV en una materia (admin_local) - OPTIMIZADO CON BULK"""
     print(f"[DEBUG] Iniciando carga de estudiantes para curso_id: {curso_id}")
     
     try:
-        # Validar sesión
+        # Validar sesión y permisos (rápido)
         if 'usuario_id' not in session:
-            print("[ERROR] No hay sesión activa")
-            return jsonify({'success': False, 'error': 'Sesión expirada, inicia sesión de nuevo'}), 401
+            return jsonify({'success': False, 'error': 'Sesión expirada'}), 401
         
         usuario = Usuario.query.get(session['usuario_id'])
-        if not usuario:
-            print(f"[ERROR] Usuario no encontrado: {session['usuario_id']}")
-            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 401
-        
-        print(f"[DEBUG] Usuario: {usuario.email}, Rol: {usuario.role}")
-        
-        if usuario.role != 'admin_local':
-            print(f"[ERROR] Rol insuficiente: {usuario.role}")
-            return jsonify({'success': False, 'error': 'Debes ser admin local para cargar estudiantes'}), 403
+        if not usuario or usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
 
-        # Validar curso
         curso = Curso.query.get(curso_id)
-        if not curso:
-            print(f"[ERROR] Curso no encontrado: {curso_id}")
+        if not curso or curso.institucion_id != usuario.institucion_id:
             return jsonify({'success': False, 'error': 'Materia no encontrada'}), 404
-        
-        if curso.institucion_id != usuario.institucion_id:
-            print(f"[ERROR] Institución no coincide. Curso: {curso.institucion_id}, Usuario: {usuario.institucion_id}")
-            return jsonify({'success': False, 'error': 'No tienes permisos en esta materia'}), 403
 
         # Validar archivo
-        print("[DEBUG] Validando archivo...")
         archivo = request.files.get('archivo')
-        if not archivo:
-            print("[ERROR] No se encontró archivo en la solicitud")
-            return jsonify({'success': False, 'error': 'No se encontró archivo en la solicitud'}), 400
-        
-        if not archivo.filename:
-            print("[ERROR] El archivo no tiene nombre")
-            return jsonify({'success': False, 'error': 'El archivo no tiene nombre'}), 400
-        
-        if not archivo.filename.lower().endswith('.csv'):
-            print(f"[ERROR] Archivo no es CSV: {archivo.filename}")
-            return jsonify({'success': False, 'error': 'El archivo debe ser CSV'}), 400
+        if not archivo or not archivo.filename or not archivo.filename.lower().endswith('.csv'):
+            return jsonify({'success': False, 'error': 'Archivo CSV requerido'}), 400
 
         print(f"[DEBUG] Procesando archivo: {archivo.filename}")
         
-        # Procesar CSV
-        try:
-            content = io.TextIOWrapper(archivo.stream, encoding='utf-8-sig')
-            reader = csv.DictReader(content)
-            
-            if not reader.fieldnames:
-                print("[ERROR] CSV vacío o sin columnas")
-                return jsonify({'success': False, 'error': 'El CSV está vacío o no tiene columnas'}), 400
-            
-            fieldnames_lower = [n.strip().lower() for n in reader.fieldnames]
-            print(f"[DEBUG] Columnas detectadas: {fieldnames_lower}")
-            
-            requeridos = {'email', 'nombre', 'apellido'}
-            if not requeridos.issubset(set(fieldnames_lower)):
-                print(f"[ERROR] Faltan columnas requeridas. Se encontraron: {fieldnames_lower}")
-                return jsonify({
-                    'success': False, 
-                    'error': f'El CSV debe tener las columnas: email, nombre, apellido. Se encontraron: {", ".join(reader.fieldnames)}'
-                }), 400
-
-            creados = 0
-            inscritos = 0
-            omitidos = 0
-            errores = 0
-            vistos = set()
-            errores_detalle = []
-
-            for num_fila, row in enumerate(reader, start=2):  # start=2 porque fila 1 es header
-                try:
-                    email = (row.get('email') or '').strip().lower()
-                    nombre = (row.get('nombre') or '').strip()
-                    apellido = (row.get('apellido') or '').strip()
-
-                    if not email or not nombre or not apellido:
-                        errores += 1
-                        errores_detalle.append(f"Fila {num_fila}: Faltan datos")
-                        continue
-
-                    if email in vistos:
-                        omitidos += 1
-                        continue
-                    vistos.add(email)
-
-                    es_valido, msg_error = validar_email(email)
-                    if not es_valido:
-                        errores += 1
-                        errores_detalle.append(f"Fila {num_fila}: Email inválido ({email})")
-                        continue
-
-                    estudiante = Usuario.query.filter_by(email=email).first()
-                    if estudiante:
-                        if estudiante.role != 'estudiante' or estudiante.institucion_id != usuario.institucion_id:
-                            errores += 1
-                            errores_detalle.append(f"Fila {num_fila}: Usuario existe pero no es estudiante o es de otra institución")
-                            continue
-                    else:
-                        estudiante = Usuario(
-                            institucion_id=usuario.institucion_id,
-                            email=email,
-                            password=encriptar_contraseña('Estudiante123!'),
-                            nombre=nombre,
-                            apellido=apellido,
-                            role='estudiante',
-                            estado='activo'
-                        )
-                        db.session.add(estudiante)
-                        db.session.flush()
-                        creados += 1
-
-                    existe = EstudianteCurso.query.filter_by(
-                        estudiante_id=estudiante.id,
-                        curso_id=curso.id
-                    ).first()
-                    if existe:
-                        omitidos += 1
-                        continue
-
-                    db.session.add(EstudianteCurso(
-                        estudiante_id=estudiante.id,
-                        curso_id=curso.id
-                    ))
-                    inscritos += 1
-                
-                except Exception as e_fila:
-                    errores += 1
-                    errores_detalle.append(f"Fila {num_fila}: {str(e_fila)}")
-                    print(f"[ERROR] Fila {num_fila}: {e_fila}")
-
-            db.session.commit()
-            
-            print(f"[SUCCESS] Carga completada. Creados: {creados}, Inscritos: {inscritos}, Omitidos: {omitidos}, Errores: {errores}")
-            
-            mensaje = f'✅ Carga finalizada.\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}\n↷ Omitidos: {omitidos}'
-            if errores > 0:
-                mensaje += f'\n✗ Errores: {errores}'
-            
+        # Leer y validar CSV completo
+        content = io.TextIOWrapper(archivo.stream, encoding='utf-8-sig')
+        reader = csv.DictReader(content)
+        
+        if not reader.fieldnames:
+            return jsonify({'success': False, 'error': 'CSV vacío'}), 400
+        
+        fieldnames_lower = [n.strip().lower() for n in reader.fieldnames]
+        requeridos = {'email', 'nombre', 'apellido'}
+        if not requeridos.issubset(set(fieldnames_lower)):
             return jsonify({
-                'success': True,
-                'mensaje': mensaje,
-                'creados': creados,
-                'inscritos': inscritos,
-                'omitidos': omitidos,
-                'errores': errores
-            }), 200
+                'success': False, 
+                'error': f'Columnas requeridas: email, nombre, apellido'
+            }), 400
 
-        except csv.Error as e_csv:
-            print(f"[ERROR] Error al procesar CSV: {e_csv}")
-            return jsonify({'success': False, 'error': f'Error al procesar CSV: {str(e_csv)}'}), 400
+        # ===== PASO 1: Leer y validar todos los datos del CSV =====
+        registros_validos = []
+        vistos = set()
+        errores = 0
+
+        for num_fila, row in enumerate(reader, start=2):
+            email = (row.get('email') or '').strip().lower()
+            nombre = (row.get('nombre') or '').strip()
+            apellido = (row.get('apellido') or '').strip()
+
+            if not email or not nombre or not apellido:
+                errores += 1
+                continue
+
+            if email in vistos:
+                continue
+            vistos.add(email)
+
+            es_valido, _ = validar_email(email)
+            if not es_valido:
+                errores += 1
+                continue
+
+            registros_validos.append({
+                'email': email,
+                'nombre': nombre,
+                'apellido': apellido
+            })
+
+        print(f"[DEBUG] Registros válidos: {len(registros_validos)}, Errores: {errores}")
+        
+        if not registros_validos:
+            return jsonify({
+                'success': False,
+                'error': 'No hay registros válidos en el CSV'
+            }), 400
+
+        # ===== PASO 2: Obtener todos los emails existentes de UNA SOLA VEZ =====
+        emails_csv = [r['email'] for r in registros_validos]
+        usuarios_existentes = db.session.query(Usuario.email).filter(
+            Usuario.email.in_(emails_csv),
+            Usuario.institucion_id == usuario.institucion_id
+        ).all()
+        emails_existentes = {u.email for u in usuarios_existentes}
+        print(f"[DEBUG] Usuarios existentes en BD: {len(emails_existentes)}")
+
+        # ===== PASO 3: Separar a crear vs ya existen =====
+        registros_crear = [r for r in registros_validos if r['email'] not in emails_existentes]
+        print(f"[DEBUG] Nuevos estudiantes a crear: {len(registros_crear)}")
+
+        # ===== PASO 4: Crear nuevos usuarios en BULK =====
+        nuevos_usuarios = []
+        if registros_crear:
+            for reg in registros_crear:
+                nuevo_usuario = Usuario(
+                    institucion_id=usuario.institucion_id,
+                    email=reg['email'],
+                    password=encriptar_contraseña('Estudiante123!'),
+                    nombre=reg['nombre'],
+                    apellido=reg['apellido'],
+                    role='estudiante',
+                    estado='activo'
+                )
+                nuevos_usuarios.append(nuevo_usuario)
+            
+            db.session.bulk_save_objects(nuevos_usuarios)
+            db.session.flush()  # Flush para obtener IDs sin commit
+            print(f"[DEBUG] {len(nuevos_usuarios)} nuevos usuarios creados")
+
+        # ===== PASO 5: Obtener IDs de TODOS los estudiantes (nuevos + existentes) =====
+        todos_emails = [r['email'] for r in registros_validos]
+        estudiantes_bd = db.session.query(Usuario.id, Usuario.email).filter(
+            Usuario.email.in_(todos_emails),
+            Usuario.institucion_id == usuario.institucion_id
+        ).all()
+        
+        email_a_id = {e.email: e.id for e in estudiantes_bd}
+        print(f"[DEBUG] Total de estudiantes en BD: {len(email_a_id)}")
+
+        # ===== PASO 6: Obtener inscripciones EXISTENTES de UNA SOLA VEZ =====
+        student_ids = list(email_a_id.values())
+        inscripciones_existentes = db.session.query(EstudianteCurso.estudiante_id).filter(
+            EstudianteCurso.estudiante_id.in_(student_ids),
+            EstudianteCurso.curso_id == curso_id
+        ).all()
+        ids_inscritos = {e.estudiante_id for e in inscripciones_existentes}
+        print(f"[DEBUG] Ya inscritos en este curso: {len(ids_inscritos)}")
+
+        # ===== PASO 7: Crear inscripciones en BULK =====
+        nuevas_inscripciones = []
+        for email in todos_emails:
+            student_id = email_a_id[email]
+            if student_id not in ids_inscritos:
+                nuevas_inscripciones.append(
+                    EstudianteCurso(
+                        estudiante_id=student_id,
+                        curso_id=curso_id
+                    )
+                )
+        
+        if nuevas_inscripciones:
+            db.session.bulk_save_objects(nuevas_inscripciones)
+            print(f"[DEBUG] {len(nuevas_inscripciones)} nuevas inscripciones creadas")
+
+        # ===== PASO 8: Commit final =====
+        db.session.commit()
+
+        creados = len(registros_crear)
+        inscritos = len(nuevas_inscripciones)
+        omitidos = len(registros_validos) - inscritos - len([r for r in registros_validos if r['email'] in ids_inscritos])
+
+        print(f"[SUCCESS] Carga completada. Creados: {creados}, Inscritos: {inscritos}")
+        
+        mensaje = f'✅ Carga exitosa!\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}'
+        if errores > 0:
+            mensaje += f'\n⚠ Errores/Omitidos: {errores}'
+
+        return jsonify({
+            'success': True,
+            'mensaje': mensaje,
+            'creados': creados,
+            'inscritos': inscritos,
+            'errores': errores
+        }), 200
 
     except Exception as e:
         db.session.rollback()
-        print(f"[ERROR] Error general al cargar estudiantes: {type(e).__name__}: {str(e)}")
+        print(f"[ERROR] Error al cargar estudiantes: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({
             'success': False, 
-            'error': f'Error interno: {type(e).__name__}: {str(e)}'
+            'error': f'Error: {str(e)}'
         }), 500
 
 # ============================================================================
