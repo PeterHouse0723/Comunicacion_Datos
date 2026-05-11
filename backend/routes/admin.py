@@ -891,11 +891,11 @@ def cargar_estudiantes(curso_id):
             
             db.session.bulk_save_objects(nuevos_usuarios)
             db.session.flush()  # Flush para obtener IDs sin commit
-            print(f"[DEBUG] {len(nuevos_usuarios)} nuevos usuarios creados")
+            """Cargar estudiantes desde CSV - ULTRA OPTIMIZADO SQL DIRECTO"""
 
         # ===== PASO 5: Obtener IDs de TODOS los estudiantes (nuevos + existentes) =====
         todos_emails = [r['email'] for r in registros_validos]
-        estudiantes_bd = db.session.query(Usuario.id, Usuario.email).filter(
+                # Validaciones rápidas
             Usuario.email.in_(todos_emails),
             Usuario.institucion_id == usuario.institucion_id
         ).all()
@@ -912,8 +912,6 @@ def cargar_estudiantes(curso_id):
         ids_inscritos = {e.estudiante_id for e in inscripciones_existentes}
         print(f"[DEBUG] Ya inscritos en este curso: {len(ids_inscritos)}")
 
-        # ===== PASO 7: Crear inscripciones en BULK =====
-        nuevas_inscripciones = []
         for email in todos_emails:
             student_id = email_a_id[email]
             if student_id not in ids_inscritos:
@@ -924,12 +922,8 @@ def cargar_estudiantes(curso_id):
                     )
                 )
         
-        if nuevas_inscripciones:
-            db.session.bulk_save_objects(nuevas_inscripciones)
-            print(f"[DEBUG] {len(nuevas_inscripciones)} nuevas inscripciones creadas")
-
+                    return jsonify({'success': False, 'error': 'Columnas: email, nombre, apellido'}), 400
         # ===== PASO 8: Commit final =====
-        db.session.commit()
 
         creados = len(registros_crear)
         inscritos = len(nuevas_inscripciones)
@@ -939,110 +933,105 @@ def cargar_estudiantes(curso_id):
         
         mensaje = f'✅ Carga exitosa!\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}'
         if errores > 0:
-            mensaje += f'\n⚠ Errores/Omitidos: {errores}'
+                    if not email or not nombre or not apellido or email in vistos:
 
         return jsonify({
-            'success': True,
-            'mensaje': mensaje,
-            'creados': creados,
             'inscritos': inscritos,
-            'errores': errores
         }), 200
 
     except Exception as e:
         db.session.rollback()
         print(f"[ERROR] Error al cargar estudiantes: {type(e).__name__}: {str(e)}")
-        import traceback
+                    registros.append({
         traceback.print_exc()
         return jsonify({
             'success': False, 
             'error': f'Error: {str(e)}'
         }), 500
-
-# ============================================================================
-# RUTA: ACTUALIZAR CURSO (AJAX)
+                if not registros:
 # ============================================================================
 
 @admin_bp.route('/cursos/<int:curso_id>/actualizar', methods=['POST'])
 @admin_required
 def actualizar_curso(curso_id):
-    """Actualizar curso existente"""
-    try:
-        data = request.get_json()
-        
-        curso = Curso.query.get(curso_id)
-        if not curso:
-            return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
-        
-        usuario = Usuario.query.get(session['usuario_id'])
-        if usuario.role == 'admin_local' and usuario.institucion_id != curso.institucion_id:
-            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+                print(f"[DEBUG] Total registros válidos: {len(registros)}")
 
-        institucion_id = curso.institucion_id
-        institucion_id_nueva = data.get('institucion_id')
-        if usuario.role == 'admin_global' and institucion_id_nueva is not None:
-            try:
-                institucion_id_nueva = int(institucion_id_nueva)
-            except (TypeError, ValueError):
-                return jsonify({'success': False, 'error': 'Institución inválida'}), 400
+                # SQL DIRECTO: MUCHO MÁS RÁPIDO
+                from sqlalchemy import text
+                from datetime import datetime
 
-            institucion = Institucion.query.get(institucion_id_nueva)
-            if not institucion or not institucion.activo:
-                return jsonify({'success': False, 'error': 'Institución no disponible'}), 404
-            institucion_id = institucion.id
-        
-        periodo_nombre = data.get('periodo_nombre', '').strip()
-        fecha_inicio = data.get('fecha_inicio', '').strip()
-        fecha_fin = data.get('fecha_fin', '').strip()
+                emails_csv = [r['email'] for r in registros]
+            
+                # Paso 1: Obtener emails que YA existen
+                result = db.session.execute(text("""
+                    SELECT email FROM usuarios 
+                    WHERE email = ANY(:emails) 
+                    AND institucion_id = :inst_id
+                """), {'emails': emails_csv, 'inst_id': usuario.institucion_id})
+            
+                emails_existentes = {row[0] for row in result}
+                registros_nuevos = [r for r in registros if r['email'] not in emails_existentes]
+            
+                print(f"[DEBUG] Nuevos a crear: {len(registros_nuevos)}, Ya existían: {len(emails_existentes)}")
 
-        # Actualizar campos
-        curso.nombre = data.get('nombre', curso.nombre).strip()
-        curso.codigo = data.get('codigo', curso.codigo).strip()
-        curso.creditos = data.get('creditos', curso.creditos)
-        curso.descripcion = data.get('descripcion', curso.descripcion).strip()
-        # Actualizar dias de clase y sesiones por semana si vienen
-        dias_semana = data.get('dias_semana')
-        sesiones_por_semana = data.get('sesiones_por_semana')
-        if dias_semana is not None:
-            curso.dias_semana = dias_semana or None
-        if sesiones_por_semana is not None:
-            try:
-                curso.sesiones_por_semana = int(sesiones_por_semana)
-            except (TypeError, ValueError):
-                curso.sesiones_por_semana = 0
+                creados = 0
+                if registros_nuevos:
+                    # Paso 2: INSERT usuarios nuevos con SQL
+                    pwd_encriptada = encriptar_contraseña('Estudiante123!')
+                    now = datetime.utcnow()
+                
+                    for reg in registros_nuevos:
+                        db.session.execute(text("""
+                            INSERT INTO usuarios 
+                            (institucion_id, email, password, nombre, apellido, role, estado, fecha_creacion, fecha_actualizacion)
+                            VALUES (:inst_id, :email, :pwd, :nombre, :apellido, 'estudiante', 'activo', :now, :now)
+                        """), {
+                            'inst_id': usuario.institucion_id,
+                            'email': reg['email'],
+                            'pwd': pwd_encriptada,
+                            'nombre': reg['nombre'],
+                            'apellido': reg['apellido'],
+                            'now': now
+                        })
+                
+                    db.session.commit()
+                    creados = len(registros_nuevos)
+                    print(f"[DEBUG] {creados} usuarios creados")
 
-        curso.institucion_id = institucion_id
-        docente_principal_id = data.get('docente_principal_id', curso.docente_principal_id)
-        if docente_principal_id:
-            try:
-                docente_principal_id = int(docente_principal_id)
-            except (TypeError, ValueError):
-                return jsonify({'success': False, 'error': 'Docente inválido'}), 400
+                # Paso 3: Obtener IDs de estudiantes (nuevos + existentes)
+                result = db.session.execute(text("""
+                    SELECT id FROM usuarios 
+                    WHERE email = ANY(:emails) 
+                    AND institucion_id = :inst_id
+                """), {'emails': emails_csv, 'inst_id': usuario.institucion_id})
+            
+                estudiante_ids = [row[0] for row in result]
+                print(f"[DEBUG] IDs de estudiantes obtenidos: {len(estudiante_ids)}")
 
-            docente_principal = Usuario.query.get(docente_principal_id)
-            if not docente_principal or docente_principal.role != 'docente':
-                return jsonify({'success': False, 'error': 'Docente no encontrado'}), 404
+                # Paso 4: Obtener inscritos ya en este curso
+                result = db.session.execute(text("""
+                    SELECT estudiante_id FROM estudiante_curso
+                    WHERE curso_id = :curso_id
+                """), {'curso_id': curso_id})
+            
+                ids_ya_inscritos = {row[0] for row in result}
+                print(f"[DEBUG] Ya inscritos en curso: {len(ids_ya_inscritos)}")
 
-            if docente_principal.estado != 'activo':
-                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
-
-            if docente_principal.institucion_id != institucion_id:
-                return jsonify({'success': False, 'error': 'Docente no disponible'}), 400
-
-            curso.docente_principal_id = docente_principal.id
-        else:
-            curso.docente_principal_id = None
-
-        if periodo_nombre and fecha_inicio and fecha_fin:
-            try:
-                inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-                fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'success': False, 'error': 'Fechas inválidas'}), 400
-
-            if fin < inicio:
+                # Paso 5: INSERT inscripciones nuevas con SQL
+                inscritos = 0
+                for sid in estudiante_ids:
+                    if sid not in ids_ya_inscritos:
+                        db.session.execute(text("""
+                            INSERT INTO estudiante_curso (estudiante_id, curso_id)
+                            VALUES (:sid, :cid)
+                        """), {'sid': sid, 'cid': curso_id})
+                        inscritos += 1
                 return jsonify({'success': False, 'error': 'La fecha fin debe ser mayor a la fecha inicio'}), 400
+                if inscritos > 0:
+                    db.session.commit()
+                    print(f"[DEBUG] {inscritos} nuevas inscripciones")
 
+                mensaje = f'✅ Éxito!\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}'
             periodo = Periodo.query.filter_by(
                 institucion_id=institucion_id,
                 nombre=periodo_nombre
@@ -1056,7 +1045,7 @@ def actualizar_curso(curso_id):
                     fecha_fin=fin,
                     activo=True
                 )
-                db.session.add(periodo)
+                print(f"[ERROR] {type(e).__name__}: {str(e)}")
             else:
                 periodo.fecha_inicio = inicio
                 periodo.fecha_fin = fin
