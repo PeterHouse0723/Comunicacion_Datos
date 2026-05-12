@@ -3,8 +3,8 @@ import os
 from app import create_app, db
 from models import Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria, Clase, Nota, Asistencia, AlertaRiesgoAcademico, LoginAuditoria, Notificacion
 
-# Crear la aplicación con configuración de producción
-app = create_app(config_name='production')
+# Crear la aplicación - usa FLASK_ENV de variables de entorno
+app = create_app()
 
 # Contexto de aplicación para operaciones CLI
 @app.shell_context_processor
