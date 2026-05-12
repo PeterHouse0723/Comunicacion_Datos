@@ -1,2 +1,1 @@
-web: gunicorn wsgi:app --timeout 120 --workers 2 --worker-class sync --max-requests 1000 --max-requests-jitter 50 --graceful-timeout 30
-release: python manage.py migrate
+web: gunicorn wsgi:app --timeout 120 --workers 1 --worker-class sync --max-requests 1000 --max-requests-jitter 60 --graceful-timeout 30
