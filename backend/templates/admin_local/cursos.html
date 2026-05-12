@@ -347,45 +347,117 @@
                 return;
             }
 
-            console.log(`Enviando archivo: ${archivo.name} (${archivo.size} bytes)`);
+        document.getElementById('cargaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const cursoId = document.getElementById('cursoSeleccion').value;
+            const archivoInput = document.getElementById('archivo');
+            const archivo = archivoInput.files[0];
 
-            const formData = new FormData();
-            formData.append('archivo', archivo);
+            if (!cursoId || !archivo) {
+                showToast('Selecciona la materia y el archivo', false);
+                return;
+            }
 
-            const url = `{{ url_for('admin.cargar_estudiantes', curso_id=0) }}`.replace('0', cursoId);
-            console.log('URL de destino:', url);
+            // Validar tamaño del archivo (máximo 10MB)
+            if (archivo.size > 10 * 1024 * 1024) {
+                showToast('El archivo es demasiado grande (máximo 10MB)', false);
+                return;
+            }
 
-            fetch(url, {
+            // Leer el archivo CSV
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const csv = event.target.result;
+                    const lineas = csv.trim().split('\n');
+                    
+                    if (lineas.length < 2) {
+                        showToast('CSV vacío o sin datos', false);
+                        return;
+                    }
+
+                    // Parsear CSV
+                    const headers = lineas[0].split(',').map(h => h.trim().toLowerCase());
+                    const emailIdx = headers.indexOf('email');
+                    const nombreIdx = headers.indexOf('nombre');
+                    const apellidoIdx = headers.indexOf('apellido');
+
+                    if (emailIdx === -1 || nombreIdx === -1 || apellidoIdx === -1) {
+                        showToast('CSV debe tener columnas: email, nombre, apellido', false);
+                        return;
+                    }
+
+                    // Extraer registros
+                    const registros = [];
+                    for (let i = 1; i < lineas.length; i++) {
+                        const partes = lineas[i].split(',').map(p => p.trim());
+                        if (partes.length > Math.max(emailIdx, nombreIdx, apellidoIdx)) {
+                            registros.push({
+                                email: partes[emailIdx],
+                                nombre: partes[nombreIdx],
+                                apellido: partes[apellidoIdx]
+                            });
+                        }
+                    }
+
+                    if (registros.length === 0) {
+                        showToast('No hay registros válidos en el CSV', false);
+                        return;
+                    }
+
+                    // Dividir en lotes de 10
+                    const lotes = [];
+                    for (let i = 0; i < registros.length; i += 10) {
+                        lotes.push(registros.slice(i, i + 10));
+                    }
+
+                    showToast(`📂 Procesando ${registros.length} estudiantes en ${lotes.length} lote(s)...`, true);
+                    procesarLotesCursos(cursoId, lotes, 0, archivoInput);
+
+                } catch (error) {
+                    showToast('Error al procesar CSV: ' + error.message, false);
+                }
+            };
+            reader.readAsText(archivo);
+        });
+
+        function procesarLotesCursos(cursoId, lotes, indice, archivoInput) {
+            if (indice >= lotes.length) {
+                // Todos los lotes procesados
+                showToast('✅ Carga completada exitosamente', true);
+                cerrarModal('cargaModal');
+                archivoInput.value = '';
+                setTimeout(() => location.reload(), 1500);
+                return;
+            }
+
+            const lote = lotes[indice];
+            const porcentaje = Math.round((indice / lotes.length) * 100);
+
+            // Mostrar progreso
+            showToast(`📊 Lote ${indice + 1}/${lotes.length} (${porcentaje}%)...`, true);
+
+            // Enviar lote al backend
+            fetch(`{{ url_for('admin.cargar_estudiantes_lote', curso_id=0) }}`.replace('0', cursoId), {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ registros: lote })
             })
-            .then(res => {
-                console.log('Respuesta recibida - Status:', res.status);
-                return res.json().then(data => ({
-                    status: res.status,
-                    data: data
-                }));
-            })
-            .then(({ status, data }) => {
-                console.log('Datos JSON parseados:', data);
-                
-                const mensaje = data.mensaje || data.error || 'No se pudo procesar la solicitud';
-                showToast(mensaje, data.success);
-                
+            .then(res => res.json())
+            .then(data => {
                 if (data.success) {
-                    cerrarModal('cargaModal');
-                    archivoInput.value = '';
-                    console.log('Carga exitosa, recargando página en 1.2s...');
-                    setTimeout(() => location.reload(), 1200);
+                    // Procesar siguiente lote
+                    setTimeout(() => procesarLotesCursos(cursoId, lotes, indice + 1, archivoInput), 500);
                 } else {
-                    console.error('Error en la carga:', data.error);
+                    showToast('❌ Error en lote ' + (indice + 1) + ': ' + (data.error || 'Desconocido'), false);
                 }
             })
-            .catch(error => {
-                console.error('Error de red o parseo:', error);
-                showToast('Error en la solicitud: ' + error.message, false);
+            .catch(err => {
+                showToast('❌ Error de red en lote ' + (indice + 1), false);
             });
-        });
+        }
 
         document.getElementById('docenteForm').addEventListener('submit', function(e) {
             e.preventDefault();

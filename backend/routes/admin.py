@@ -908,6 +908,118 @@ def cargar_estudiantes(curso_id):
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
 # ============================================================================
+# RUTA: CARGAR ESTUDIANTES POR LOTE (PROCESA UN LOTE A LA VEZ)
+# ============================================================================
+
+@admin_bp.route('/cursos/<int:curso_id>/cargar-estudiantes-lote', methods=['POST'])
+@admin_required
+def cargar_estudiantes_lote(curso_id):
+    """Cargar un lote de estudiantes (para evitar timeouts)."""
+    try:
+        if 'usuario_id' not in session:
+            return jsonify({'success': False, 'error': 'Sesión expirada'}), 401
+
+        usuario = Usuario.query.get(session['usuario_id'])
+        if not usuario or usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+
+        curso = Curso.query.get(curso_id)
+        if not curso or curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'Materia no encontrada'}), 404
+
+        data = request.get_json(silent=True) or {}
+        registros = data.get('registros', [])
+
+        if not registros:
+            return jsonify({'success': False, 'error': 'No hay registros para procesar'}), 400
+
+        creados = 0
+        inscritos = 0
+
+        # Procesar cada registro del lote
+        emails_lote = [r['email'].lower().strip() for r in registros if r.get('email')]
+        
+        # Obtener usuarios existentes
+        usuarios_existentes = Usuario.query.filter(
+            Usuario.email.in_(emails_lote),
+            Usuario.institucion_id == usuario.institucion_id
+        ).all()
+        emails_existentes = {u.email for u in usuarios_existentes}
+
+        # Crear nuevos usuarios
+        registros_crear = [r for r in registros if r.get('email', '').lower().strip() not in emails_existentes]
+        
+        if registros_crear:
+            nuevos_usuarios = []
+            for registro in registros_crear:
+                email = registro.get('email', '').lower().strip()
+                nombre = registro.get('nombre', '').strip()
+                apellido = registro.get('apellido', '').strip()
+                
+                if not email or not nombre or not apellido:
+                    continue
+                
+                es_valido, _ = validar_email(email)
+                if not es_valido:
+                    continue
+                
+                nuevos_usuarios.append(
+                    Usuario(
+                        institucion_id=usuario.institucion_id,
+                        email=email,
+                        password=encriptar_contraseña('Estudiante123!'),
+                        nombre=nombre,
+                        apellido=apellido,
+                        role='estudiante',
+                        estado='activo'
+                    )
+                )
+            
+            if nuevos_usuarios:
+                db.session.bulk_save_objects(nuevos_usuarios)
+                db.session.flush()
+                creados = len(nuevos_usuarios)
+
+        # Obtener IDs de estudiantes
+        estudiantes = Usuario.query.with_entities(Usuario.id, Usuario.email).filter(
+            Usuario.email.in_(emails_lote),
+            Usuario.institucion_id == usuario.institucion_id
+        ).all()
+        email_a_id = {email: estudiante_id for estudiante_id, email in estudiantes}
+
+        # Obtener inscripciones existentes
+        inscripciones_existentes = EstudianteCurso.query.with_entities(EstudianteCurso.estudiante_id).filter(
+            EstudianteCurso.curso_id == curso.id,
+            EstudianteCurso.estudiante_id.in_(list(email_a_id.values()))
+        ).all()
+        ids_inscritos = {estudiante_id for (estudiante_id,) in inscripciones_existentes}
+
+        # Crear nuevas inscripciones
+        nuevas_inscripciones = []
+        for email in emails_lote:
+            estudiante_id = email_a_id.get(email)
+            if estudiante_id and estudiante_id not in ids_inscritos:
+                nuevas_inscripciones.append(EstudianteCurso(estudiante_id=estudiante_id, curso_id=curso.id))
+
+        if nuevas_inscripciones:
+            db.session.bulk_save_objects(nuevas_inscripciones)
+            inscritos = len(nuevas_inscripciones)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'creados': creados,
+            'inscritos': inscritos
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Error en lote: {str(e)}'}), 500
+
+# ============================================================================
 # RUTA: ACTUALIZAR CURSO (AJAX)
 # ============================================================================
 
