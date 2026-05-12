@@ -32,94 +32,88 @@ def create_app(config_name=None):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
     
-    # Crear tablas si no existen
-    with app.app_context():
-        db.create_all()
+    # Inicialización pesada solo fuera de producción para evitar timeouts en Render.
+    if config_name != 'production':
+        with app.app_context():
+            db.create_all()
 
-        # Asegurar columnas añadidas por cambios de modelo
-        # Detectar si es SQLite o PostgreSQL
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        is_postgresql = 'postgresql' in db_url
-        
-        try:
-            if is_postgresql:
-                # Para PostgreSQL, usar information_schema
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                existing_columns = {col['name'] for col in inspector.get_columns('cursos')}
-                
-                if 'dias_semana' not in existing_columns:
-                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
-                    db.session.commit()
-                    print('[OK] Columna añadida: cursos.dias_semana')
-                
-                if 'sesiones_por_semana' not in existing_columns:
-                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
-                    db.session.commit()
-                    print('[OK] Columna añadida: cursos.sesiones_por_semana')
-            else:
-                # Para SQLite, usar PRAGMA
-                existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
-                if 'dias_semana' not in existing:
-                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
-                    print('[OK] Columna añadida: cursos.dias_semana')
-                if 'sesiones_por_semana' not in existing:
-                    db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
-                    print('[OK] Columna añadida: cursos.sesiones_por_semana')
-                db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            print(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
+            db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            is_postgresql = 'postgresql' in db_url
 
-        # Crear institución y admins iniciales si no existen
-        try:
-            institucion = Institucion.query.filter_by(nombre='Universidad Default').first()
-            if not institucion:
-                institucion = Institucion(
-                    nombre='Universidad Default',
-                    ciudad='Bogotá',
-                    pais='Colombia',
-                    activo=True
-                )
-                db.session.add(institucion)
-                db.session.commit()
-                print("[OK] Institucion creada: Universidad Default")
-            else:
-                print("[INFO] Institucion ya existe")
-            
-            # Crear admin global si no existe
-            if not Usuario.query.filter_by(email='admin@universitario.edu').first():
-                admin_global = Usuario(
-                    institucion_id=institucion.id,
-                    email='admin@universitario.edu',
-                    password=encriptar_contraseña('Admin123!'),
-                    nombre='Administrador',
-                    apellido='Global',
-                    role='admin_global',
-                    estado='activo'
-                )
-                db.session.add(admin_global)
-                db.session.commit()
-                print("[OK] Admin global creado")
-            
-            # Crear admin local si no existe
-            if not Usuario.query.filter_by(email='admin.local@universitario.edu').first():
-                admin_local = Usuario(
-                    institucion_id=institucion.id,
-                    email='admin.local@universitario.edu',
-                    password=encriptar_contraseña('Admin123!'),
-                    nombre='Administrador',
-                    apellido='Local',
-                    role='admin_local',
-                    estado='activo'
-                )
-                db.session.add(admin_local)
-                db.session.commit()
-                print("[OK] Admin local creado")
-                
-        except Exception as e:
-            db.session.rollback()
-            print(f"[WARN] Error al crear datos iniciales: {e}")
+            try:
+                if is_postgresql:
+                    from sqlalchemy import inspect
+                    inspector = inspect(db.engine)
+                    existing_columns = {col['name'] for col in inspector.get_columns('cursos')}
+
+                    if 'dias_semana' not in existing_columns:
+                        db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
+                        db.session.commit()
+                        print('[OK] Columna añadida: cursos.dias_semana')
+
+                    if 'sesiones_por_semana' not in existing_columns:
+                        db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
+                        db.session.commit()
+                        print('[OK] Columna añadida: cursos.sesiones_por_semana')
+                else:
+                    existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
+                    if 'dias_semana' not in existing:
+                        db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
+                        print('[OK] Columna añadida: cursos.dias_semana')
+                    if 'sesiones_por_semana' not in existing:
+                        db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
+                        print('[OK] Columna añadida: cursos.sesiones_por_semana')
+                    db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
+
+            try:
+                institucion = Institucion.query.filter_by(nombre='Universidad Default').first()
+                if not institucion:
+                    institucion = Institucion(
+                        nombre='Universidad Default',
+                        ciudad='Bogotá',
+                        pais='Colombia',
+                        activo=True
+                    )
+                    db.session.add(institucion)
+                    db.session.commit()
+                    print("[OK] Institucion creada: Universidad Default")
+                else:
+                    print("[INFO] Institucion ya existe")
+
+                if not Usuario.query.filter_by(email='admin@universitario.edu').first():
+                    admin_global = Usuario(
+                        institucion_id=institucion.id,
+                        email='admin@universitario.edu',
+                        password=encriptar_contraseña('Admin123!'),
+                        nombre='Administrador',
+                        apellido='Global',
+                        role='admin_global',
+                        estado='activo'
+                    )
+                    db.session.add(admin_global)
+                    db.session.commit()
+                    print("[OK] Admin global creado")
+
+                if not Usuario.query.filter_by(email='admin.local@universitario.edu').first():
+                    admin_local = Usuario(
+                        institucion_id=institucion.id,
+                        email='admin.local@universitario.edu',
+                        password=encriptar_contraseña('Admin123!'),
+                        nombre='Administrador',
+                        apellido='Local',
+                        role='admin_local',
+                        estado='activo'
+                    )
+                    db.session.add(admin_local)
+                    db.session.commit()
+                    print("[OK] Admin local creado")
+
+            except Exception as e:
+                db.session.rollback()
+                print(f"[WARN] Error al crear datos iniciales: {e}")
     
     @app.route('/')
     def index():
