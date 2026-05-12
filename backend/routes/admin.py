@@ -786,14 +786,11 @@ def asignar_docente_principal(curso_id):
 @admin_bp.route('/cursos/<int:curso_id>/cargar-estudiantes', methods=['POST'])
 @admin_required
 def cargar_estudiantes(curso_id):
-    """Cargar estudiantes desde CSV en una materia (admin_local) - OPTIMIZADO CON BULK"""
-    print(f"[DEBUG] Iniciando carga de estudiantes para curso_id: {curso_id}")
-    
+    """Cargar estudiantes desde CSV en una materia (admin_local)."""
     try:
-        # Validar sesión y permisos (rápido)
         if 'usuario_id' not in session:
             return jsonify({'success': False, 'error': 'Sesión expirada'}), 401
-        
+
         usuario = Usuario.query.get(session['usuario_id'])
         if not usuario or usuario.role != 'admin_local':
             return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
@@ -802,34 +799,26 @@ def cargar_estudiantes(curso_id):
         if not curso or curso.institucion_id != usuario.institucion_id:
             return jsonify({'success': False, 'error': 'Materia no encontrada'}), 404
 
-        # Validar archivo
         archivo = request.files.get('archivo')
         if not archivo or not archivo.filename or not archivo.filename.lower().endswith('.csv'):
             return jsonify({'success': False, 'error': 'Archivo CSV requerido'}), 400
 
-        print(f"[DEBUG] Procesando archivo: {archivo.filename}")
-        
-        # Leer y validar CSV completo
         content = io.TextIOWrapper(archivo.stream, encoding='utf-8-sig')
         reader = csv.DictReader(content)
-        
+
         if not reader.fieldnames:
             return jsonify({'success': False, 'error': 'CSV vacío'}), 400
-        
-        fieldnames_lower = [n.strip().lower() for n in reader.fieldnames]
+
+        fieldnames_lower = [nombre.strip().lower() for nombre in reader.fieldnames]
         requeridos = {'email', 'nombre', 'apellido'}
         if not requeridos.issubset(set(fieldnames_lower)):
-            return jsonify({
-                'success': False, 
-                'error': f'Columnas requeridas: email, nombre, apellido'
-            }), 400
+            return jsonify({'success': False, 'error': 'Columnas requeridas: email, nombre, apellido'}), 400
 
-        # ===== PASO 1: Leer y validar todos los datos del CSV =====
         registros_validos = []
         vistos = set()
         errores = 0
 
-        for num_fila, row in enumerate(reader, start=2):
+        for row in reader:
             email = (row.get('email') or '').strip().lower()
             nombre = (row.get('nombre') or '').strip()
             apellido = (row.get('apellido') or '').strip()
@@ -847,193 +836,128 @@ def cargar_estudiantes(curso_id):
                 errores += 1
                 continue
 
-            registros_validos.append({
-                'email': email,
-                'nombre': nombre,
-                'apellido': apellido
-            })
+            registros_validos.append({'email': email, 'nombre': nombre, 'apellido': apellido})
 
-        print(f"[DEBUG] Registros válidos: {len(registros_validos)}, Errores: {errores}")
-        
         if not registros_validos:
-            return jsonify({
-                'success': False,
-                'error': 'No hay registros válidos en el CSV'
-            }), 400
+            return jsonify({'success': False, 'error': 'No hay registros válidos en el CSV'}), 400
 
-        # ===== PASO 2: Obtener todos los emails existentes de UNA SOLA VEZ =====
-        emails_csv = [r['email'] for r in registros_validos]
-        usuarios_existentes = db.session.query(Usuario.email).filter(
+        emails_csv = [registro['email'] for registro in registros_validos]
+        usuarios_existentes = Usuario.query.filter(
             Usuario.email.in_(emails_csv),
             Usuario.institucion_id == usuario.institucion_id
         ).all()
-        emails_existentes = {u.email for u in usuarios_existentes}
-        print(f"[DEBUG] Usuarios existentes en BD: {len(emails_existentes)}")
+        emails_existentes = {usuario_existente.email for usuario_existente in usuarios_existentes}
 
-        # ===== PASO 3: Separar a crear vs ya existen =====
-        registros_crear = [r for r in registros_validos if r['email'] not in emails_existentes]
-        print(f"[DEBUG] Nuevos estudiantes a crear: {len(registros_crear)}")
-
-        # ===== PASO 4: Crear nuevos usuarios en BULK =====
-        nuevos_usuarios = []
+        registros_crear = [registro for registro in registros_validos if registro['email'] not in emails_existentes]
+        creados = 0
         if registros_crear:
-            for reg in registros_crear:
-                nuevo_usuario = Usuario(
-                    institucion_id=usuario.institucion_id,
-                    email=reg['email'],
-                    password=encriptar_contraseña('Estudiante123!'),
-                    nombre=reg['nombre'],
-                    apellido=reg['apellido'],
-                    role='estudiante',
-                    estado='activo'
-                )
-                nuevos_usuarios.append(nuevo_usuario)
-            
-            db.session.bulk_save_objects(nuevos_usuarios)
-            db.session.flush()  # Flush para obtener IDs sin commit
-            """Cargar estudiantes desde CSV - ULTRA OPTIMIZADO SQL DIRECTO"""
-
-        # ===== PASO 5: Obtener IDs de TODOS los estudiantes (nuevos + existentes) =====
-        todos_emails = [r['email'] for r in registros_validos]
-                # Validaciones rápidas
-            Usuario.email.in_(todos_emails),
-            Usuario.institucion_id == usuario.institucion_id
-        ).all()
-        
-        email_a_id = {e.email: e.id for e in estudiantes_bd}
-        print(f"[DEBUG] Total de estudiantes en BD: {len(email_a_id)}")
-
-        # ===== PASO 6: Obtener inscripciones EXISTENTES de UNA SOLA VEZ =====
-        student_ids = list(email_a_id.values())
-        inscripciones_existentes = db.session.query(EstudianteCurso.estudiante_id).filter(
-            EstudianteCurso.estudiante_id.in_(student_ids),
-            EstudianteCurso.curso_id == curso_id
-        ).all()
-        ids_inscritos = {e.estudiante_id for e in inscripciones_existentes}
-        print(f"[DEBUG] Ya inscritos en este curso: {len(ids_inscritos)}")
-
-        for email in todos_emails:
-            student_id = email_a_id[email]
-            if student_id not in ids_inscritos:
-                nuevas_inscripciones.append(
-                    EstudianteCurso(
-                        estudiante_id=student_id,
-                        curso_id=curso_id
+            nuevos_usuarios = []
+            for registro in registros_crear:
+                nuevos_usuarios.append(
+                    Usuario(
+                        institucion_id=usuario.institucion_id,
+                        email=registro['email'],
+                        password=encriptar_contraseña('Estudiante123!'),
+                        nombre=registro['nombre'],
+                        apellido=registro['apellido'],
+                        role='estudiante',
+                        estado='activo'
                     )
                 )
-        
-                    return jsonify({'success': False, 'error': 'Columnas: email, nombre, apellido'}), 400
-        # ===== PASO 8: Commit final =====
+            db.session.bulk_save_objects(nuevos_usuarios)
+            db.session.flush()
+            creados = len(nuevos_usuarios)
 
-        creados = len(registros_crear)
+        estudiantes = Usuario.query.with_entities(Usuario.id, Usuario.email).filter(
+            Usuario.email.in_(emails_csv),
+            Usuario.institucion_id == usuario.institucion_id
+        ).all()
+        email_a_id = {email: estudiante_id for estudiante_id, email in estudiantes}
+
+        inscripciones_existentes = EstudianteCurso.query.with_entities(EstudianteCurso.estudiante_id).filter(
+            EstudianteCurso.curso_id == curso.id,
+            EstudianteCurso.estudiante_id.in_(list(email_a_id.values()))
+        ).all()
+        ids_inscritos = {estudiante_id for (estudiante_id,) in inscripciones_existentes}
+
+        nuevas_inscripciones = []
+        for email in emails_csv:
+            estudiante_id = email_a_id.get(email)
+            if estudiante_id and estudiante_id not in ids_inscritos:
+                nuevas_inscripciones.append(EstudianteCurso(estudiante_id=estudiante_id, curso_id=curso.id))
+
+        if nuevas_inscripciones:
+            db.session.bulk_save_objects(nuevas_inscripciones)
+
+        db.session.commit()
+
         inscritos = len(nuevas_inscripciones)
-        omitidos = len(registros_validos) - inscritos - len([r for r in registros_validos if r['email'] in ids_inscritos])
-
-        print(f"[SUCCESS] Carga completada. Creados: {creados}, Inscritos: {inscritos}")
-        
-        mensaje = f'✅ Carga exitosa!\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}'
-        if errores > 0:
-                    if not email or not nombre or not apellido or email in vistos:
-
+        mensaje = f'Carga finalizada. Creados: {creados}, inscritos: {inscritos}, errores: {errores}'
         return jsonify({
+            'success': True,
+            'mensaje': mensaje,
+            'creados': creados,
             'inscritos': inscritos,
+            'errores': errores
         }), 200
 
     except Exception as e:
         db.session.rollback()
-        print(f"[ERROR] Error al cargar estudiantes: {type(e).__name__}: {str(e)}")
-                    registros.append({
+        import traceback
         traceback.print_exc()
-        return jsonify({
-            'success': False, 
-            'error': f'Error: {str(e)}'
-        }), 500
-                if not registros:
+        return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
+
+# ============================================================================
+# RUTA: ACTUALIZAR CURSO (AJAX)
 # ============================================================================
 
 @admin_bp.route('/cursos/<int:curso_id>/actualizar', methods=['POST'])
 @admin_required
 def actualizar_curso(curso_id):
-                print(f"[DEBUG] Total registros válidos: {len(registros)}")
+    """Actualizar curso existente."""
+    try:
+        data = request.get_json(silent=True) or {}
 
-                # SQL DIRECTO: MUCHO MÁS RÁPIDO
-                from sqlalchemy import text
-                from datetime import datetime
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
 
-                emails_csv = [r['email'] for r in registros]
-            
-                # Paso 1: Obtener emails que YA existen
-                result = db.session.execute(text("""
-                    SELECT email FROM usuarios 
-                    WHERE email = ANY(:emails) 
-                    AND institucion_id = :inst_id
-                """), {'emails': emails_csv, 'inst_id': usuario.institucion_id})
-            
-                emails_existentes = {row[0] for row in result}
-                registros_nuevos = [r for r in registros if r['email'] not in emails_existentes]
-            
-                print(f"[DEBUG] Nuevos a crear: {len(registros_nuevos)}, Ya existían: {len(emails_existentes)}")
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role == 'admin_local' and usuario.institucion_id != curso.institucion_id:
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
 
-                creados = 0
-                if registros_nuevos:
-                    # Paso 2: INSERT usuarios nuevos con SQL
-                    pwd_encriptada = encriptar_contraseña('Estudiante123!')
-                    now = datetime.utcnow()
-                
-                    for reg in registros_nuevos:
-                        db.session.execute(text("""
-                            INSERT INTO usuarios 
-                            (institucion_id, email, password, nombre, apellido, role, estado, fecha_creacion, fecha_actualizacion)
-                            VALUES (:inst_id, :email, :pwd, :nombre, :apellido, 'estudiante', 'activo', :now, :now)
-                        """), {
-                            'inst_id': usuario.institucion_id,
-                            'email': reg['email'],
-                            'pwd': pwd_encriptada,
-                            'nombre': reg['nombre'],
-                            'apellido': reg['apellido'],
-                            'now': now
-                        })
-                
-                    db.session.commit()
-                    creados = len(registros_nuevos)
-                    print(f"[DEBUG] {creados} usuarios creados")
+        if data.get('codigo') is not None:
+            curso.codigo = data.get('codigo', '').strip()
+        if data.get('nombre') is not None:
+            curso.nombre = data.get('nombre', '').strip()
+        if data.get('descripcion') is not None:
+            curso.descripcion = (data.get('descripcion') or '').strip()
+        if data.get('creditos') not in (None, ''):
+            curso.creditos = int(data.get('creditos'))
+        if 'docente_principal_id' in data:
+            docente_principal_id = data.get('docente_principal_id')
+            curso.docente_principal_id = int(docente_principal_id) if docente_principal_id not in (None, '', 'null') else None
+        if 'dias_semana' in data:
+            curso.dias_semana = (data.get('dias_semana') or '').strip() or None
+        if 'sesiones_por_semana' in data:
+            sesiones = data.get('sesiones_por_semana')
+            curso.sesiones_por_semana = int(sesiones) if sesiones not in (None, '', 'null') else 0
 
-                # Paso 3: Obtener IDs de estudiantes (nuevos + existentes)
-                result = db.session.execute(text("""
-                    SELECT id FROM usuarios 
-                    WHERE email = ANY(:emails) 
-                    AND institucion_id = :inst_id
-                """), {'emails': emails_csv, 'inst_id': usuario.institucion_id})
-            
-                estudiante_ids = [row[0] for row in result]
-                print(f"[DEBUG] IDs de estudiantes obtenidos: {len(estudiante_ids)}")
+        periodo_nombre = (data.get('periodo_nombre') or '').strip()
+        fecha_inicio = (data.get('fecha_inicio') or '').strip()
+        fecha_fin = (data.get('fecha_fin') or '').strip()
 
-                # Paso 4: Obtener inscritos ya en este curso
-                result = db.session.execute(text("""
-                    SELECT estudiante_id FROM estudiante_curso
-                    WHERE curso_id = :curso_id
-                """), {'curso_id': curso_id})
-            
-                ids_ya_inscritos = {row[0] for row in result}
-                print(f"[DEBUG] Ya inscritos en curso: {len(ids_ya_inscritos)}")
+        if periodo_nombre:
+            if not fecha_inicio or not fecha_fin:
+                return jsonify({'success': False, 'error': 'Debes indicar fecha inicio y fecha fin'}), 400
 
-                # Paso 5: INSERT inscripciones nuevas con SQL
-                inscritos = 0
-                for sid in estudiante_ids:
-                    if sid not in ids_ya_inscritos:
-                        db.session.execute(text("""
-                            INSERT INTO estudiante_curso (estudiante_id, curso_id)
-                            VALUES (:sid, :cid)
-                        """), {'sid': sid, 'cid': curso_id})
-                        inscritos += 1
+            inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            if fin <= inicio:
                 return jsonify({'success': False, 'error': 'La fecha fin debe ser mayor a la fecha inicio'}), 400
-                if inscritos > 0:
-                    db.session.commit()
-                    print(f"[DEBUG] {inscritos} nuevas inscripciones")
 
-                mensaje = f'✅ Éxito!\n✓ Creados: {creados}\n✓ Inscritos: {inscritos}'
             periodo = Periodo.query.filter_by(
-                institucion_id=institucion_id,
+                institucion_id=curso.institucion_id,
                 nombre=periodo_nombre
             ).first()
 
@@ -1045,25 +969,26 @@ def actualizar_curso(curso_id):
                     fecha_fin=fin,
                     activo=True
                 )
-                print(f"[ERROR] {type(e).__name__}: {str(e)}")
+                db.session.add(periodo)
+                db.session.flush()
             else:
                 periodo.fecha_inicio = inicio
                 periodo.fecha_fin = fin
                 periodo.activo = True
 
-            db.session.flush()
-
             curso.periodo_id = periodo.id
-        
+
         db.session.commit()
-        
-        print(f"[OK] Curso actualizado: {curso.codigo}")
-        
+
         return jsonify({
             'success': True,
             'mensaje': 'Curso actualizado exitosamente'
         }), 200
-        
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
     except Exception as e:
         db.session.rollback()
         print(f"[ERROR] Error al actualizar curso: {e}")
