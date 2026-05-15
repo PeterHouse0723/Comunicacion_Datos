@@ -1,8 +1,8 @@
 """Rutas administrativas - Admin Global"""
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from extensions import db
-from models import Usuario, Institucion, Curso, Periodo, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria
-from utils import validar_email, validar_contraseña, encriptar_contraseña, verificar_contraseña
+from models import Usuario, Institucion, Curso, Periodo, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante
+from utils import validar_email, validar_contraseña, encriptar_contraseña, verificar_contraseña, crear_usuario_con_contraseña_temporal, generar_contraseña_temporal
 from functools import wraps
 from datetime import datetime
 import csv
@@ -1100,6 +1100,191 @@ def actualizar_curso(curso_id):
     except ValueError as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
+
+# ============================================================================
+# RUTA: Solicitudes de Nuevos Estudiantes (ADMIN LOCAL)
+# ============================================================================
+
+@admin_bp.route('/solicitudes-nuevos-estudiantes')
+@admin_required
+def solicitudes_nuevos_estudiantes():
+    """Ver solicitudes de nuevos estudiantes (admin_local)"""
+    usuario = Usuario.query.get(session['usuario_id'])
+    if usuario.role != 'admin_local':
+        return redirect(url_for('admin.dashboard'))
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    estado = request.args.get('estado', 'pendiente')
+    
+    # Solo ver solicitudes de cursos de su institución
+    query = SolicitudNuevoEstudiante.query.join(Curso).filter(
+        Curso.institucion_id == usuario.institucion_id
+    )
+    
+    if estado in ['pendiente', 'aprobado', 'rechazado']:
+        query = query.filter(SolicitudNuevoEstudiante.estado == estado)
+    
+    total = query.count()
+    solicitudes = query.order_by(
+        SolicitudNuevoEstudiante.fecha_solicitud.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False).items
+    
+    total_pages = (total + per_page - 1) // per_page
+    
+    return render_template(
+        'admin_local/solicitudes_nuevos_estudiantes.html',
+        solicitudes=solicitudes,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        estado=estado,
+        usuario=usuario
+    )
+
+
+@admin_bp.route('/solicitudes-nuevos-estudiantes/<int:solicitud_id>/aprobar', methods=['POST'])
+@admin_required
+def aprobar_nuevo_estudiante(solicitud_id):
+    """Aprobar solicitud de nuevo estudiante (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+        
+        solicitud = SolicitudNuevoEstudiante.query.get(solicitud_id)
+        if not solicitud or solicitud.estado != 'pendiente':
+            return jsonify({'success': False, 'error': 'Solicitud inválida'}), 404
+        
+        # Verificar que la solicitud pertenece a la institución del admin
+        if solicitud.curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+        
+        # Verificar si el estudiante ya existe
+        estudiante = Usuario.query.filter_by(email=solicitud.correo).first()
+        
+        if estudiante:
+            # El estudiante ya existe, solo verificar que no esté inscrito en este curso
+            existe_inscripcion = EstudianteCurso.query.filter_by(
+                estudiante_id=estudiante.id,
+                curso_id=solicitud.curso_id
+            ).first()
+            
+            if existe_inscripcion:
+                # Ya está inscrito en este curso, rechazar solicitud
+                solicitud.estado = 'rechazado'
+                solicitud.motivo_rechazo = 'Estudiante ya está inscrito en este curso'
+                solicitud.admin_local_id = usuario.id
+                solicitud.fecha_resolucion = datetime.utcnow()
+                solicitud.estudiante_id = estudiante.id
+                db.session.commit()
+                return jsonify({
+                    'success': False,
+                    'error': 'Este estudiante ya está inscrito en este curso'
+                }), 400
+            else:
+                # Inscribir estudiante en el nuevo curso
+                inscripcion = EstudianteCurso(
+                    estudiante_id=estudiante.id,
+                    curso_id=solicitud.curso_id
+                )
+                db.session.add(inscripcion)
+                
+                solicitud.estado = 'aprobado'
+                solicitud.admin_local_id = usuario.id
+                solicitud.fecha_resolucion = datetime.utcnow()
+                solicitud.estudiante_id = estudiante.id
+                
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'mensaje': 'Estudiante inscrito en el curso'
+                }), 200
+        
+        # El estudiante NO existe, crear nuevo usuario
+        else:
+            try:
+                pwd_temporal = generar_contraseña_temporal()
+                
+                nuevo_estudiante = Usuario(
+                    institucion_id=usuario.institucion_id,
+                    email=solicitud.correo,
+                    password=encriptar_contraseña(pwd_temporal),
+                    nombre=solicitud.nombre,
+                    apellido=solicitud.apellido,
+                    role='estudiante',
+                    estado='activo',
+                    contraseña_cambiada=False  # Forzar cambio en primer login
+                )
+                
+                db.session.add(nuevo_estudiante)
+                db.session.flush()  # Para obtener el ID
+                
+                # Inscribir estudiante automáticamente en el curso
+                inscripcion = EstudianteCurso(
+                    estudiante_id=nuevo_estudiante.id,
+                    curso_id=solicitud.curso_id
+                )
+                db.session.add(inscripcion)
+                
+                # Actualizar solicitud
+                solicitud.estado = 'aprobado'
+                solicitud.admin_local_id = usuario.id
+                solicitud.fecha_resolucion = datetime.utcnow()
+                solicitud.estudiante_id = nuevo_estudiante.id
+                
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'mensaje': f'Estudiante creado e inscrito. Contraseña temporal: {pwd_temporal}'
+                }), 200
+                
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al aprobar solicitud: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/solicitudes-nuevos-estudiantes/<int:solicitud_id>/rechazar', methods=['POST'])
+@admin_required
+def rechazar_nuevo_estudiante(solicitud_id):
+    """Rechazar solicitud de nuevo estudiante (admin_local)"""
+    try:
+        usuario = Usuario.query.get(session['usuario_id'])
+        if usuario.role != 'admin_local':
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+        
+        data = request.get_json()
+        motivo = data.get('motivo', '').strip()
+        
+        solicitud = SolicitudNuevoEstudiante.query.get(solicitud_id)
+        if not solicitud or solicitud.estado != 'pendiente':
+            return jsonify({'success': False, 'error': 'Solicitud inválida'}), 404
+        
+        # Verificar que la solicitud pertenece a la institución del admin
+        if solicitud.curso.institucion_id != usuario.institucion_id:
+            return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+        
+        solicitud.estado = 'rechazado'
+        solicitud.motivo_rechazo = motivo
+        solicitud.admin_local_id = usuario.id
+        solicitud.fecha_resolucion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'mensaje': 'Solicitud rechazada'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al rechazar solicitud: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
     except Exception as e:
         db.session.rollback()

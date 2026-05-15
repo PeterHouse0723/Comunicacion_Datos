@@ -8,7 +8,7 @@ from sqlalchemy import text
 # Importar modelos después de que db esté disponible
 from models import (
     Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso,
-    SolicitudEstudianteMateria, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
+    SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
     LoginAuditoria, Notificacion
 )
 

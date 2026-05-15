@@ -6,40 +6,384 @@
     <title>Recuperar Contraseña</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; padding: 40px; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #667eea; font-size: 24px; margin-bottom: 8px; }
-        .header p { color: #666; font-size: 14px; }
-        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c2c7; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .info-box { background: #f7f9fb; border: 1px solid #e6e9f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: #666; line-height: 1.6; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px; }
-        input[type="email"] { width: 100%; padding: 10px 12px; border: 1px solid #d6dbe8; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
-        input[type="email"]:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
-        .btn { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: #667eea; color: #fff; }
-        .btn-primary:hover { background: #5a6fd6; }
-        .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #e0e0e0; }
-        .btn-secondary:hover { background: #e8e8e8; }
-        .btn-group { display: flex; gap: 8px; }
-        .btn-group .btn { flex: 1; }
-        .link { text-align: center; margin-top: 16px; }
-        .link a { color: #667eea; text-decoration: none; font-size: 14px; }
-        .link a:hover { text-decoration: underline; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('../imagenes/Fondo_login.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ============================================
+           CONTENEDOR — Más translúcido pero legible
+           El inset shadow ilumina el centro donde
+           está el texto, y el blur difumina el fondo
+           ============================================ */
+        .recover-container {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            padding: 40px 38px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow:
+                0 15px 40px rgba(0, 0, 0, 0.2),
+                0 5px 15px rgba(0, 0, 0, 0.1),
+                inset 0 0 80px rgba(255, 255, 255, 0.25);
+            width: 100%;
+            max-width: 460px;
+            max-height: 92vh;
+            overflow-y: auto;
+            color: #1a1a2e;
+            position: relative;
+        }
+
+        /* ============================================
+           ENCABEZADO
+           ============================================ */
+        .form-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .header-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 24px;
+            color: #833956;
+            box-shadow: 0 4px 15px rgba(131, 57, 86, 0.15);
+        }
+
+        .form-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+            color: #1a1a2e;
+            text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6);
+        }
+
+        .form-header p {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        /* ============================================
+           ALERTAS — fondito más opaco para resaltar
+           ============================================ */
+        .alert {
+            padding: 14px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background: rgba(231, 76, 60, 0.12);
+            color: #a93226;
+            border: 1px solid rgba(231, 76, 60, 0.25);
+            backdrop-filter: blur(8px);
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.12);
+            color: #1a7a3a;
+            border: 1px solid rgba(39, 174, 96, 0.25);
+            backdrop-filter: blur(8px);
+        }
+
+        /* ============================================
+           CAJA DE ÉXITO (con clave)
+           ============================================ */
+        .success-box {
+            background: rgba(255, 255, 255, 0.35);
+            border: 1px solid rgba(131, 57, 86, 0.15);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 8px;
+            backdrop-filter: blur(6px);
+        }
+
+        .success-box p {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 14px;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .clave-box {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1.5px dashed rgba(131, 57, 86, 0.35);
+            border-radius: 8px;
+            padding: 10px 22px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #833956;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            user-select: all;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        /* ============================================
+           CAJA INFORMATIVA
+           ============================================ */
+        .info-box {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 22px;
+            font-size: 13px;
+            color: #333;
+            line-height: 1.7;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            backdrop-filter: blur(4px);
+        }
+
+        .info-box i {
+            color: #833956;
+            font-size: 16px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .info-box span {
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        /* ============================================
+           FORMULARIO
+           ============================================ */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #222;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group label i {
+            font-size: 12px;
+            color: #833956;
+        }
+
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 13px 16px;
+            background: rgba(255, 255, 255, 0.45);
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: #1a1a2e;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input[type="email"]::placeholder {
+            color: #777;
+        }
+
+        .form-group input[type="email"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.6);
+            border-color: #833956;
+            box-shadow: 0 0 0 3px rgba(131, 57, 86, 0.15);
+        }
+
+        /* ============================================
+           ACCIONES
+           ============================================ */
+        .form-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn-recover {
+            width: 100%;
+            max-width: 340px;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #833956, #a04468);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(131, 57, 86, 0.35);
+            text-decoration: none;
+        }
+
+        .btn-recover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.18),
+                transparent
+            );
+            transition: left 0.5s ease;
+        }
+
+        .btn-recover:hover::before {
+            left: 100%;
+        }
+
+        .btn-recover:hover {
+            background: linear-gradient(135deg, #9c4467, #b8506f);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(131, 57, 86, 0.45);
+        }
+
+        .btn-recover:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(131, 57, 86, 0.3);
+        }
+
+        .btn-recover.loading {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-recover.loading::before {
+            display: none;
+        }
+
+        .btn-recover i {
+            font-size: 14px;
+        }
+
+        /* Feedback inline */
+        .submit-feedback {
+            display: none;
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.35);
+            color: #833956;
+            font-size: 13px;
+            text-align: center;
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        .submit-feedback.active {
+            display: block;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .submit-feedback i {
+            margin-right: 6px;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           LINK VOLVER AL LOGIN
+           ============================================ */
+        .login-link {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-link a {
+            color: #833956;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .login-link a i {
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .login-link a:hover {
+            color: #a04468;
+        }
+
+        .login-link a:hover i {
+            transform: translateX(-4px);
+        }
+
+        /* ============================================
+           LOADING OVERLAY
+           ============================================ */
         .loading-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.4);
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(6px);
         }
 
         .loading-overlay.active {
@@ -47,21 +391,23 @@
         }
 
         .loading-card {
-            width: 180px;
-            padding: 22px 18px;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow: 0 18px 50px rgba(0,0,0,0.18);
+            width: 190px;
+            padding: 28px 22px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
             text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.4);
         }
 
         .spinner {
-            width: 46px;
-            height: 46px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            border: 5px solid #dfe5ff;
-            border-top-color: #667eea;
-            margin: 0 auto 12px;
+            border: 4px solid rgba(131, 57, 86, 0.15);
+            border-top-color: #833956;
+            margin: 0 auto 14px;
             animation: spin 0.8s linear infinite;
         }
 
@@ -69,81 +415,175 @@
             to { transform: rotate(360deg); }
         }
 
-        .submit-feedback {
-            display: none;
-            margin-top: 14px;
-            padding: 12px 14px;
-            border-radius: 10px;
-            background: #eef4ff;
-            color: #324c9e;
-            font-size: 13px;
-            text-align: center;
+        .loading-title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 15px;
         }
 
-        .submit-feedback.active {
-            display: block;
+        .loading-sub {
+            font-size: 13px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        /* ============================================
+           SCROLLBAR
+           ============================================ */
+        .recover-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .recover-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .recover-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .recover-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+                align-items: flex-start;
+                padding-top: 20px;
+            }
+
+            .recover-container {
+                padding: 28px 22px;
+                border-radius: 18px;
+                max-height: 100vh;
+            }
+
+            .form-header h1 {
+                font-size: 22px;
+            }
+
+            .header-icon {
+                width: 54px;
+                height: 54px;
+                font-size: 20px;
+            }
+
+            .btn-recover {
+                max-width: 100%;
+            }
+
+            .clave-box {
+                font-size: 16px;
+                padding: 8px 18px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Overlay de carga -->
     <div id="loadingOverlay" class="loading-overlay">
-            <div class="loading-card">
+        <div class="loading-card">
             <div class="spinner"></div>
-            <div style="font-weight:600; color:#333;">Procesando...</div>
-            <div style="font-size:13px; color:#666; margin-top:4px;">Espera un momento</div>
+            <div class="loading-title">Procesando...</div>
+            <div class="loading-sub">Espera un momento</div>
         </div>
     </div>
 
-    <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-key"></i> Recuperar Contraseña</h1>
-            <p>Te enviaremos un link para que puedas resetear tu contraseña</p>
+    <div class="recover-container">
+        <!-- Encabezado -->
+        <div class="form-header">
+            <div class="header-icon">
+                <i class="fas fa-key"></i>
+            </div>
+            <h1>Recuperar Contraseña</h1>
+            <p>Te enviaremos instrucciones para restablecer tu acceso</p>
         </div>
 
         {% if error %}
-            <div class="alert alert-error">{{ error }}</div>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-triangle"></i> {{ error }}
+        </div>
         {% endif %}
 
         {% if success %}
-            <div class="alert alert-success">{{ success }}</div>
-            <div style="text-align: center; margin-top: 20px;">
-                <p style="color: #666; margin-bottom: 16px;">Ahora vuelve al login y usa la clave inicial de estudiante: <strong>Peter0723@</strong></p>
-                <a href="{{ url_for('auth.login', clave_inicial='1') }}" class="btn btn-primary" style="display:inline-block; text-decoration:none; text-align:center;">Ir al login</a>
-            </div>
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> {{ success }}
+        </div>
+        <div class="success-box">
+            <p>Ahora vuelve al login y usa la clave inicial de estudiante:</p>
+            <div class="clave-box">Peter0723@</div>
+            <a href="{{ url_for('auth.login', clave_inicial='1') }}" class="btn-recover">
+                <i class="fas fa-arrow-right"></i> Ir al login
+            </a>
+        </div>
         {% else %}
-            <div class="info-box">
-                <i class="fas fa-info-circle"></i> Escribe tu correo registrado. Esto solo te devolverá al login para usar la clave inicial de estudiante.
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <span>Escribe tu correo registrado. Esto te permitirá volver al login para usar la clave inicial de estudiante.</span>
+        </div>
+
+        <form method="POST" id="recoverForm">
+            <div class="form-group">
+                <label for="email">
+                    <i class="fas fa-envelope"></i> Correo Electrónico
+                </label>
+                <input type="email" id="email" name="email" required placeholder="tu@email.com">
             </div>
 
-            <form method="POST">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required placeholder="tu@email.com">
-                </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-recover" id="btnSubmit">
+                    <span class="btn-text">
+                        <i class="fas fa-paper-plane"></i> ENVIAR LINK
+                    </span>
+                    <span class="btn-loader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Enviando...
+                    </span>
+                </button>
+            </div>
 
-                <button type="submit" class="btn btn-primary">Enviar Link de Reset</button>
-                <div id="submitFeedback" class="submit-feedback">Verificando tu correo registrado...</div>
-            </form>
+            <div id="submitFeedback" class="submit-feedback">
+                <i class="fas fa-clock"></i> Verificando tu correo registrado...
+            </div>
+        </form>
         {% endif %}
 
-        <div class="link">
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-arrow-left"></i> Volver al login</a>
+        <!-- Volver al login -->
+        <div class="login-link">
+            <a href="{{ url_for('auth.login') }}">
+                <i class="fas fa-arrow-left"></i> Volver al inicio de sesión
+            </a>
         </div>
     </div>
 
     <script>
         const loading = {{ 'true' if loading else 'false' }};
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const form = document.querySelector('form');
+        const form = document.getElementById('recoverForm');
         const submitFeedback = document.getElementById('submitFeedback');
+        const btnSubmit = document.getElementById('btnSubmit');
 
         if (form) {
-            form.addEventListener('submit', function() {
+            form.addEventListener('submit', function () {
+                if (btnSubmit) {
+                    const btnText = btnSubmit.querySelector('.btn-text');
+                    const btnLoader = btnSubmit.querySelector('.btn-loader');
+                    if (btnText) btnText.style.display = 'none';
+                    if (btnLoader) btnLoader.style.display = 'inline';
+                    btnSubmit.disabled = true;
+                    btnSubmit.classList.add('loading');
+                }
+
                 if (submitFeedback) {
                     submitFeedback.classList.add('active');
                 }
+
                 if (loadingOverlay) {
-                    setTimeout(() => loadingOverlay.classList.add('active'), 250);
+                    setTimeout(() => loadingOverlay.classList.add('active'), 300);
                 }
             });
         }
@@ -151,7 +591,6 @@
         if (loading) {
             if (loadingOverlay) loadingOverlay.classList.add('active');
             setTimeout(() => {
-                // Redirigir al login SIN mostrar la etiqueta de clave inicial
                 window.location.href = "{{ url_for('auth.login') }}";
             }, 2200);
         }

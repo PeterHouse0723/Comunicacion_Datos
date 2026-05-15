@@ -8,85 +8,197 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-local-page">
+    <!-- Orbes decorativos de fondo -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
     <div class="admin-local-shell">
         <aside class="admin-local-sidebar">
             <div class="sidebar-brand">
-                <span>Panel Local</span>
-                <h1>Gestor Académico</h1>
+                <div class="brand-icon">
+                    <i class="fas fa-cube"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-label">Panel Local</span>
+                    <h1>Gestor Académico</h1>
+                </div>
             </div>
             <nav class="sidebar-menu">
-                <a class="active" href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
-                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
-                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
-                <a href="{{ url_for('admin.usuarios_admin_local') }}"><i class="fas fa-users"></i> Usuarios</a>
-                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
-                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+                <a class="active" href="{{ url_for('admin.dashboard') }}">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="{{ url_for('admin.cursos') }}">
+                    <i class="fas fa-book"></i> Materias
+                </a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}">
+                    <i class="fas fa-user-check"></i> Docentes Pendientes
+                </a>
+                <a href="{{ url_for('admin.usuarios_admin_local') }}">
+                    <i class="fas fa-users"></i> Usuarios
+                </a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}">
+                    <i class="fas fa-user-plus"></i> Solicitudes Estudiantes
+                </a>
+                <a href="{{ url_for('admin.solicitudes_nuevos_estudiantes') }}">
+                    <i class="fas fa-user-plus"></i> Solicitudes Nuevos
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('auth.logout') }}" class="menu-logout">
+                    <i class="fas fa-power-off"></i> Cerrar Sesión
+                </a>
             </nav>
             <div class="sidebar-footer">
-                {{ usuario.email }}
+                <div class="footer-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="footer-info">
+                    <span class="footer-email">{{ usuario.email }}</span>
+                    <span class="footer-role">{{ usuario.role }}</span>
+                </div>
             </div>
         </aside>
 
         <main class="admin-local-main">
-            <div class="topbar">
-                <div>
+            <!-- Topbar minimalista -->
+            <header class="topbar">
+                <div class="topbar-left">
                     <h2>Hola, {{ usuario.nombre }}</h2>
-                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                    <p class="topbar-sub">{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
                 </div>
-                <div class="user-chip">
-                    <i class="fas fa-user-shield"></i>
-                    <span>{{ usuario.role }}</span>
+                <div class="topbar-right">
+                    <div class="topbar-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Buscar...">
+                    </div>
+                    <div class="topbar-divider-v"></div>
+                    <div class="topbar-chip">
+                        <span class="chip-dot"></span>
+                        <span>En línea</span>
+                    </div>
                 </div>
-            </div>
+            </header>
 
+            <!-- Contenido principal -->
             <section class="admin-local-content">
-                <div class="section-header">
-                    <div>
-                        <h3>Resumen rápido</h3>
-                        <p>Controla materias, docentes y carga de estudiantes en un solo lugar.</p>
-                    </div>
-                    <div class="action-bar">
-                        <a class="btn btn-primary" href="{{ url_for('admin.cursos') }}">
-                            <i class="fas fa-plus"></i> Crear materia
-                        </a>
-                        <a class="btn btn-outline" href="{{ url_for('admin.docentes_pendientes') }}">
-                            <i class="fas fa-user-clock"></i> Revisar docentes
-                        </a>
-                        <a class="btn btn-outline" href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}">
-                            <i class="fas fa-user-plus"></i> Solicitudes estudiantes
-                        </a>
+                <!-- Etiqueta de sección -->
+                <div class="section-label">
+                    <span class="label-line"></span>
+                    <span class="label-text">Visión general</span>
+                    <span class="label-line"></span>
+                </div>
+
+                <!-- Tarjetas de estadísticas -->
+                <div class="stats-grid">
+                    <a class="glass-card" href="{{ url_for('admin.docentes_pendientes') }}">
+                        <div class="glass-card-top">
+                            <div class="glass-icon icon-purple">
+                                <i class="fas fa-user-clock"></i>
+                            </div>
+                            <span class="glass-trend trend-waiting">
+                                <i class="fas fa-clock"></i> Pendiente
+                            </span>
+                        </div>
+                        <div class="glass-card-body">
+                            <h3 class="glass-number">{{ stats.docentes_pendientes }}</h3>
+                            <p class="glass-label">Docentes pendientes</p>
+                        </div>
+                        <div class="glass-card-bar bar-purple"></div>
+                    </a>
+
+                    <a class="glass-card" href="{{ url_for('admin.cursos', estado='activas') }}">
+                        <div class="glass-card-top">
+                            <div class="glass-icon icon-blue">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <span class="glass-trend trend-active">
+                                <i class="fas fa-check-circle"></i> Activas
+                            </span>
+                        </div>
+                        <div class="glass-card-body">
+                            <h3 class="glass-number">{{ stats.cursos }}</h3>
+                            <p class="glass-label">Materias activas</p>
+                        </div>
+                        <div class="glass-card-bar bar-blue"></div>
+                    </a>
+
+                    <a class="glass-card" href="{{ url_for('admin.usuarios_admin_local') }}">
+                        <div class="glass-card-top">
+                            <div class="glass-icon icon-teal">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span class="glass-trend trend-stable">
+                                <i class="fas fa-arrow-right"></i> Registrados
+                            </span>
+                        </div>
+                        <div class="glass-card-body">
+                            <h3 class="glass-number">{{ stats.usuarios }}</h3>
+                            <p class="glass-label">Usuarios registrados</p>
+                        </div>
+                        <div class="glass-card-bar bar-teal"></div>
+                    </a>
+
+                    <div class="glass-card glass-card-static">
+                        <div class="glass-card-top">
+                            <div class="glass-icon icon-pink">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <span class="glass-trend trend-fast">
+                                <i class="fas fa-zap"></i> Rápido
+                            </span>
+                        </div>
+                        <div class="glass-card-body">
+                            <h3 class="glass-number">Acceso</h3>
+                            <p class="glass-label">Acciones rápidas</p>
+                        </div>
+                        <div class="glass-card-bar bar-pink"></div>
+                        <div class="glass-card-actions">
+                            <a class="glass-action-btn" href="{{ url_for('admin.cursos') }}">
+                                <i class="fas fa-plus"></i> Crear materia
+                            </a>
+                            <a class="glass-action-btn" href="{{ url_for('admin.docentes_pendientes') }}">
+                                <i class="fas fa-user-clock"></i> Revisar docentes
+                            </a>
+                            <a class="glass-action-btn" href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}">
+                                <i class="fas fa-user-plus"></i> Solicitudes
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="card-grid">
-                    <a class="card card-link" href="{{ url_for('admin.docentes_pendientes') }}">
-                        <div class="card-icon accent-1"><i class="fas fa-user-clock"></i></div>
-                        <h3>{{ stats.docentes_pendientes }}</h3>
-                        <small>Docentes pendientes</small>
-                    </a>
-                    <a class="card card-link" href="{{ url_for('admin.cursos', estado='activas') }}">
-                        <div class="card-icon accent-2"><i class="fas fa-book"></i></div>
-                        <h3>{{ stats.cursos }}</h3>
-                        <small>Materias activas</small>
-                    </a>
-                    <a class="card card-link" href="{{ url_for('admin.usuarios_admin_local') }}">
-                        <div class="card-icon accent-3"><i class="fas fa-users"></i></div>
-                        <h3>{{ stats.usuarios }}</h3>
-                        <small>Usuarios registrados</small>
-                    </a>
+                <!-- Sección inferior: Actividad reciente -->
+                <div class="section-label" style="margin-top: 40px;">
+                    <span class="label-line"></span>
+                    <span class="label-text">Navegación rápida</span>
+                    <span class="label-line"></span>
                 </div>
 
-                <div style="margin-top: 26px;" class="card">
-                    <h3>Acciones sugeridas</h3>
-                    <p style="margin-top: 8px; color: var(--ink-500);">Carga las listas de estudiantes de cada materia y asigna docentes principales para mantener todo al día.</p>
-                    <div class="action-bar" style="margin-top: 16px;">
-                        <a class="btn btn-outline" href="{{ url_for('admin.cursos') }}">
-                            <i class="fas fa-upload"></i> Subir lista
-                        </a>
-                        <a class="btn btn-outline" href="{{ url_for('admin.cursos') }}">
-                            <i class="fas fa-chalkboard-teacher"></i> Asignar docente
-                        </a>
-                    </div>
+                <div class="quick-nav-grid">
+                    <a class="quick-nav-card" href="{{ url_for('admin.cursos') }}">
+                        <div class="qn-icon"><i class="fas fa-upload"></i></div>
+                        <div class="qn-text">
+                            <h4>Subir lista</h4>
+                            <p>Carga estudiantes por materia</p>
+                        </div>
+                        <i class="fas fa-arrow-right qn-arrow"></i>
+                    </a>
+                    <a class="quick-nav-card" href="{{ url_for('admin.cursos') }}">
+                        <div class="qn-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <div class="qn-text">
+                            <h4>Asignar docente</h4>
+                            <p>Vincula docentes a materias</p>
+                        </div>
+                        <i class="fas fa-arrow-right qn-arrow"></i>
+                    </a>
+                    <a class="quick-nav-card" href="{{ url_for('admin.solicitudes_nuevos_estudiantes') }}">
+                        <div class="qn-icon"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="qn-text">
+                            <h4>Aprobar solicitudes</h4>
+                            <p>Revisa estudiantes nuevos</p>
+                        </div>
+                        <i class="fas fa-arrow-right qn-arrow"></i>
+                    </a>
                 </div>
             </section>
         </main>

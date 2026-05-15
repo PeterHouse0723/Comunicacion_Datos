@@ -1,12 +1,13 @@
 """Rutas de dashboards para cada rol"""
-from flask import Blueprint, render_template, session, redirect, url_for, request
+from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, Nota, Asistencia, Clase, AlertaRiesgoAcademico
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico
 from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
 from datetime import date
+from utils import validar_email
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
@@ -172,27 +173,70 @@ def _obtener_usuario_estudiante():
 
 
 def _obtener_curso_estudiante(curso_id, usuario):
-    """Retorna el curso si pertenece a la institución del estudiante."""
-    return Curso.query.filter_by(id=curso_id, institucion_id=usuario.institucion_id).first()
+    """Retorna el curso SOLO si el estudiante está inscrito en él."""
+    # Verificar que existe una inscripción del estudiante en este curso
+    inscripcion = EstudianteCurso.query.filter_by(
+        estudiante_id=usuario.id,
+        curso_id=curso_id
+    ).first()
+    
+    if not inscripcion:
+        return None  # No está inscrito
+    
+    # Obtener el curso si existe y pertenece a su institución
+    return Curso.query.filter_by(
+        id=curso_id,
+        institucion_id=usuario.institucion_id
+    ).first()
 
 
 def _obtener_cursos_estudiante(usuario):
-    """Cursos cargados para la institución del estudiante, marcando cuáles están inscritos."""
+    """Cursos cargados para la institución del estudiante, marcando cuáles están inscritos.
+    Excluye cursos con SOLO solicitudes rechazadas (sin inscripción ni aprobadas)."""
     cursos = (
         Curso.query.filter_by(institucion_id=usuario.institucion_id)
         .order_by(Curso.activo.desc(), Curso.nombre.asc())
         .all()
     )
+    
+    # Obtener IDs de cursos con inscripciones
     inscritos_ids = {
         rel.curso_id
         for rel in EstudianteCurso.query.filter_by(estudiante_id=usuario.id).all()
     }
-
-    for curso in cursos:
+    
+    # Obtener IDs de cursos donde hay solicitudes aprobadas
+    aprobados_ids = {
+        sol.curso_id
+        for sol in SolicitudNuevoEstudiante.query.filter(
+            SolicitudNuevoEstudiante.correo == usuario.email,
+            SolicitudNuevoEstudiante.estado == 'aprobado'
+        ).all()
+    }
+    
+    # Obtener IDs de cursos donde hay solicitudes rechazadas
+    rechazados_ids = {
+        sol.curso_id
+        for sol in SolicitudNuevoEstudiante.query.filter(
+            SolicitudNuevoEstudiante.correo == usuario.email,
+            SolicitudNuevoEstudiante.estado == 'rechazado'
+        ).all()
+    }
+    
+    # Filtrar cursos: excluir SOLO si están rechazados Y sin inscripción Y sin aprobación
+    cursos_filtrados = [
+        curso for curso in cursos 
+        if not (curso.id in rechazados_ids and 
+                curso.id not in inscritos_ids and 
+                curso.id not in aprobados_ids)
+    ]
+    
+    # Marcar cuáles están inscritos
+    for curso in cursos_filtrados:
         curso.inscrito = curso.id in inscritos_ids
 
-    cursos.sort(key=lambda curso: (not getattr(curso, 'inscrito', False), (curso.nombre or '').lower()))
-    return cursos
+    cursos_filtrados.sort(key=lambda curso: (not getattr(curso, 'inscrito', False), (curso.nombre or '').lower()))
+    return cursos_filtrados
 
 
 def _calcular_racha_inasistencias(curso_id, estudiante_id):
@@ -703,6 +747,117 @@ def solicitar_estudiante_materia():
     db.session.commit()
 
     return jsonify({'success': True, 'mensaje': 'Solicitud enviada'}), 201
+
+# ============================================================================
+# RUTA: Solicitar Nuevo Estudiante (DOCENTE)
+# ============================================================================
+
+@dashboard_bp.route('/docente/solicitar-estudiante')
+@login_required
+def solicitar_nuevo_estudiante():
+    """Formulario para que docente solicite agregar un estudiante nuevo"""
+    if session.get('role') != 'docente':
+        return redirect(url_for('auth.login'))
+    
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    cursos = Curso.query.filter_by(docente_principal_id=usuario.id, activo=True).all()
+    
+    return render_template('docente/solicitar_nuevo_estudiante.html', usuario=usuario, cursos=cursos)
+
+
+@dashboard_bp.route('/docente/solicitar-estudiante', methods=['POST'])
+@login_required
+def crear_solicitud_nuevo_estudiante():
+    """Crear solicitud de nuevo estudiante"""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+    
+    try:
+        data = request.get_json()
+        docente = Usuario.query.get(session.get('usuario_id'))
+        
+        nombre = data.get('nombre', '').strip()
+        apellido = data.get('apellido', '').strip()
+        correo = data.get('correo', '').strip()
+        curso_id = data.get('curso_id')
+        
+        # Validaciones
+        if not all([nombre, apellido, correo, curso_id]):
+            return jsonify({'success': False, 'error': 'Campos requeridos vacíos'}), 400
+        
+        if not validar_email(correo):
+            return jsonify({'success': False, 'error': 'Correo inválido'}), 400
+        
+        # Verificar que el curso pertenece al docente
+        curso = Curso.query.get(curso_id)
+        if not curso or curso.docente_principal_id != docente.id:
+            return jsonify({'success': False, 'error': 'Curso no válido'}), 404
+        
+        # Verificar que no exista solicitud pendiente/aprobada para este correo y curso
+        existe_solicitud = SolicitudNuevoEstudiante.query.filter(
+            SolicitudNuevoEstudiante.correo == correo,
+            SolicitudNuevoEstudiante.curso_id == curso_id,
+            SolicitudNuevoEstudiante.estado.in_(['pendiente', 'aprobado'])
+        ).first()
+        if existe_solicitud:
+            return jsonify({'success': False, 'error': 'Ya existe una solicitud pendiente o aprobada para este correo en este curso'}), 409
+        
+        # Si el usuario existe, verificar que NO esté inscrito en este curso
+        existe_usuario = Usuario.query.filter_by(email=correo).first()
+        if existe_usuario:
+            # Verificar si ya está inscrito en este curso
+            inscripcion = EstudianteCurso.query.filter_by(
+                estudiante_id=existe_usuario.id,
+                curso_id=curso_id
+            ).first()
+            if inscripcion:
+                return jsonify({'success': False, 'error': 'Este estudiante ya está inscrito en este curso'}), 409
+        
+        # Crear solicitud
+        solicitud = SolicitudNuevoEstudiante(
+            curso_id=curso_id,
+            docente_id=docente.id,
+            nombre=nombre,
+            apellido=apellido,
+            correo=correo
+        )
+        
+        db.session.add(solicitud)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'mensaje': 'Solicitud enviada al administrador', 'id': solicitud.id}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Error al crear solicitud: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dashboard_bp.route('/docente/mis-solicitudes')
+@login_required
+def mis_solicitudes_docente():
+    """Ver solicitudes de nuevo estudiantes enviadas por el docente"""
+    if session.get('role') != 'docente':
+        return redirect(url_for('auth.login'))
+    
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    
+    # Obtener solicitudes con paginación
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    solicitudes = SolicitudNuevoEstudiante.query.filter_by(docente_id=usuario.id).order_by(
+        SolicitudNuevoEstudiante.fecha_solicitud.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template(
+        'docente/mis_solicitudes.html',
+        usuario=usuario,
+        solicitudes=solicitudes.items,
+        page=page,
+        total_pages=solicitudes.pages,
+        total=solicitudes.total
+    )
 
 # ============================================================================
 # RUTA: Dashboard Estudiante

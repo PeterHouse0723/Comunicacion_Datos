@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitudes de Nuevos Estudiantes - Admin Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_local.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-local-page">
+    <div class="admin-local-shell">
+        <aside class="admin-local-sidebar">
+            <div class="sidebar-brand">
+                <span>Panel Local</span>
+                <h1>Gestor Académico</h1>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a href="{{ url_for('admin.cursos') }}"><i class="fas fa-book"></i> Materias</a>
+                <a href="{{ url_for('admin.docentes_pendientes') }}"><i class="fas fa-user-check"></i> Docentes Pendientes</a>
+                <a href="{{ url_for('admin.usuarios_admin_local') }}"><i class="fas fa-users"></i> Usuarios</a>
+                <a href="{{ url_for('admin.solicitudes_estudiantes_admin_local') }}"><i class="fas fa-user-plus"></i> Solicitudes Estudiantes</a>
+                <a class="active" href="{{ url_for('admin.solicitudes_nuevos_estudiantes') }}"><i class="fas fa-user-plus"></i> Solicitudes Nuevos</a>
+                <a href="{{ url_for('auth.logout') }}"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+            </nav>
+            <div class="sidebar-footer">
+                {{ usuario.email }}
+            </div>
+        </aside>
+
+        <main class="admin-local-main">
+            <div class="topbar">
+                <div>
+                    <h2>Solicitudes de nuevos estudiantes</h2>
+                    <p>{{ usuario.institucion.nombre if usuario.institucion else 'Institución no definida' }}</p>
+                </div>
+                <div class="user-chip">
+                    <i class="fas fa-user-plus"></i>
+                    <span>{{ total }} solicitudes</span>
+                </div>
+            </div>
+
+            <section class="admin-local-content">
+                <div class="section-header">
+                    <div>
+                        <h3>Listado de solicitudes</h3>
+                        <p>Aprueba o rechaza solicitudes de docentes para agregar estudiantes nuevos.</p>
+                    </div>
+                    <div class="action-bar">
+                        <a class="btn btn-outline" href="?estado=pendiente">Pendientes</a>
+                        <a class="btn btn-outline" href="?estado=aprobado">Aprobadas</a>
+                        <a class="btn btn-outline" href="?estado=rechazado">Rechazadas</a>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Estudiante</th>
+                                <th>Correo</th>
+                                <th>Docente</th>
+                                <th>Materia</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if solicitudes %}
+                                {% for solicitud in solicitudes %}
+                                <tr data-solicitud-id="{{ solicitud.id }}">
+                                    <td>{{ solicitud.nombre }} {{ solicitud.apellido }}</td>
+                                    <td><code>{{ solicitud.correo }}</code></td>
+                                    <td>{{ solicitud.docente.nombre }} {{ solicitud.docente.apellido }}</td>
+                                    <td>{{ solicitud.curso.codigo }} - {{ solicitud.curso.nombre }}</td>
+                                    <td><span class="badge">{{ solicitud.estado }}</span></td>
+                                    <td>
+                                        {% if solicitud.estado == 'pendiente' %}
+                                        <div class="action-bar">
+                                            <button class="btn btn-primary" onclick="aprobarSolicitud({{ solicitud.id }})">
+                                                <i class="fas fa-check"></i> Aprobar
+                                            </button>
+                                            <button class="btn btn-danger" onclick="rechazarSolicitud({{ solicitud.id }})">
+                                                <i class="fas fa-times"></i> Rechazar
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <span>-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="list-empty">No hay solicitudes en este estado.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if total_pages > 1 %}
+                <div class="pagination-wrap">
+                    {% if page > 1 %}
+                    <a href="?estado={{ estado }}&page=1" class="btn btn-outline">Primera</a>
+                    <a href="?estado={{ estado }}&page={{ page - 1 }}" class="btn btn-outline">Anterior</a>
+                    {% endif %}
+
+                    <span class="page-info">Página {{ page }} de {{ total_pages }}</span>
+
+                    {% if page < total_pages %}
+                    <a href="?estado={{ estado }}&page={{ page + 1 }}" class="btn btn-outline">Siguiente</a>
+                    <a href="?estado={{ estado }}&page={{ total_pages }}" class="btn btn-outline">Última</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para rechazar -->
+    <div id="rechazarModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal()">&times;</span>
+            <h2>Rechazar Solicitud</h2>
+            <form id="rechazarForm">
+                <textarea id="motivoRechazo" placeholder="Motivo del rechazo..." required></textarea>
+                <div class="form-actions">
+                    <button type="button" onclick="cerrarModal()" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let solicitudIdActual = null;
+
+        function aprobarSolicitud(solicitudId) {
+            if (confirm('¿Aprobar esta solicitud? Se creará la cuenta del estudiante automáticamente.')) {
+                fetch(`/admin/solicitudes-nuevos-estudiantes/${solicitudId}/aprobar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✓ Solicitud aprobada.\n' + data.mensaje);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al procesar la solicitud');
+                });
+            }
+        }
+
+        function rechazarSolicitud(solicitudId) {
+            solicitudIdActual = solicitudId;
+            document.getElementById('motivoRechazo').value = '';
+            document.getElementById('rechazarModal').style.display = 'block';
+        }
+
+        function cerrarModal() {
+            document.getElementById('rechazarModal').style.display = 'none';
+        }
+
+        document.getElementById('rechazarForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const motivo = document.getElementById('motivoRechazo').value.trim();
+            
+            if (!solicitudIdActual) {
+                alert('Error: No se encontró el ID de la solicitud');
+                return;
+            }
+            
+            fetch(`/admin/solicitudes-nuevos-estudiantes/${solicitudIdActual}/rechazar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    motivo: motivo
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✓ Solicitud rechazada correctamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+            });
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('rechazarModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

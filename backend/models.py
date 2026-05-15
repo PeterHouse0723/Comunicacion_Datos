@@ -62,6 +62,7 @@ class Usuario(db.Model):
     apellido = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(50), nullable=False)  # admin_global, admin_local, docente, estudiante
     estado = db.Column(db.String(50), default='activo')  # pendiente, activo, inactivo, suspendido
+    contraseña_cambiada = db.Column(db.Boolean, default=True)  # False si es primer login (requiere cambio obligatorio)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -354,6 +355,40 @@ class SolicitudEstudianteMateria(db.Model):
 
     def __repr__(self):
         return f'<SolicitudEstudianteMateria Curso:{self.curso_id}, Est:{self.estudiante_id}, Estado:{self.estado}>'
+
+# ============================================================================
+# TABLA: SOLICITUD_NUEVO_ESTUDIANTE (Solicitud docente para agregar estudiante nuevo)
+# ============================================================================
+
+class SolicitudNuevoEstudiante(db.Model):
+    """Solicitudes para agregar estudiantes nuevos a través de docentes"""
+    __tablename__ = 'solicitudes_nuevo_estudiante'
+
+    id = db.Column(db.Integer, primary_key=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    docente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    admin_local_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)
+    
+    # Datos del estudiante a crear
+    nombre = db.Column(db.String(120), nullable=False)
+    apellido = db.Column(db.String(120), nullable=False)
+    correo = db.Column(db.String(120), nullable=False, index=True)
+    
+    # Control
+    estado = db.Column(db.String(30), default='pendiente')  # pendiente, aprobado, rechazado
+    motivo_rechazo = db.Column(db.Text)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_resolucion = db.Column(db.DateTime)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)  # Se llena cuando se aprueba
+    
+    # Relaciones
+    curso = db.relationship('Curso', backref='solicitudes_nuevos_estudiantes', lazy=True)
+    docente = db.relationship('Usuario', foreign_keys=[docente_id], backref='solicitudes_nuevos_estudiantes')
+    admin_local = db.relationship('Usuario', foreign_keys=[admin_local_id], backref='solicitudes_nuevos_estudiantes_resueltas')
+    estudiante = db.relationship('Usuario', foreign_keys=[estudiante_id], backref='creado_por_solicitud')
+    
+    def __repr__(self):
+        return f'<SolicitudNuevoEstudiante {self.correo} Curso:{self.curso_id} Estado:{self.estado}>'
 
 # ============================================================================
 # TABLA: CLASE (Clases dictadas en un curso)

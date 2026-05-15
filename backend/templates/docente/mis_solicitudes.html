@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Mis Solicitudes de Estudiantes</h3>
+                        <a href="{{ url_for('dashboard.solicitar_nuevo_estudiante') }}" class="btn btn-light btn-sm">
+                            + Nueva Solicitud
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if solicitudes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th>Correo</th>
+                                        <th>Materia</th>
+                                        <th>Fecha Solicitud</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solicitud in solicitudes %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ solicitud.nombre }} {{ solicitud.apellido }}</strong>
+                                        </td>
+                                        <td>
+                                            <code>{{ solicitud.correo }}</code>
+                                        </td>
+                                        <td>
+                                            {{ solicitud.curso.nombre }}<br>
+                                            <small class="text-muted">{{ solicitud.curso.codigo }}</small>
+                                        </td>
+                                        <td>
+                                            {{ solicitud.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                                        </td>
+                                        <td>
+                                            {% if solicitud.estado == 'pendiente' %}
+                                                <span class="badge bg-warning text-dark">En Revisión</span>
+                                            {% elif solicitud.estado == 'aprobado' %}
+                                                <span class="badge bg-success">Aprobada</span>
+                                            {% elif solicitud.estado == 'rechazado' %}
+                                                <span class="badge bg-danger">Rechazada</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button 
+                                                class="btn btn-sm btn-info"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#detalleModal"
+                                                onclick="mostrarDetalle({{ solicitud.id }}, '{{ solicitud.nombre }}', '{{ solicitud.apellido }}', '{{ solicitud.correo }}', '{{ solicitud.curso.nombre }}', '{{ solicitud.estado }}', '{{ solicitud.motivo_rechazo or '' }}', '{{ solicitud.fecha_resolucion.strftime('%d/%m/%Y %H:%M') if solicitud.fecha_resolucion else '' }}')"
+                                            >
+                                                Ver
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if total_pages > 1 %}
+                        <nav aria-label="Paginación" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page > 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">Primera</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page - 1 }}">Anterior</a>
+                                </li>
+                                {% endif %}
+
+                                {% for p in range(1, total_pages + 1) %}
+                                    {% if p == page %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ p }}</span>
+                                    </li>
+                                    {% elif p >= page - 2 and p <= page + 2 %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page < total_pages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page + 1 }}">Siguiente</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ total_pages }}">Última</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                        <div class="mt-3 text-center text-muted">
+                            Mostrando {{ solicitudes|length }} de {{ total }} solicitudes
+                        </div>
+
+                    {% else %}
+                        <div class="alert alert-info">
+                            <strong>No hay solicitudes</strong><br>
+                            Aún no has enviado ninguna solicitud de nuevo estudiante.
+                            <br><br>
+                            <a href="{{ url_for('dashboard.solicitar_nuevo_estudiante') }}" class="btn btn-primary btn-sm mt-2">
+                                Crear Primera Solicitud
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalle -->
+<div class="modal fade" id="detalleModal" tabindex="-1" aria-labelledby="detalleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detalleModalLabel">Detalle de Solicitud</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Estudiante:</strong> <span id="detalleNombre"></span></p>
+                <p><strong>Correo:</strong> <code id="detalleCorreo"></code></p>
+                <p><strong>Materia:</strong> <span id="detalleCurso"></span></p>
+                <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
+                <p id="motivoDiv" style="display: none;">
+                    <strong>Motivo de Rechazo:</strong><br>
+                    <span id="detalleMotivo"></span>
+                </p>
+                <p id="resolucionDiv" style="display: none;">
+                    <strong>Fecha de Resolución:</strong> <span id="detalleResolucion"></span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarDetalle(id, nombre, apellido, correo, curso, estado, motivo, fechaResolucion) {
+    document.getElementById('detalleNombre').textContent = nombre + ' ' + apellido;
+    document.getElementById('detalleCorreo').textContent = correo;
+    document.getElementById('detalleCurso').textContent = curso;
+    
+    // Estado
+    let badgeClass = '';
+    let estadoText = '';
+    if (estado === 'pendiente') {
+        badgeClass = 'bg-warning text-dark';
+        estadoText = 'En Revisión';
+    } else if (estado === 'aprobado') {
+        badgeClass = 'bg-success';
+        estadoText = 'Aprobada';
+    } else if (estado === 'rechazado') {
+        badgeClass = 'bg-danger';
+        estadoText = 'Rechazada';
+    }
+    document.getElementById('detalleEstado').innerHTML = `<span class="badge ${badgeClass}">${estadoText}</span>`;
+    
+    // Motivo de rechazo
+    const motivoDiv = document.getElementById('motivoDiv');
+    if (motivo) {
+        motivoDiv.style.display = 'block';
+        document.getElementById('detalleMotivo').textContent = motivo;
+    } else {
+        motivoDiv.style.display = 'none';
+    }
+    
+    // Fecha de resolución
+    const resolucionDiv = document.getElementById('resolucionDiv');
+    if (fechaResolucion) {
+        resolucionDiv.style.display = 'block';
+        document.getElementById('detalleResolucion').textContent = fechaResolucion;
+    } else {
+        resolucionDiv.style.display = 'none';
+    }
+}
+</script>
+
+<style>
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.badge {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

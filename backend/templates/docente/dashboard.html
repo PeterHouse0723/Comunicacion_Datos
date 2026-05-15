@@ -68,6 +68,14 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="estudianteNombre">Nombre del estudiante *</label>
+                    <input id="estudianteNombre" type="text" placeholder="Ej: Juan" required>
+                </div>
+                <div class="form-group">
+                    <label for="estudianteApellido">Apellido del estudiante *</label>
+                    <input id="estudianteApellido" type="text" placeholder="Ej: Pérez" required>
+                </div>
+                <div class="form-group">
                     <label for="estudianteEmail">Email del estudiante *</label>
                     <input id="estudianteEmail" type="email" placeholder="correo@ejemplo.com" required>
                 </div>
@@ -102,14 +110,20 @@
         document.getElementById('solicitudForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const materiaId = document.getElementById('materiaSelect').value;
-            const email = document.getElementById('estudianteEmail').value;
-            const motivo = document.getElementById('motivo').value;
+            const nombre = document.getElementById('estudianteNombre').value.trim();
+            const apellido = document.getElementById('estudianteApellido').value.trim();
+            const correo = document.getElementById('estudianteEmail').value.trim();
+            const cursoId = document.getElementById('materiaSelect').value;
 
-            fetch("{{ url_for('dashboard.solicitar_estudiante_materia') }}", {
+            fetch("{{ url_for('dashboard.crear_solicitud_nuevo_estudiante') }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ materia_id: materiaId, email, motivo })
+                body: JSON.stringify({ 
+                    nombre: nombre, 
+                    apellido: apellido, 
+                    correo: correo, 
+                    curso_id: parseInt(cursoId)
+                })
             })
             .then(res => res.json())
             .then(data => {

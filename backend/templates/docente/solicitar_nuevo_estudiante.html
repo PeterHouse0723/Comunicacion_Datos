@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Solicitar Nuevo Estudiante</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Completa el formulario para solicitar la inscripción de un nuevo estudiante en tu curso.</p>
+                    
+                    <form id="formSolicitud">
+                        <!-- Nombre -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre *</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="nombre" 
+                                name="nombre"
+                                required
+                                placeholder="Ej: Juan"
+                            >
+                        </div>
+
+                        <!-- Apellido -->
+                        <div class="mb-3">
+                            <label for="apellido" class="form-label">Apellido *</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="apellido" 
+                                name="apellido"
+                                required
+                                placeholder="Ej: Pérez"
+                            >
+                        </div>
+
+                        <!-- Correo -->
+                        <div class="mb-3">
+                            <label for="correo" class="form-label">Correo Electrónico *</label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="correo" 
+                                name="correo"
+                                required
+                                placeholder="Ej: juan.perez@correo.com"
+                            >
+                            <small class="text-muted">El correo debe ser único en el sistema</small>
+                        </div>
+
+                        <!-- Materia -->
+                        <div class="mb-3">
+                            <label for="curso_id" class="form-label">Materia *</label>
+                            <select 
+                                class="form-control" 
+                                id="curso_id" 
+                                name="curso_id"
+                                required
+                            >
+                                <option value="">-- Selecciona una materia --</option>
+                                {% for curso in cursos %}
+                                <option value="{{ curso.id }}">{{ curso.nombre }} ({{ curso.codigo }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('dashboard.docente') }}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                        </div>
+                    </form>
+
+                    <!-- Mensaje de éxito -->
+                    <div id="alertaExito" class="alert alert-success mt-3" style="display: none;">
+                        <strong>¡Éxito!</strong> Solicitud enviada correctamente. El administrador revisará tu solicitud pronto.
+                        <br>
+                        <a href="{{ url_for('dashboard.mis_solicitudes_docente') }}" class="link-primary">Ver mis solicitudes</a>
+                    </div>
+
+                    <!-- Mensaje de error -->
+                    <div id="alertaError" class="alert alert-danger mt-3" style="display: none;">
+                        <strong>Error:</strong> <span id="textoError"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="mt-4 alert alert-info">
+                <h5>Información importante:</h5>
+                <ul class="mb-0">
+                    <li>El correo electrónico debe ser válido y único</li>
+                    <li>El administrador local debe aprobar la solicitud</li>
+                    <li>Una vez aprobada, se creará automáticamente la cuenta del estudiante con una contraseña temporal</li>
+                    <li>El estudiante podrá cambiar su contraseña en el primer acceso</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('formSolicitud').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const nombre = document.getElementById('nombre').value.trim();
+    const apellido = document.getElementById('apellido').value.trim();
+    const correo = document.getElementById('correo').value.trim();
+    const curso_id = document.getElementById('curso_id').value;
+    
+    // Mostrar/ocultar alertas
+    document.getElementById('alertaExito').style.display = 'none';
+    document.getElementById('alertaError').style.display = 'none';
+    
+    try {
+        const response = await fetch('{{ url_for("dashboard.crear_solicitud_nuevo_estudiante") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                apellido: apellido,
+                correo: correo,
+                curso_id: parseInt(curso_id)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('alertaExito').style.display = 'block';
+            document.getElementById('formSolicitud').reset();
+            
+            // Redirigir después de 2 segundos
+            setTimeout(() => {
+                window.location.href = '{{ url_for("dashboard.mis_solicitudes_docente") }}';
+            }, 2000);
+        } else {
+            document.getElementById('alertaError').style.display = 'block';
+            document.getElementById('textoError').textContent = data.error || 'Error desconocido';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('alertaError').style.display = 'block';
+        document.getElementById('textoError').textContent = 'Error al enviar la solicitud';
+    }
+});
+</script>
+
+<style>
+.card {
+    border-radius: 8px;
+}
+
+.card-header {
+    border-radius: 8px 8px 0 0;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+</style>
+{% endblock %}

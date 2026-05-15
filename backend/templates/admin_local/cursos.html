@@ -93,13 +93,13 @@
                                                 <i class="fas fa-eye"></i> Ver
                                             </a>
                                             <button class="btn btn-outline" onclick="editarMateria({{ curso.id }}, '{{ curso.codigo }}', '{{ curso.nombre }}', '{{ curso.creditos }}', '{{ curso.descripcion }}', '{{ curso.periodo.nombre if curso.periodo else '' }}', '{{ curso.periodo.fecha_inicio.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.periodo.fecha_fin.strftime('%Y-%m-%d') if curso.periodo else '' }}', '{{ curso.docente_principal_id or '' }}')">
-                                                <i class="fas fa-pen"></i>
+                                                <i class="fas fa-pen"></i> Editar
                                             </button>
                                             <button class="btn btn-outline" onclick="abrirModalAsignar('{{ curso.id }}')">
-                                                <i class="fas fa-user-tie"></i>
+                                                <i class="fas fa-user-tie"></i> Asignar docente
                                             </button>
                                             <button class="btn btn-outline" onclick="abrirModalCarga('{{ curso.id }}')">
-                                                <i class="fas fa-upload"></i>
+                                                <i class="fas fa-upload"></i> Cargar lista
                                             </button>
                                         </div>
                                     </td>
@@ -168,6 +168,39 @@
                     <div class="form-group">
                         <label for="descripcion">Descripción</label>
                         <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción de la materia..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Días de clase</label>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="0" class="day-checkbox"> Lun
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="1" class="day-checkbox"> Mar
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="2" class="day-checkbox"> Mié
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="3" class="day-checkbox"> Jue
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="4" class="day-checkbox"> Vie
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="5" class="day-checkbox"> Sáb
+                            </label>
+                            <label class="day-toggle" style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" value="6" class="day-checkbox"> Dom
+                            </label>
+                        </div>
+                        <input type="hidden" id="dias_semana" name="dias_semana">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sesiones_por_semana">Sesiones por semana</label>
+                        <input type="number" id="sesiones_por_semana" name="sesiones_por_semana" value="0" min="0" max="7" style="width: 100px;">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -288,12 +321,23 @@
             document.getElementById('fecha_inicio').value = fechaInicio;
             document.getElementById('fecha_fin').value = fechaFin;
             document.getElementById('docente').value = docenteId || '';
+            
+            // Limpiar checkboxes de días
+            document.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('sesiones_por_semana').value = '0';
+            
             document.getElementById('modalTitle').textContent = 'Editar Materia';
             document.getElementById('cursoModal').style.display = 'flex';
         }
 
         document.getElementById('cursoForm').addEventListener('submit', function(e) {
             e.preventDefault();
+
+            // Recopilar días seleccionados
+            const diasSeleccionados = [];
+            document.querySelectorAll('.day-checkbox:checked').forEach(checkbox => {
+                diasSeleccionados.push(checkbox.value);
+            });
 
             const formData = {
                 codigo: document.getElementById('codigo').value,
@@ -303,7 +347,9 @@
                 fecha_fin: document.getElementById('fecha_fin').value,
                 docente_principal_id: document.getElementById('docente').value || null,
                 creditos: document.getElementById('creditos').value,
-                descripcion: document.getElementById('descripcion').value
+                descripcion: document.getElementById('descripcion').value,
+                dias_semana: diasSeleccionados.join(',') || '',
+                sesiones_por_semana: document.getElementById('sesiones_por_semana').value || 0
             };
 
             const url = cursoEnEdicion
@@ -326,26 +372,6 @@
             })
             .catch(() => showToast('Error en la solicitud', false));
         });
-
-        document.getElementById('cargaForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const cursoId = document.getElementById('cursoSeleccion').value;
-            const archivoInput = document.getElementById('archivo');
-            const archivo = archivoInput.files[0];
-
-            console.log('Iniciando carga de estudiantes...', { cursoId, archivo: archivo?.name });
-
-            if (!cursoId || !archivo) {
-                showToast('Selecciona la materia y el archivo', false);
-                console.error('Validación fallida: cursoId o archivo faltante');
-                return;
-            }
-
-            // Validar tamaño del archivo (máximo 5MB)
-            if (archivo.size > 5 * 1024 * 1024) {
-                showToast('El archivo es demasiado grande (máximo 5MB)', false);
-                return;
-            }
 
         document.getElementById('cargaForm').addEventListener('submit', function(e) {
             e.preventDefault();

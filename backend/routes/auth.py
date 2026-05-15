@@ -105,8 +105,8 @@ def login():
     
     print(f"[OK] Login exitoso para {usuario.email} ({usuario.role})")
 
-    # Si el estudiante usa la clave inicial, forzar cambio obligatorio
-    if usuario.role == 'estudiante' and password == DEFAULT_STUDENT_PASSWORD:
+    # Si el estudiante aún no ha cambiado su contraseña (primer login), forzar cambio obligatorio
+    if usuario.role == 'estudiante' and not usuario.contraseña_cambiada:
         session['primer_login_pendiente'] = True
         return redirect(url_for('auth.cambiar_contraseña_obligatorio'))
     
@@ -320,6 +320,7 @@ def cambiar_contraseña_obligatorio():
     # Actualizar contraseña
     try:
         usuario.password = encriptar_contraseña(contraseña_nueva)
+        usuario.contraseña_cambiada = True  # Marcar que ya cambió la contraseña
         db.session.commit()
         
         # Limpiar sesión temporal
