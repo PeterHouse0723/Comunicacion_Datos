@@ -4,6 +4,10 @@ from config import config
 from utils import encriptar_contraseña
 import os
 from sqlalchemy import text
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 # Importar modelos después de que db esté disponible
 from models import (
@@ -11,6 +15,58 @@ from models import (
     SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
     LoginAuditoria, Notificacion
 )
+
+def apply_migrations(app):
+    """Aplica las migraciones SQL desde el directorio migrations/"""
+    migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+    migration_files = [
+        'add_authentication_fields.sql',
+        'add_contraseña_cambiada.sql',
+        'create_solicitudes_nuevo_estudiante.sql'
+    ]
+    
+    for migration_file in migration_files:
+        migration_path = os.path.join(migrations_dir, migration_file)
+        if os.path.exists(migration_path):
+            try:
+                with open(migration_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Dividir por ; y ejecutar cada comando por separado
+                commands = content.split(';')
+                
+                for command in commands:
+                    # Limpiar comentarios y espacios en blanco
+                    lines = []
+                    for line in command.split('\n'):
+                        if '--' in line:
+                            line = line[:line.index('--')]
+                        line = line.strip()
+                        if line:
+                            lines.append(line)
+                    
+                    sql_command = ' '.join(lines)
+                    
+                    # Ignorar comandos vacíos y COMMIT
+                    if sql_command and sql_command.upper() != 'COMMIT':
+                        try:
+                            db.session.execute(text(sql_command))
+                        except Exception as e:
+                            # Algunos comandos pueden fallar si ya existen (esperado)
+                            if 'already exists' in str(e) or 'does not exist' in str(e):
+                                logger.debug(f"Migration note: {str(e)}")
+                            else:
+                                raise
+                
+                db.session.commit()
+                logger.info(f"✓ Migración aplicada: {migration_file}")
+                
+            except Exception as e:
+                logger.error(f"✗ Error en migración {migration_file}: {str(e)}")
+                db.session.rollback()
+                raise
+        else:
+            logger.warning(f"Archivo de migración no encontrado: {migration_file}")
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -32,10 +88,21 @@ def create_app(config_name=None):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
     
-    # Inicialización pesada solo fuera de producción para evitar timeouts en Render.
-    if config_name != 'production':
-        with app.app_context():
-            db.create_all()
+    # Inicializar base de datos y aplicar migraciones
+    with app.app_context():
+        try:
+            # Aplicar migraciones SQL (SIEMPRE, incluso en producción)
+            apply_migrations(app)
+        except Exception as e:
+            logger.error(f"Error al aplicar migraciones: {e}")
+            # No fallar si las migraciones no se pueden aplicar, solo loguear
+        
+        # Crear tablas si no existen (solo en desarrollo)
+        if config_name != 'production':
+            try:
+                db.create_all()
+            except Exception as e:
+                logger.warning(f"Error al crear tablas: {e}")
 
             db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
             is_postgresql = 'postgresql' in db_url
@@ -49,24 +116,24 @@ def create_app(config_name=None):
                     if 'dias_semana' not in existing_columns:
                         db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
                         db.session.commit()
-                        print('[OK] Columna añadida: cursos.dias_semana')
+                        logger.info('[OK] Columna añadida: cursos.dias_semana')
 
                     if 'sesiones_por_semana' not in existing_columns:
                         db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
                         db.session.commit()
-                        print('[OK] Columna añadida: cursos.sesiones_por_semana')
+                        logger.info('[OK] Columna añadida: cursos.sesiones_por_semana')
                 else:
                     existing = {row[1] for row in db.session.execute(text("PRAGMA table_info('cursos')")).fetchall()}
                     if 'dias_semana' not in existing:
                         db.session.execute(text("ALTER TABLE cursos ADD COLUMN dias_semana VARCHAR(20)"))
-                        print('[OK] Columna añadida: cursos.dias_semana')
+                        logger.info('[OK] Columna añadida: cursos.dias_semana')
                     if 'sesiones_por_semana' not in existing:
                         db.session.execute(text("ALTER TABLE cursos ADD COLUMN sesiones_por_semana INTEGER DEFAULT 0"))
-                        print('[OK] Columna añadida: cursos.sesiones_por_semana')
+                        logger.info('[OK] Columna añadida: cursos.sesiones_por_semana')
                     db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                print(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
+                logger.warning(f"[WARN] No se pudo asegurar columnas en 'cursos': {e}")
 
             try:
                 institucion = Institucion.query.filter_by(nombre='Universidad Default').first()
@@ -79,9 +146,9 @@ def create_app(config_name=None):
                     )
                     db.session.add(institucion)
                     db.session.commit()
-                    print("[OK] Institucion creada: Universidad Default")
+                    logger.info("[OK] Institucion creada: Universidad Default")
                 else:
-                    print("[INFO] Institucion ya existe")
+                    logger.info("[INFO] Institucion ya existe")
 
                 if not Usuario.query.filter_by(email='admin@universitario.edu').first():
                     admin_global = Usuario(
@@ -95,7 +162,7 @@ def create_app(config_name=None):
                     )
                     db.session.add(admin_global)
                     db.session.commit()
-                    print("[OK] Admin global creado")
+                    logger.info("[OK] Admin global creado")
 
                 if not Usuario.query.filter_by(email='admin.local@universitario.edu').first():
                     admin_local = Usuario(
@@ -109,11 +176,11 @@ def create_app(config_name=None):
                     )
                     db.session.add(admin_local)
                     db.session.commit()
-                    print("[OK] Admin local creado")
+                    logger.info("[OK] Admin local creado")
 
             except Exception as e:
                 db.session.rollback()
-                print(f"[WARN] Error al crear datos iniciales: {e}")
+                logger.warning(f"[WARN] Error al crear datos iniciales: {e}")
     
     @app.route('/')
     def index():
