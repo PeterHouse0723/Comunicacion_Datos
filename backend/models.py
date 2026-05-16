@@ -528,3 +528,40 @@ class Notificacion(db.Model):
     
     def __repr__(self):
         return f'<Notificacion {self.titulo}>'
+
+# ============================================================================
+# TABLA: MENSAJE (Sistema de mensajería entre docentes y estudiantes)
+# ============================================================================
+
+class Mensaje(db.Model):
+    """Tabla de mensajes entre docentes y estudiantes"""
+    __tablename__ = 'mensajes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    remitente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    contenido = db.Column(db.Text, nullable=False)
+    leido = db.Column(db.Boolean, default=False)
+    fecha_lectura = db.Column(db.DateTime)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relaciones
+    remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='mensajes_enviados')
+    destinatario = db.relationship('Usuario', foreign_keys=[destinatario_id], backref='mensajes_recibidos')
+    curso = db.relationship('Curso', backref='mensajes')
+    
+    # Índice compuesto para consultas rápidas de conversaciones
+    __table_args__ = (
+        db.Index('idx_mensaje_remitente_destinatario', 'remitente_id', 'destinatario_id'),
+        db.Index('idx_mensaje_curso', 'curso_id'),
+    )
+    
+    def __repr__(self):
+        return f'<Mensaje De:{self.remitente_id}, Para:{self.destinatario_id}, Curso:{self.curso_id}>'
+    
+    def marcar_como_leido(self):
+        """Marca el mensaje como leído"""
+        self.leido = True
+        self.fecha_lectura = datetime.utcnow()
+        return self

@@ -6,6 +6,227 @@
     <title>Estudiantes del Curso - Docente</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+    <style>
+        .course-list-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+        
+        .course-list-row:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .course-list-row > div {
+            flex: 1;
+        }
+        
+        .course-list-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .btn-mensaje {
+            padding: 8px 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .btn-mensaje:hover {
+            background: #45a049;
+        }
+        
+        /* Modal de Mensajes */
+        .modal-mensajes {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content-mensajes {
+            background-color: white;
+            margin: auto;
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translate(-50%, -60%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header-mensajes {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header-mensajes h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .close-mensajes {
+            color: white;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            background: none;
+            border: none;
+            transition: transform 0.2s;
+        }
+        
+        .close-mensajes:hover {
+            transform: scale(1.2);
+        }
+        
+        .modal-body-mensajes {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .mensajes-lista {
+            margin-bottom: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        
+        .mensaje-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-left: 3px solid #4CAF50;
+            border-radius: 3px;
+        }
+        
+        .mensaje-item.enviado {
+            border-left-color: #2196F3;
+            background: #e3f2fd;
+        }
+        
+        .mensaje-item.recibido {
+            border-left-color: #4CAF50;
+            background: #f1f8f4;
+        }
+        
+        .mensaje-hora {
+            font-size: 12px;
+            color: #999;
+            margin-top: 3px;
+        }
+        
+        .mensaje-texto {
+            word-wrap: break-word;
+            margin: 5px 0;
+        }
+        
+        .modal-footer-mensajes {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .form-grupo-mensaje {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-grupo-mensaje label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .form-grupo-mensaje textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .btn-enviar-mensaje {
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .btn-enviar-mensaje:hover {
+            background: #45a049;
+        }
+        
+        .btn-enviar-mensaje:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .mensaje-error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .mensaje-exito {
+            color: #388e3c;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+    </style>
 </head>
 <body class="courses-page">
     <div class="dashboard-header">
@@ -39,7 +260,12 @@
                                 <strong>{{ estudiante.nombre }} {{ estudiante.apellido }}</strong>
                                 <div class="course-list-muted">{{ estudiante.email }}</div>
                             </div>
-                            <span class="course-pill">Estudiante</span>
+                            <div class="course-list-actions">
+                                <span class="course-pill">Estudiante</span>
+                                <button class="btn-mensaje" onclick="abrirModalMensaje({{ estudiante.id }}, '{{ estudiante.nombre }} {{ estudiante.apellido }}')">
+                                    <i class="fas fa-message"></i> Mensaje
+                                </button>
+                            </div>
                         </div>
                     {% endfor %}
                 </div>
@@ -48,5 +274,148 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Modal de Mensajes -->
+    <div id="modalMensajes" class="modal-mensajes">
+        <div class="modal-content-mensajes">
+            <div class="modal-header-mensajes">
+                <h3 id="modalEstudianteName">Mensaje</h3>
+                <button class="close-mensajes" onclick="cerrarModalMensaje()">&times;</button>
+            </div>
+            <div class="modal-body-mensajes">
+                <div class="mensajes-lista" id="mensajesList">
+                    <p style="text-align: center; color: #999;">Cargando mensajes...</p>
+                </div>
+                <div class="modal-footer-mensajes">
+                    <div id="mensajeStatus"></div>
+                    <div class="form-grupo-mensaje">
+                        <label for="mensajeTexto">Tu mensaje:</label>
+                        <textarea id="mensajeTexto" placeholder="Escribe tu mensaje aquí..."></textarea>
+                    </div>
+                    <button class="btn-enviar-mensaje" onclick="enviarMensaje()">
+                        <i class="fas fa-paper-plane"></i> Enviar Mensaje
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let estudianteActualId = null;
+        let cursoId = {{ curso.id }};
+        let usuario_id = {{ session.get('usuario_id') }};
+        
+        function abrirModalMensaje(estudianteId, estudianteName) {
+            estudianteActualId = estudianteId;
+            document.getElementById('modalEstudianteName').textContent = 'Mensaje a ' + estudianteName;
+            document.getElementById('mensajeTexto').value = '';
+            document.getElementById('mensajeStatus').innerHTML = '';
+            document.getElementById('modalMensajes').style.display = 'block';
+            
+            // Cargar conversación existente
+            cargarConversacion();
+        }
+        
+        function cerrarModalMensaje() {
+            document.getElementById('modalMensajes').style.display = 'none';
+            estudianteActualId = null;
+        }
+        
+        function cargarConversacion() {
+            fetch(`/dashboard/api/mensajes/${estudianteActualId}/${cursoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = '';
+                        if (data.mensajes.length === 0) {
+                            html = '<p style="text-align: center; color: #999;">No hay mensajes previos</p>';
+                        } else {
+                            data.mensajes.forEach(msg => {
+                                const fecha = new Date(msg.fecha_creacion).toLocaleString('es-CO');
+                                const clase = msg.remitente_id === usuario_id ? 'enviado' : 'recibido';
+                                html += `
+                                    <div class="mensaje-item ${clase}">
+                                        <div class="mensaje-texto">${escapeHtml(msg.contenido)}</div>
+                                        <div class="mensaje-hora">${fecha}</div>
+                                    </div>
+                                `;
+                            });
+                        }
+                        document.getElementById('mensajesList').innerHTML = html;
+                        // Scroll al final
+                        document.getElementById('mensajesList').scrollTop = document.getElementById('mensajesList').scrollHeight;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    document.getElementById('mensajesList').innerHTML = '<p class="mensaje-error">Error al cargar mensajes</p>';
+                });
+        }
+        
+        function enviarMensaje() {
+            const contenido = document.getElementById('mensajeTexto').value.trim();
+            
+            if (!contenido) {
+                document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-error">Por favor escribe un mensaje</p>';
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            
+            fetch('/dashboard/api/mensajes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    destinatario_id: estudianteActualId,
+                    curso_id: cursoId,
+                    contenido: contenido
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('mensajeTexto').value = '';
+                    document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-exito"><i class="fas fa-check"></i> Mensaje enviado</p>';
+                    setTimeout(() => {
+                        document.getElementById('mensajeStatus').innerHTML = '';
+                    }, 2000);
+                    cargarConversacion();
+                } else {
+                    document.getElementById('mensajeStatus').innerHTML = `<p class="mensaje-error">Error: ${data.error}</p>`;
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-error">Error al enviar mensaje</p>';
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Mensaje';
+            });
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalMensajes');
+            if (event.target === modal) {
+                cerrarModalMensaje();
+            }
+        }
+    </script>
 </body>
 </html>

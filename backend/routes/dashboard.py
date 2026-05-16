@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje
 from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
@@ -1035,3 +1035,393 @@ def curso_estudiante_asistencia(curso_id):
         asistencias_count=conteo,
         resumen_asistencia=resumen,
     )
+
+
+# ============================================================================
+# RUTAS API: SISTEMA DE MENSAJERÍA
+# ============================================================================
+
+@dashboard_bp.route('/api/mensajes', methods=['POST'])
+@login_required
+def enviar_mensaje():
+    """Enviar un mensaje. 
+    Payload: {destinatario_id, curso_id, contenido}
+    """
+    usuario_id = session.get('usuario_id')
+    data = request.get_json() or {}
+    
+    destinatario_id = data.get('destinatario_id')
+    curso_id = data.get('curso_id')
+    contenido = (data.get('contenido') or '').strip()
+    
+    # Validaciones
+    if not all([destinatario_id, curso_id, contenido]):
+        return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+    
+    if len(contenido) > 5000:
+        return jsonify({'success': False, 'error': 'El mensaje es demasiado largo (máx 5000 caracteres)'}), 400
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    destinatario = Usuario.query.get(destinatario_id)
+    if not destinatario:
+        return jsonify({'success': False, 'error': 'Destinatario no encontrado'}), 404
+    
+    curso = Curso.query.get(curso_id)
+    if not curso or curso.institucion_id != usuario.institucion_id:
+        return jsonify({'success': False, 'error': 'Curso no válido'}), 404
+    
+    # Validar que ambos usuarios pertenecen al mismo curso
+    # Docente: es el docente principal del curso o está en CursoDocente
+    # Estudiante: está inscrito en EstudianteCurso
+    
+    usuario_en_curso = False
+    destinatario_en_curso = False
+    
+    # Verificar usuario
+    if usuario.role == 'docente':
+        if curso.docente_principal_id == usuario.id:
+            usuario_en_curso = True
+    elif usuario.role == 'estudiante':
+        inscripcion = EstudianteCurso.query.filter_by(
+            estudiante_id=usuario.id,
+            curso_id=curso.id
+        ).first()
+        if inscripcion:
+            usuario_en_curso = True
+    
+    # Verificar destinatario
+    if destinatario.role == 'docente':
+        if curso.docente_principal_id == destinatario.id:
+            destinatario_en_curso = True
+    elif destinatario.role == 'estudiante':
+        inscripcion = EstudianteCurso.query.filter_by(
+            estudiante_id=destinatario.id,
+            curso_id=curso.id
+        ).first()
+        if inscripcion:
+            destinatario_en_curso = True
+    
+    if not usuario_en_curso or not destinatario_en_curso:
+        return jsonify({'success': False, 'error': 'No tienes permiso para enviar mensajes en este curso'}), 403
+    
+    # Crear mensaje
+    mensaje = Mensaje(
+        remitente_id=usuario_id,
+        destinatario_id=destinatario_id,
+        curso_id=curso_id,
+        contenido=contenido
+    )
+    
+    try:
+        db.session.add(mensaje)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje_id': mensaje.id,
+            'fecha_creacion': mensaje.fecha_creacion.isoformat()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Error al enviar mensaje'}), 500
+
+
+@dashboard_bp.route('/api/mensajes/<int:otro_usuario_id>/<int:curso_id>', methods=['GET'])
+@login_required
+def obtener_conversacion(otro_usuario_id, curso_id):
+    """Obtener conversación con otro usuario en un curso específico.
+    Query params: limit (por defecto 50), offset (por defecto 0)
+    """
+    usuario_id = session.get('usuario_id')
+    limit = min(int(request.args.get('limit', 50)), 100)  # Máximo 100
+    offset = int(request.args.get('offset', 0))
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    curso = Curso.query.get(curso_id)
+    if not curso or curso.institucion_id != usuario.institucion_id:
+        return jsonify({'success': False, 'error': 'Curso no válido'}), 404
+    
+    # Obtener mensajes de la conversación (ambas direcciones)
+    mensajes = Mensaje.query.filter(
+        Mensaje.curso_id == curso_id,
+        ((Mensaje.remitente_id == usuario_id) & (Mensaje.destinatario_id == otro_usuario_id)) |
+        ((Mensaje.remitente_id == otro_usuario_id) & (Mensaje.destinatario_id == usuario_id))
+    ).order_by(Mensaje.fecha_creacion.desc()).limit(limit).offset(offset).all()
+    
+    # Marcar como leídos los mensajes recibidos
+    for msg in mensajes:
+        if msg.destinatario_id == usuario_id and not msg.leido:
+            msg.marcar_como_leido()
+    
+    try:
+        db.session.commit()
+    except:
+        db.session.rollback()
+    
+    mensajes_data = []
+    for msg in reversed(mensajes):  # Invertir para mostrar más antiguos primero
+        mensajes_data.append({
+            'id': msg.id,
+            'remitente_id': msg.remitente_id,
+            'contenido': msg.contenido,
+            'leido': msg.leido,
+            'fecha_creacion': msg.fecha_creacion.isoformat()
+        })
+    
+    return jsonify({
+        'success': True,
+        'mensajes': mensajes_data,
+        'total': Mensaje.query.filter(
+            Mensaje.curso_id == curso_id,
+            ((Mensaje.remitente_id == usuario_id) & (Mensaje.destinatario_id == otro_usuario_id)) |
+            ((Mensaje.remitente_id == otro_usuario_id) & (Mensaje.destinatario_id == usuario_id))
+        ).count()
+    }), 200
+
+
+@dashboard_bp.route('/api/mensajes/no-leidos/<int:curso_id>', methods=['GET'])
+@login_required
+def obtener_mensajes_no_leidos(curso_id):
+    """Obtener cantidad de mensajes no leídos en un curso."""
+    usuario_id = session.get('usuario_id')
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    curso = Curso.query.get(curso_id)
+    if not curso or curso.institucion_id != usuario.institucion_id:
+        return jsonify({'success': False, 'error': 'Curso no válido'}), 404
+    
+    # Contar mensajes no leídos en este curso
+    no_leidos = Mensaje.query.filter_by(
+        destinatario_id=usuario_id,
+        curso_id=curso_id,
+        leido=False
+    ).count()
+    
+    return jsonify({
+        'success': True,
+        'no_leidos': no_leidos,
+        'curso_id': curso_id
+    }), 200
+
+
+@dashboard_bp.route('/api/mensajes/<int:mensaje_id>/marcar-leido', methods=['PUT'])
+@login_required
+def marcar_mensaje_leido(mensaje_id):
+    """Marcar un mensaje como leído."""
+    usuario_id = session.get('usuario_id')
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    mensaje = Mensaje.query.get(mensaje_id)
+    if not mensaje:
+        return jsonify({'success': False, 'error': 'Mensaje no encontrado'}), 404
+    
+    # Solo el destinatario puede marcar como leído
+    if mensaje.destinatario_id != usuario_id:
+        return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+    
+    if not mensaje.leido:
+        mensaje.marcar_como_leido()
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
+    
+    return jsonify({'success': True}), 200
+
+
+@dashboard_bp.route('/api/mensajes/remitentes/<int:curso_id>', methods=['GET'])
+@login_required
+def obtener_remitentes_conversaciones(curso_id):
+    """Obtener lista de personas con las que el usuario ha intercambiado mensajes en un curso."""
+    usuario_id = session.get('usuario_id')
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    curso = Curso.query.get(curso_id)
+    if not curso or curso.institucion_id != usuario.institucion_id:
+        return jsonify({'success': False, 'error': 'Curso no válido'}), 404
+    
+    # Obtener todos los usuarios con los que ha intercambiado mensajes
+    remitentes = db.session.query(Mensaje.remitente_id, Mensaje.destinatario_id).filter(
+        Mensaje.curso_id == curso_id,
+        ((Mensaje.remitente_id == usuario_id) | (Mensaje.destinatario_id == usuario_id))
+    ).all()
+    
+    otros_usuarios_ids = set()
+    for msg in remitentes:
+        if msg.remitente_id == usuario_id:
+            otros_usuarios_ids.add(msg.destinatario_id)
+        else:
+            otros_usuarios_ids.add(msg.remitente_id)
+    
+    # Obtener datos de los usuarios
+    otros_usuarios = Usuario.query.filter(Usuario.id.in_(otros_usuarios_ids)).all()
+    
+    usuarios_data = []
+    for u in otros_usuarios:
+        # Contar mensajes no leídos de este usuario
+        no_leidos = Mensaje.query.filter_by(
+            remitente_id=u.id,
+            destinatario_id=usuario_id,
+            curso_id=curso_id,
+            leido=False
+        ).count()
+        
+        # Obtener último mensaje
+        ultimo_mensaje = Mensaje.query.filter(
+            Mensaje.curso_id == curso_id,
+            ((Mensaje.remitente_id == usuario_id) & (Mensaje.destinatario_id == u.id)) |
+            ((Mensaje.remitente_id == u.id) & (Mensaje.destinatario_id == usuario_id))
+        ).order_by(Mensaje.fecha_creacion.desc()).first()
+        
+        usuarios_data.append({
+            'id': u.id,
+            'nombre': u.nombre,
+            'apellido': u.apellido,
+            'email': u.email,
+            'role': u.role,
+            'no_leidos': no_leidos,
+            'ultimo_mensaje_fecha': ultimo_mensaje.fecha_creacion.isoformat() if ultimo_mensaje else None
+        })
+    
+    # Ordenar por fecha del último mensaje (más recientes primero)
+    usuarios_data.sort(key=lambda x: x['ultimo_mensaje_fecha'] or '', reverse=True)
+    
+    return jsonify({
+        'success': True,
+        'remitentes': usuarios_data
+    }), 200
+
+
+@dashboard_bp.route('/api/mensajes-docente-no-leidos', methods=['GET'])
+@login_required
+def obtener_mensajes_no_leidos_docente():
+    """Obtener cantidad total de mensajes no leídos del docente (de todos sus cursos)."""
+    usuario_id = session.get('usuario_id')
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    if usuario.role != 'docente':
+        return jsonify({'success': False, 'error': 'Solo los docentes pueden acceder'}), 403
+    
+    # Obtener los cursos del docente
+    cursos = Curso.query.filter_by(docente_principal_id=usuario_id).all()
+    curso_ids = [c.id for c in cursos]
+    
+    if not curso_ids:
+        return jsonify({
+            'success': True,
+            'total': 0
+        }), 200
+    
+    # Contar mensajes no leídos de todos los cursos
+    total_no_leidos = Mensaje.query.filter(
+        Mensaje.destinatario_id == usuario_id,
+        Mensaje.curso_id.in_(curso_ids),
+        Mensaje.leido == False
+    ).count()
+    
+    return jsonify({
+        'success': True,
+        'total': total_no_leidos
+    }), 200
+
+
+@dashboard_bp.route('/api/mensajes-docente-global', methods=['GET'])
+@login_required
+def obtener_conversaciones_docente_global():
+    """Obtener lista de estudiantes que han enviado mensajes al docente (de todos sus cursos)."""
+    usuario_id = session.get('usuario_id')
+    
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    if usuario.role != 'docente':
+        return jsonify({'success': False, 'error': 'Solo los docentes pueden acceder'}), 403
+    
+    # Obtener los cursos del docente
+    cursos = Curso.query.filter_by(docente_principal_id=usuario_id).all()
+    curso_ids = [c.id for c in cursos]
+    
+    if not curso_ids:
+        return jsonify({
+            'success': True,
+            'estudiantes': []
+        }), 200
+    
+    # Obtener todos los estudiantes que han enviado mensajes en estos cursos
+    mensajes = db.session.query(Mensaje.remitente_id, Mensaje.curso_id).filter(
+        Mensaje.destinatario_id == usuario_id,
+        Mensaje.curso_id.in_(curso_ids)
+    ).all()
+    
+    # Agrupar por estudiante y curso
+    estudiantes_cursos = {}
+    for msg in mensajes:
+        key = (msg.remitente_id, msg.curso_id)
+        if key not in estudiantes_cursos:
+            estudiantes_cursos[key] = True
+    
+    # Obtener datos de estudiantes
+    estudiantes_data = []
+    for (estudiante_id, curso_id) in estudiantes_cursos.keys():
+        estudiante = Usuario.query.get(estudiante_id)
+        curso = Curso.query.get(curso_id)
+        
+        if not estudiante or not curso:
+            continue
+        
+        # Contar mensajes no leídos de este estudiante
+        no_leidos = Mensaje.query.filter_by(
+            remitente_id=estudiante_id,
+            destinatario_id=usuario_id,
+            curso_id=curso_id,
+            leido=False
+        ).count()
+        
+        # Obtener último mensaje
+        ultimo_mensaje = Mensaje.query.filter(
+            Mensaje.curso_id == curso_id,
+            ((Mensaje.remitente_id == usuario_id) & (Mensaje.destinatario_id == estudiante_id)) |
+            ((Mensaje.remitente_id == estudiante_id) & (Mensaje.destinatario_id == usuario_id))
+        ).order_by(Mensaje.fecha_creacion.desc()).first()
+        
+        estudiantes_data.append({
+            'id': estudiante_id,
+            'nombre': estudiante.nombre,
+            'apellido': estudiante.apellido,
+            'email': estudiante.email,
+            'curso_id': curso_id,
+            'curso_codigo': curso.codigo,
+            'curso_nombre': curso.nombre,
+            'no_leidos': no_leidos,
+            'ultimo_mensaje_fecha': ultimo_mensaje.fecha_creacion.isoformat() if ultimo_mensaje else None
+        })
+    
+    # Ordenar por fecha del último mensaje (más recientes primero), luego por no leídos
+    estudiantes_data.sort(
+        key=lambda x: (x['ultimo_mensaje_fecha'] or '', x['no_leidos']),
+        reverse=True
+    )
+    
+    return jsonify({
+        'success': True,
+        'estudiantes': estudiantes_data
+    }), 200
