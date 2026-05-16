@@ -42,5 +42,4 @@ instance/
 .env
 .env.local
 
-# Migrations (se pueden regenerar)
-migrations/
+
