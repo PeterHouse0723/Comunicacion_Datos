@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 from models import (
     Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso,
     SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
-    LoginAuditoria, Notificacion
+    LoginAuditoria, Notificacion, Mensaje
 )
 
 def apply_migrations(app):
@@ -22,7 +22,8 @@ def apply_migrations(app):
     migration_files = [
         'add_authentication_fields.sql',
         'add_contraseña_cambiada.sql',
-        'create_solicitudes_nuevo_estudiante.sql'
+        'create_solicitudes_nuevo_estudiante.sql',
+        'create_mensajes.sql'
     ]
     
     for migration_file in migration_files:
