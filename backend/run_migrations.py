@@ -14,7 +14,9 @@ def run_migrations():
     migration_files = [
         'add_authentication_fields.sql',
         'add_contraseña_cambiada.sql',
-        'create_solicitudes_nuevo_estudiante.sql'
+        'create_solicitudes_nuevo_estudiante.sql',
+        'create_actividades.sql',
+        'create_calificaciones.sql'
     ]
     
     with app.app_context():
