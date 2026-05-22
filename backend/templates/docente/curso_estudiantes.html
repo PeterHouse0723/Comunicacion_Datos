@@ -48,183 +48,114 @@
             background: #45a049;
         }
         
-        /* Modal de Mensajes */
+        /* ===== MODAL MENSAJES ===== */
         .modal-mensajes {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-            animation: fadeIn 0.3s;
+            display: none; position: fixed;
+            z-index: 1000; inset: 0;
+            background: rgba(0,0,0,0.5);
+            animation: fadeIn 0.2s ease;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
         .modal-content-mensajes {
-            background-color: white;
-            margin: auto;
-            padding: 0;
-            width: 90%;
-            max-width: 500px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation: slideIn 0.3s;
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translate(-50%, -60%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, -50%);
-                opacity: 1;
-            }
-        }
-        
-        .modal-header-mensajes {
-            background: #4CAF50;
-            color: white;
-            padding: 15px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-header-mensajes h3 {
-            margin: 0;
-            font-size: 18px;
-        }
-        
-        .close-mensajes {
-            color: white;
-            cursor: pointer;
-            font-size: 24px;
-            font-weight: bold;
-            background: none;
-            border: none;
-            transition: transform 0.2s;
-        }
-        
-        .close-mensajes:hover {
-            transform: scale(1.2);
-        }
-        
-        .modal-body-mensajes {
-            padding: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .mensajes-lista {
-            margin-bottom: 15px;
-            max-height: 250px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            background: #f9f9f9;
-        }
-        
-        .mensaje-item {
-            margin-bottom: 10px;
-            padding: 8px;
             background: white;
-            border-left: 3px solid #4CAF50;
-            border-radius: 3px;
+            width: 92%; max-width: 520px;
+            height: 82vh; max-height: 600px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation: slideUp 0.25s ease;
+            display: flex; flex-direction: column; overflow: hidden;
         }
-        
-        .mensaje-item.enviado {
-            border-left-color: #2196F3;
-            background: #e3f2fd;
+        @keyframes slideUp {
+            from{transform:translate(-50%,-46%);opacity:0}
+            to{transform:translate(-50%,-50%);opacity:1}
         }
-        
-        .mensaje-item.recibido {
-            border-left-color: #4CAF50;
-            background: #f1f8f4;
+
+        .modal-header-mensajes {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white; padding: 15px 18px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
         }
-        
-        .mensaje-hora {
-            font-size: 12px;
-            color: #999;
-            margin-top: 3px;
+        .modal-header-info { display: flex; align-items: center; gap: 10px; }
+        .modal-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;
         }
-        
-        .mensaje-texto {
-            word-wrap: break-word;
-            margin: 5px 0;
+        .modal-header-mensajes h3 { margin: 0; font-size: 15px; font-weight: 600; }
+        .modal-header-mensajes p { margin: 2px 0 0; font-size: 11px; opacity: 0.8; }
+        .close-mensajes {
+            color: rgba(255,255,255,0.85); cursor: pointer; font-size: 22px;
+            background: none; border: none; padding: 4px 7px; border-radius: 6px;
+            transition: background 0.2s; line-height: 1;
         }
-        
+        .close-mensajes:hover { background: rgba(255,255,255,0.15); color: white; }
+
+        /* Messages scroll */
+        .mensajes-scroll {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 5px;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 18px 18px; background-color: #f7f8fa;
+        }
+
+        /* Bubbles */
+        .mensaje-item { max-width: 75%; display: flex; flex-direction: column; }
+        .mensaje-item.enviado { align-self: flex-end; align-items: flex-end; }
+        .mensaje-item.recibido { align-self: flex-start; align-items: flex-start; }
+        .mensaje-burbuja {
+            padding: 9px 14px; border-radius: 18px;
+            line-height: 1.45; font-size: 14px;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .mensaje-item.enviado .mensaje-burbuja {
+            background: #4CAF50; color: white; border-bottom-right-radius: 4px;
+        }
+        .mensaje-item.recibido .mensaje-burbuja {
+            background: white; color: #333; border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .mensaje-hora { font-size: 11px; color: #bbb; margin-top: 3px; padding: 0 4px; }
+
+        /* Footer */
         .modal-footer-mensajes {
-            padding: 15px;
-            border-top: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            padding: 10px 14px; border-top: 1px solid #eee;
+            display: flex; align-items: flex-end; gap: 10px;
+            background: white; flex-shrink: 0;
         }
-        
-        .form-grupo-mensaje {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+        .input-mensaje-wrapper {
+            flex: 1; background: #f5f5f5; border-radius: 22px;
+            padding: 8px 14px; border: 1.5px solid #e8e8e8;
+            transition: border-color 0.2s, background 0.2s;
         }
-        
-        .form-grupo-mensaje label {
-            font-weight: bold;
-            font-size: 14px;
+        .input-mensaje-wrapper:focus-within { border-color: #4CAF50; background: white; }
+        .input-mensaje-wrapper textarea {
+            width: 100%; background: none; border: none; outline: none;
+            font-family: inherit; font-size: 14px; resize: none;
+            max-height: 100px; overflow-y: auto;
+            line-height: 1.4; color: #333; display: block;
         }
-        
-        .form-grupo-mensaje textarea {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 80px;
-        }
-        
+        .char-counter { font-size: 10px; color: #ccc; text-align: right; margin-top: 2px; }
+        .char-counter.warn { color: #ff9800; }
+        .char-counter.danger { color: #f44336; }
         .btn-enviar-mensaje {
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
+            width: 42px; height: 42px;
+            background: #4CAF50; color: white;
+            border: none; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; transition: background 0.2s, transform 0.1s;
+            flex-shrink: 0;
         }
-        
-        .btn-enviar-mensaje:hover {
-            background: #45a049;
-        }
-        
-        .btn-enviar-mensaje:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .mensaje-error {
-            color: #d32f2f;
-            font-size: 14px;
-            margin: 5px 0;
-        }
-        
-        .mensaje-exito {
-            color: #388e3c;
-            font-size: 14px;
-            margin: 5px 0;
+        .btn-enviar-mensaje:hover { background: #43A047; transform: scale(1.06); }
+        .btn-enviar-mensaje:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
+        @media (max-width: 640px) {
+            .modal-content-mensajes { width: 100%; height: 100vh; max-height: 100vh; border-radius: 0; top: 0; left: 0; transform: none; }
+            .mensaje-item { max-width: 85%; }
         }
     </style>
 </head>
@@ -279,143 +210,129 @@
     <div id="modalMensajes" class="modal-mensajes">
         <div class="modal-content-mensajes">
             <div class="modal-header-mensajes">
-                <h3 id="modalEstudianteName">Mensaje</h3>
-                <button class="close-mensajes" onclick="cerrarModalMensaje()">&times;</button>
-            </div>
-            <div class="modal-body-mensajes">
-                <div class="mensajes-lista" id="mensajesList">
-                    <p style="text-align: center; color: #999;">Cargando mensajes...</p>
-                </div>
-                <div class="modal-footer-mensajes">
-                    <div id="mensajeStatus"></div>
-                    <div class="form-grupo-mensaje">
-                        <label for="mensajeTexto">Tu mensaje:</label>
-                        <textarea id="mensajeTexto" placeholder="Escribe tu mensaje aquí..."></textarea>
+                <div class="modal-header-info">
+                    <div class="modal-avatar" id="modalAvatar">?</div>
+                    <div>
+                        <h3 id="modalEstudianteName">Mensaje</h3>
+                        <p>Estudiante</p>
                     </div>
-                    <button class="btn-enviar-mensaje" onclick="enviarMensaje()">
-                        <i class="fas fa-paper-plane"></i> Enviar Mensaje
-                    </button>
                 </div>
+                <button class="close-mensajes" onclick="cerrarModalMensaje()" title="Cerrar">&times;</button>
+            </div>
+            <div class="mensajes-scroll" id="mensajesList">
+                <div style="text-align:center;padding:30px;color:#ccc"><i class="fas fa-spinner fa-spin fa-lg"></i></div>
+            </div>
+            <div class="modal-footer-mensajes">
+                <div class="input-mensaje-wrapper">
+                    <textarea id="mensajeTexto" placeholder="Escribe un mensaje... (Enter para enviar)" rows="1"></textarea>
+                    <div class="char-counter" id="charCounterEstudiante">0 / 5000</div>
+                </div>
+                <button class="btn-enviar-mensaje" id="btnEnviarEstudiante" onclick="enviarMensaje()" title="Enviar">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
     </div>
 
     <script>
         let estudianteActualId = null;
+        let estudianteNombreActual = '';
         let cursoId = {{ curso.id }};
         let usuario_id = {{ session.get('usuario_id') }};
-        
+
+        function getInitials(nombre) {
+            return nombre.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+        }
+        function formatTimestamp(dateStr) {
+            const d = new Date(dateStr);
+            const now = new Date();
+            const hm = d.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+            if (d.toDateString() === now.toDateString()) return hm;
+            return d.toLocaleDateString('es-CO', {day: '2-digit', month: '2-digit'}) + ' ' + hm;
+        }
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+        }
+
         function abrirModalMensaje(estudianteId, estudianteName) {
             estudianteActualId = estudianteId;
-            document.getElementById('modalEstudianteName').textContent = 'Mensaje a ' + estudianteName;
+            estudianteNombreActual = estudianteName;
+            document.getElementById('modalEstudianteName').textContent = estudianteName;
+            document.getElementById('modalAvatar').textContent = getInitials(estudianteName);
             document.getElementById('mensajeTexto').value = '';
-            document.getElementById('mensajeStatus').innerHTML = '';
+            document.getElementById('charCounterEstudiante').textContent = '0 / 5000';
             document.getElementById('modalMensajes').style.display = 'block';
-            
-            // Cargar conversación existente
             cargarConversacion();
+            setTimeout(() => document.getElementById('mensajeTexto').focus(), 100);
         }
-        
+
         function cerrarModalMensaje() {
             document.getElementById('modalMensajes').style.display = 'none';
             estudianteActualId = null;
         }
-        
+
         function cargarConversacion() {
-            fetch(`/dashboard/api/mensajes/${estudianteActualId}/${cursoId}`)
-                .then(response => response.json())
+            const lista = document.getElementById('mensajesList');
+            lista.innerHTML = '<div style="text-align:center;padding:30px;color:#ccc"><i class="fas fa-spinner fa-spin fa-lg"></i></div>';
+            fetch(`/dashboard/api/mensajes/${estudianteActualId}/${cursoId}?limit=50`)
+                .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
-                        let html = '';
-                        if (data.mensajes.length === 0) {
-                            html = '<p style="text-align: center; color: #999;">No hay mensajes previos</p>';
-                        } else {
-                            data.mensajes.forEach(msg => {
-                                const fecha = new Date(msg.fecha_creacion).toLocaleString('es-CO');
-                                const clase = msg.remitente_id === usuario_id ? 'enviado' : 'recibido';
-                                html += `
-                                    <div class="mensaje-item ${clase}">
-                                        <div class="mensaje-texto">${escapeHtml(msg.contenido)}</div>
-                                        <div class="mensaje-hora">${fecha}</div>
-                                    </div>
-                                `;
-                            });
-                        }
-                        document.getElementById('mensajesList').innerHTML = html;
-                        // Scroll al final
-                        document.getElementById('mensajesList').scrollTop = document.getElementById('mensajesList').scrollHeight;
+                    if (!data.success) { lista.innerHTML = '<div style="text-align:center;padding:20px;color:#f44336"><i class="fas fa-exclamation-circle"></i> Error al cargar</div>'; return; }
+                    if (data.mensajes.length === 0) {
+                        lista.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc"><i class="fas fa-comment-dots" style="font-size:32px;display:block;margin-bottom:8px"></i><p style="margin:0;font-size:13px">Sin mensajes. ¡Inicia la conversación!</p></div>';
+                        return;
                     }
+                    lista.innerHTML = data.mensajes.map(msg => {
+                        const clase = msg.remitente_id === usuario_id ? 'enviado' : 'recibido';
+                        return `<div class="mensaje-item ${clase}"><div class="mensaje-burbuja">${escapeHtml(msg.contenido)}</div><div class="mensaje-hora">${formatTimestamp(msg.fecha_creacion)}</div></div>`;
+                    }).join('');
+                    lista.scrollTop = lista.scrollHeight;
                 })
-                .catch(err => {
-                    console.error('Error:', err);
-                    document.getElementById('mensajesList').innerHTML = '<p class="mensaje-error">Error al cargar mensajes</p>';
-                });
+                .catch(() => { lista.innerHTML = '<div style="text-align:center;padding:20px;color:#f44336"><i class="fas fa-exclamation-circle"></i> Error al cargar</div>'; });
         }
-        
+
         function enviarMensaje() {
-            const contenido = document.getElementById('mensajeTexto').value.trim();
-            
-            if (!contenido) {
-                document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-error">Por favor escribe un mensaje</p>';
-                return;
-            }
-            
-            const btn = event.target;
+            const input = document.getElementById('mensajeTexto');
+            const contenido = input.value.trim();
+            if (!contenido) return;
+            const btn = document.getElementById('btnEnviarEstudiante');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-            
             fetch('/dashboard/api/mensajes', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    destinatario_id: estudianteActualId,
-                    curso_id: cursoId,
-                    contenido: contenido
-                })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({destinatario_id: estudianteActualId, curso_id: cursoId, contenido})
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('mensajeTexto').value = '';
-                    document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-exito"><i class="fas fa-check"></i> Mensaje enviado</p>';
-                    setTimeout(() => {
-                        document.getElementById('mensajeStatus').innerHTML = '';
-                    }, 2000);
+                    input.value = ''; input.style.height = 'auto';
+                    document.getElementById('charCounterEstudiante').textContent = '0 / 5000';
+                    document.getElementById('charCounterEstudiante').className = 'char-counter';
                     cargarConversacion();
-                } else {
-                    document.getElementById('mensajeStatus').innerHTML = `<p class="mensaje-error">Error: ${data.error}</p>`;
-                }
+                } else { alert('Error: ' + data.error); }
             })
-            .catch(err => {
-                console.error('Error:', err);
-                document.getElementById('mensajeStatus').innerHTML = '<p class="mensaje-error">Error al enviar mensaje</p>';
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Mensaje';
+            .catch(() => alert('Error al enviar mensaje'))
+            .finally(() => { btn.disabled = false; });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('mensajeTexto');
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
             });
-        }
-        
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
-        
-        // Cerrar modal al hacer clic fuera
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                const len = this.value.length;
+                const c = document.getElementById('charCounterEstudiante');
+                c.textContent = `${len} / 5000`;
+                c.className = 'char-counter' + (len > 4500 ? ' danger' : len > 4000 ? ' warn' : '');
+            });
+        });
+
         window.onclick = function(event) {
-            const modal = document.getElementById('modalMensajes');
-            if (event.target === modal) {
-                cerrarModalMensaje();
-            }
-        }
+            if (event.target === document.getElementById('modalMensajes')) cerrarModalMensaje();
+        };
     </script>
 </body>
 </html>

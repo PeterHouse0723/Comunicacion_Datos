@@ -20,7 +20,10 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background:
+                linear-gradient(rgba(10, 14, 26, 0.82), rgba(10, 14, 26, 0.82)),
+                url("{{ url_for('static', filename='imagenes/fondo general.jpg') }}") no-repeat center center fixed;
+            background-size: auto, cover;
             min-height: 100vh;
             color: var(--text-primary);
             overflow-x: hidden;
@@ -187,6 +190,9 @@
 
     <!-- NAVBAR -->
     <nav class="admin-navbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <img src="{{ url_for('static', filename='imagenes/logo sin fondo.png') }}" alt="AnimApp" style="height:38px;width:auto;">
+        </div>
         <div class="profile-container">
             <button class="profile-btn" id="profileBtn">
                 <div class="profile-info">
@@ -367,5 +373,6 @@
             }
         });
     </script>
+    {% include 'components/chatbot.html' %}
 </body>
 </html>

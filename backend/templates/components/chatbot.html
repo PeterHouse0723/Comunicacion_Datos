@@ -1,0 +1,298 @@
+<!-- ===== CHATBOT FLOTANTE ===== -->
+<style>
+/* Burbuja flotante */
+.chatbot-bubble {
+    position: fixed; bottom: 28px; right: 28px;
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #1976D2 0%, #0D47A1 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 18px rgba(25,118,210,0.45);
+    cursor: pointer; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: white;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 1100;
+}
+.chatbot-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(25,118,210,0.55); }
+.chatbot-bubble .cb-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #f44336; color: white;
+    font-size: 10px; font-weight: 700;
+    min-width: 18px; height: 18px;
+    border-radius: 9px; padding: 0 4px;
+    display: none; align-items: center; justify-content: center;
+    border: 2px solid white;
+}
+
+/* Panel del chat */
+.chatbot-panel {
+    position: fixed; bottom: 96px; right: 28px;
+    width: 340px; max-height: 520px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.22);
+    display: none; flex-direction: column; overflow: hidden;
+    z-index: 1100;
+    animation: cbSlideUp 0.22s ease;
+}
+@keyframes cbSlideUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+}
+
+.chatbot-panel-header {
+    background: linear-gradient(135deg, #1976D2 0%, #0D47A1 100%);
+    color: white; padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+}
+.cb-header-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.22);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.chatbot-panel-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.chatbot-panel-header p  { margin: 1px 0 0; font-size: 11px; opacity: 0.8; }
+.cb-close {
+    margin-left: auto; background: none; border: none;
+    color: rgba(255,255,255,0.85); font-size: 20px;
+    cursor: pointer; padding: 4px 6px; border-radius: 6px;
+    transition: background 0.2s; line-height: 1;
+}
+.cb-close:hover { background: rgba(255,255,255,0.15); color: white; }
+
+/* Área de mensajes */
+.chatbot-messages {
+    flex: 1; overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: #f7f8fa;
+    background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+    background-size: 18px 18px;
+    min-height: 0;
+}
+
+/* Burbujas */
+.cb-msg { max-width: 82%; display: flex; flex-direction: column; }
+.cb-msg.bot  { align-self: flex-start; align-items: flex-start; }
+.cb-msg.user { align-self: flex-end;   align-items: flex-end; }
+.cb-burbuja {
+    padding: 9px 13px; border-radius: 16px;
+    font-size: 13px; line-height: 1.45;
+    white-space: pre-wrap; word-break: break-word;
+}
+.cb-msg.bot  .cb-burbuja {
+    background: white; color: #333;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.cb-msg.user .cb-burbuja {
+    background: #1976D2; color: white;
+    border-bottom-right-radius: 4px;
+}
+.cb-hora { font-size: 10px; color: #bbb; margin-top: 2px; padding: 0 3px; }
+
+/* Opciones (botones de selección) */
+.cb-options {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 6px; padding: 0 14px 10px;
+}
+.cb-option-btn {
+    background: #E3F2FD; color: #1565C0;
+    border: 1.5px solid #90CAF9; border-radius: 10px;
+    padding: 8px 12px; font-size: 13px;
+    cursor: pointer; text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+}
+.cb-option-btn:hover { background: #BBDEFB; border-color: #1976D2; }
+
+/* Footer de input */
+.chatbot-footer {
+    padding: 10px 12px; border-top: 1px solid #eee;
+    display: flex; align-items: flex-end; gap: 8px;
+    background: white; flex-shrink: 0;
+}
+.cb-input-wrap {
+    flex: 1; background: #f5f5f5; border-radius: 20px;
+    padding: 7px 12px; border: 1.5px solid #e8e8e8;
+    transition: border-color 0.2s;
+}
+.cb-input-wrap:focus-within { border-color: #1976D2; background: white; }
+.cb-input-wrap textarea {
+    width: 100%; background: none; border: none; outline: none;
+    font-family: inherit; font-size: 13px; resize: none;
+    max-height: 80px; overflow-y: auto;
+    line-height: 1.4; color: #333; display: block;
+}
+.cb-send-btn {
+    width: 38px; height: 38px;
+    background: #1976D2; color: white;
+    border: none; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: background 0.2s, transform 0.1s;
+    flex-shrink: 0;
+}
+.cb-send-btn:hover { background: #1565C0; transform: scale(1.06); }
+.cb-send-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
+@media (max-width: 480px) {
+    .chatbot-panel { width: calc(100vw - 20px); right: 10px; bottom: 80px; }
+    .chatbot-bubble { bottom: 16px; right: 16px; }
+}
+</style>
+
+<!-- Botón flotante -->
+<button class="chatbot-bubble" id="cbBubble" onclick="cbToggle()" title="Asistente virtual">
+    <i class="fas fa-robot"></i>
+    <span class="cb-badge" id="cbBadge"></span>
+</button>
+
+<!-- Panel del chat -->
+<div class="chatbot-panel" id="cbPanel">
+    <div class="chatbot-panel-header">
+        <div class="cb-header-avatar"><i class="fas fa-robot"></i></div>
+        <div>
+            <h4>Asistente Académico</h4>
+            <p>Responde tus consultas al instante</p>
+        </div>
+        <button class="cb-close" onclick="cbToggle()" title="Cerrar">&times;</button>
+    </div>
+    <div class="chatbot-messages" id="cbMessages"></div>
+    <div class="cb-options" id="cbOptions" style="display:none"></div>
+    <div class="chatbot-footer">
+        <div class="cb-input-wrap">
+            <textarea id="cbInput" placeholder="Escribe tu consulta..." rows="1"></textarea>
+        </div>
+        <button class="cb-send-btn" id="cbSendBtn" onclick="cbEnviar()" title="Enviar">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+(function() {
+    let cbEstado = {};
+    let cbAbierto = false;
+
+    function cbToggle() {
+        cbAbierto = !cbAbierto;
+        document.getElementById('cbPanel').style.display = cbAbierto ? 'flex' : 'none';
+        if (cbAbierto && document.getElementById('cbMessages').children.length === 0) {
+            cbEnviarMensaje('hola', false);
+        }
+        if (cbAbierto) setTimeout(() => document.getElementById('cbInput').focus(), 80);
+    }
+    window.cbToggle = cbToggle;
+
+    function cbHora() {
+        return new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+    }
+
+    // Renders **bold** markdown
+    function cbRenderMd(text) {
+        return text
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function cbAgregarMensaje(texto, tipo) {
+        const lista = document.getElementById('cbMessages');
+        const div = document.createElement('div');
+        div.className = `cb-msg ${tipo}`;
+        div.innerHTML = `<div class="cb-burbuja">${cbRenderMd(texto)}</div><div class="cb-hora">${cbHora()}</div>`;
+        lista.appendChild(div);
+        lista.scrollTop = lista.scrollHeight;
+    }
+
+    function cbMostrarOpciones(opciones) {
+        const cont = document.getElementById('cbOptions');
+        if (!opciones || opciones.length === 0) {
+            cont.style.display = 'none';
+            cont.innerHTML = '';
+            return;
+        }
+        cont.innerHTML = '';
+        opciones.forEach(op => {
+            const btn = document.createElement('button');
+            btn.className = 'cb-option-btn';
+            btn.textContent = op.texto;
+            btn.onclick = () => cbSeleccionarOpcion(op.texto, op.valor);
+            cont.appendChild(btn);
+        });
+        cont.style.display = 'flex';
+    }
+
+    function cbSeleccionarOpcion(texto, valor) {
+        cbMostrarOpciones([]);
+        cbAgregarMensaje(texto, 'user');
+        cbEnviarMensaje(valor, true);
+    }
+    window.cbSeleccionarOpcion = cbSeleccionarOpcion;
+
+    function cbEnviar() {
+        const input = document.getElementById('cbInput');
+        const texto = input.value.trim();
+        if (!texto) return;
+        input.value = '';
+        input.style.height = 'auto';
+        cbMostrarOpciones([]);
+        cbAgregarMensaje(texto, 'user');
+        cbEnviarMensaje(texto, false);
+    }
+    window.cbEnviar = cbEnviar;
+
+    function cbEnviarMensaje(texto, esOpcion) {
+        const btn = document.getElementById('cbSendBtn');
+        btn.disabled = true;
+
+        // Typing indicator
+        const lista = document.getElementById('cbMessages');
+        const typing = document.createElement('div');
+        typing.className = 'cb-msg bot';
+        typing.id = 'cbTyping';
+        typing.innerHTML = '<div class="cb-burbuja" style="color:#aaa"><i class="fas fa-circle-notch fa-spin" style="font-size:12px"></i> Escribiendo...</div>';
+        lista.appendChild(typing);
+        lista.scrollTop = lista.scrollHeight;
+
+        const body = esOpcion
+            ? { mensaje: texto, estado: cbEstado }
+            : { mensaje: texto, estado: {} };
+
+        if (esOpcion) {
+            body.estado.esperando_opcion = true;
+        }
+
+        fetch('/api/chatbot/mensaje', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        })
+        .then(r => r.json())
+        .then(data => {
+            const t = document.getElementById('cbTyping');
+            if (t) t.remove();
+            cbEstado = data.estado || {};
+            cbAgregarMensaje(data.respuesta || 'Sin respuesta', 'bot');
+            cbMostrarOpciones(data.opciones || []);
+        })
+        .catch(() => {
+            const t = document.getElementById('cbTyping');
+            if (t) t.remove();
+            cbAgregarMensaje('Error al conectar. Intenta de nuevo.', 'bot');
+        })
+        .finally(() => { btn.disabled = false; });
+    }
+
+    // Enter to send
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('cbInput');
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); cbEnviar(); }
+        });
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+        });
+    });
+})();
+</script>

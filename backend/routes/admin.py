@@ -8,6 +8,26 @@ from datetime import datetime
 import csv
 import io
 import math
+import os
+from werkzeug.utils import secure_filename
+
+LOGOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'imagenes', 'instituciones')
+ALLOWED_LOGO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
+
+def _allowed_logo(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_LOGO_EXTENSIONS
+
+def _save_logo(file, inst_id):
+    """Guarda el archivo de logo y devuelve el filename guardado, o None."""
+    if not file or file.filename == '':
+        return None
+    if not _allowed_logo(file.filename):
+        return None
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    filename = secure_filename(f'inst_{inst_id}.{ext}')
+    os.makedirs(LOGOS_DIR, exist_ok=True)
+    file.save(os.path.join(LOGOS_DIR, filename))
+    return filename
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -1364,31 +1384,29 @@ def crear_institucion():
         if usuario.role != 'admin_global':
             return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
         
-        data = request.get_json()
-        
-        nombre = data.get('nombre', '').strip()
-        ciudad = data.get('ciudad', '').strip()
-        pais = data.get('pais', '').strip()
-        
+        nombre = (request.form.get('nombre') or '').strip()
+        ciudad = (request.form.get('ciudad') or '').strip()
+        pais = (request.form.get('pais') or '').strip()
+
         if not all([nombre, ciudad, pais]):
             return jsonify({'success': False, 'error': 'Campos requeridos vacíos'}), 400
-        
-        # Verificar que no exista ya
+
         if Institucion.query.filter_by(nombre=nombre).first():
             return jsonify({'success': False, 'error': 'Esta institución ya existe'}), 409
-        
-        nueva_inst = Institucion(
-            nombre=nombre,
-            ciudad=ciudad,
-            pais=pais,
-            activo=True
-        )
-        
+
+        nueva_inst = Institucion(nombre=nombre, ciudad=ciudad, pais=pais, activo=True)
         db.session.add(nueva_inst)
+        db.session.flush()  # obtener el id antes del commit
+
+        logo_file = request.files.get('logo')
+        if logo_file and logo_file.filename:
+            logo_fn = _save_logo(logo_file, nueva_inst.id)
+            if logo_fn:
+                nueva_inst.logo_filename = logo_fn
+
         db.session.commit()
-        
         print(f"[OK] Institución creada: {nombre}")
-        
+
         return jsonify({
             'success': True,
             'mensaje': 'Institución creada exitosamente',
@@ -1417,16 +1435,28 @@ def actualizar_institucion(inst_id):
         if not institucion:
             return jsonify({'success': False, 'error': 'Institución no encontrada'}), 404
         
-        data = request.get_json()
-        
-        institucion.nombre = data.get('nombre', institucion.nombre).strip()
-        institucion.ciudad = data.get('ciudad', institucion.ciudad).strip()
-        institucion.pais = data.get('pais', institucion.pais).strip()
-        
+        nombre = (request.form.get('nombre') or institucion.nombre).strip()
+        ciudad = (request.form.get('ciudad') or institucion.ciudad).strip()
+        pais = (request.form.get('pais') or institucion.pais).strip()
+
+        institucion.nombre = nombre
+        institucion.ciudad = ciudad
+        institucion.pais = pais
+
+        logo_file = request.files.get('logo')
+        if logo_file and logo_file.filename:
+            logo_fn = _save_logo(logo_file, inst_id)
+            if logo_fn:
+                # eliminar logo anterior si existe y es diferente
+                if institucion.logo_filename and institucion.logo_filename != logo_fn:
+                    old_path = os.path.join(LOGOS_DIR, institucion.logo_filename)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                institucion.logo_filename = logo_fn
+
         db.session.commit()
-        
         print(f"[OK] Institución actualizada: {institucion.nombre}")
-        
+
         return jsonify({
             'success': True,
             'mensaje': 'Institución actualizada exitosamente'

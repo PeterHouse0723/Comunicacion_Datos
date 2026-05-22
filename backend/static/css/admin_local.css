@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg-deep: #0a0e1a;
-    --bg-mid: #0f1424;
-    --bg-surface: rgba(255, 255, 255, 0.04);
-    --glass-bg: rgba(255, 255, 255, 0.06);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-hover: rgba(255, 255, 255, 0.10);
-    --text-primary: #f0f0f5;
-    --text-secondary: rgba(240, 240, 245, 0.55);
-    --text-tertiary: rgba(240, 240, 245, 0.3);
+    --bg-deep: #f0f2f5;
+    --bg-mid: #f8f9fc;
+    --bg-surface: rgba(0, 0, 0, 0.04);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-hover: rgba(0, 0, 0, 0.06);
+    --text-primary: #1e293b;
+    --text-secondary: rgba(30, 41, 59, 0.65);
+    --text-tertiary: rgba(30, 41, 59, 0.45);
     --purple: #8b5cf6;
-    --purple-dim: rgba(139, 92, 246, 0.15);
+    --purple-dim: rgba(139, 92, 246, 0.12);
     --blue: #3b82f6;
-    --blue-dim: rgba(59, 130, 246, 0.15);
+    --blue-dim: rgba(59, 130, 246, 0.12);
     --teal: #14b8a6;
-    --teal-dim: rgba(20, 184, 166, 0.15);
+    --teal-dim: rgba(20, 184, 166, 0.12);
     --pink: #ec4899;
-    --pink-dim: rgba(236, 72, 153, 0.15);
+    --pink-dim: rgba(236, 72, 153, 0.12);
     --sidebar-w: 260px;
     --radius-sm: 10px;
     --radius-md: 16px;
@@ -33,7 +33,8 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background: var(--bg-deep);
+    background: url('../imagenes/fondo general.jpg') no-repeat center center fixed;
+    background-size: cover;
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
@@ -51,12 +52,13 @@ body {
     filter: blur(100px);
     pointer-events: none;
     z-index: 0;
+    opacity: 0.3;
 }
 
 .orb-1 {
     width: 500px;
     height: 500px;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
     top: -120px;
     left: -100px;
     animation: orb-float 18s ease-in-out infinite;
@@ -65,7 +67,7 @@ body {
 .orb-2 {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
     top: 40%;
     right: -80px;
     animation: orb-float 22s ease-in-out infinite reverse;
@@ -74,7 +76,7 @@ body {
 .orb-3 {
     width: 350px;
     height: 350px;
-    background: radial-gradient(circle, rgba(236, 72, 153, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.05) 0%, transparent 70%);
     bottom: -80px;
     left: 30%;
     animation: orb-float 20s ease-in-out infinite 3s;
@@ -83,7 +85,7 @@ body {
 .orb-4 {
     width: 250px;
     height: 250px;
-    background: radial-gradient(circle, rgba(20, 184, 166, 0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.04) 0%, transparent 70%);
     top: 20%;
     left: 40%;
     animation: orb-float 16s ease-in-out infinite 6s;
@@ -107,10 +109,10 @@ body {
 /* ── Sidebar ── */
 .admin-local-sidebar {
     width: var(--sidebar-w);
-    background: var(--glass-bg);
+    background: rgba(255, 255, 255, 0.90);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-right: 1px solid var(--glass-border);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
     padding: 28px 18px;
     position: sticky;
     top: 0;
@@ -139,6 +141,31 @@ body {
     font-size: 16px;
     color: #fff;
     flex-shrink: 0;
+}
+
+.brand-logo-img {
+    height: 36px;
+    width: auto;
+    flex-shrink: 0;
+}
+
+.inst-logo-sidebar {
+    width: 100%;
+    margin-top: 6px;
+    margin-bottom: 24px;
+    padding: 10px 6px;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inst-logo-sidebar img {
+    max-height: 42px;
+    max-width: 100%;
+    object-fit: contain;
 }
 
 .brand-text h1 {
@@ -290,9 +317,11 @@ body {
 }
 
 .topbar-sub {
-    color: var(--text-secondary);
-    font-size: 13px;
-    margin-top: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 2px;
+    opacity: 0.85;
 }
 
 .topbar-right {
@@ -443,9 +472,9 @@ body {
 
 .glass-card:hover {
     background: var(--glass-hover);
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(0, 0, 0, 0.12);
     transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .glass-card-static {
@@ -535,7 +564,7 @@ body {
     gap: 8px;
     padding: 8px 12px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
     text-decoration: none;
@@ -551,9 +580,9 @@ body {
 }
 
 .glass-action-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.05);
     color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(0, 0, 0, 0.12);
 }
 
 /* ── Quick nav grid ── */
@@ -585,16 +614,16 @@ body {
 
 .quick-nav-card:hover {
     background: var(--glass-hover);
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(0, 0, 0, 0.12);
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .qn-icon {
     width: 40px;
     height: 40px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.04);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -658,7 +687,7 @@ body {
 }
 
 .table thead {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(0, 0, 0, 0.02);
     color: var(--text-secondary);
     font-size: 11px;
     text-transform: uppercase;
@@ -675,7 +704,7 @@ body {
 }
 
 .table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .status-cell {
@@ -700,7 +729,7 @@ body {
     height: 34px;
     border-radius: 50%;
     border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.03);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -755,7 +784,7 @@ body {
 }
 
 .row-menu-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.04);
     color: var(--text-primary);
 }
 
@@ -764,7 +793,7 @@ body {
 }
 
 .row-menu-item.danger:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.08);
 }
 
 /* ── Badge ── */
@@ -784,7 +813,7 @@ body {
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(6px);
     z-index: 1000;
 }
@@ -853,7 +882,7 @@ body {
     padding: 10px 14px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.03);
     color: var(--text-primary);
     font-family: inherit;
     font-size: 14px;
@@ -905,7 +934,7 @@ body {
     gap: 8px;
     padding: 10px 14px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.03);
     border: 1px solid rgba(139, 92, 246, 0.3);
     cursor: pointer;
     transition: all 0.2s ease;

@@ -34,6 +34,7 @@ class Institucion(db.Model):
     nombre = db.Column(db.String(200), unique=True, nullable=False, index=True)
     ciudad = db.Column(db.String(100))
     pais = db.Column(db.String(100), default='Colombia')
+    logo_filename = db.Column(db.String(255), nullable=True)
     admin_global_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)

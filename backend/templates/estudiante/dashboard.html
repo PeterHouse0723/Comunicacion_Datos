@@ -39,7 +39,11 @@
 <body>
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <i class="fas fa-book"></i> Panel de Estudiante
+            {% if usuario.institucion and usuario.institucion.logo_filename %}
+            <img src="{{ url_for('static', filename='imagenes/instituciones/' + usuario.institucion.logo_filename) }}" alt="{{ usuario.institucion.nombre }}" class="inst-logo" title="{{ usuario.institucion.nombre }}">
+            {% endif %}
+            <img src="{{ url_for('static', filename='imagenes/logo sin fondo.png') }}" alt="AnimApp" class="app-logo">
+            Panel de Estudiante
         </div>
         <div class="user-info">
             <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
@@ -67,5 +71,6 @@
             </a>
         </div>
     </div>
+    {% include 'components/chatbot.html' %}
 </body>
 </html>

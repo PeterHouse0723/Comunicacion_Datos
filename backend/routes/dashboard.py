@@ -426,65 +426,73 @@ def curso_docente_asistencia_registrar(curso_id):
     usuario = Usuario.query.get(session.get('usuario_id'))
     curso = _obtener_curso_docente(curso_id, usuario.id)
     if not curso:
-        return ("Curso no encontrado", 404)
+        return ({'success': False, 'error': 'Curso no encontrado'}, 404)
 
     data = request.get_json() or {}
     estudiante_id = data.get('estudiante_id')
     estado = data.get('estado')  # 'asistio', 'no_asistio', 'acuerdo'
     razon = (data.get('razon') or '').strip()
     fecha_str = (data.get('fecha') or '').strip()
+    
     if not estudiante_id or estado not in {'asistio', 'no_asistio', 'acuerdo'}:
-        return ({'success': False, 'error': 'Datos inválidos'}, 400)
+        return ({'success': False, 'error': 'Datos inválidos: estudiante_id o estado incorrecto'}, 400)
 
     from models import Clase, Asistencia
     if fecha_str:
         try:
             fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         except ValueError:
-            return ({'success': False, 'error': 'Fecha inválida'}, 400)
+            return ({'success': False, 'error': 'Fecha inválida. Formato esperado: YYYY-MM-DD'}, 400)
     else:
         fecha_obj = date.today()
 
-    clase = Clase.query.filter_by(curso_id=curso.id, fecha=fecha_obj).first()
-    if not clase:
-        # Si el curso tiene dias_semana definidos, solo permitir crear clase si la fecha seleccionada es uno de esos días
-        dias_definidos = curso.get_dias_semana_list() if hasattr(curso, 'get_dias_semana_list') else []
-        if dias_definidos and fecha_obj.weekday() not in dias_definidos:
-            return ({'success': False, 'error': 'La fecha seleccionada no corresponde a un día de clase programado para este curso'}, 400)
-
-        clase = Clase(curso_id=curso.id, periodo_id=curso.periodo_id, fecha=fecha_obj)
-        db.session.add(clase)
-        db.session.flush()  # obtener id
-
-    asistencia = Asistencia.query.filter_by(clase_id=clase.id, estudiante_id=estudiante_id).first()
-    if not asistencia:
-        asistencia = Asistencia(clase_id=clase.id, curso_id=curso.id, estudiante_id=estudiante_id)
-        db.session.add(asistencia)
-
-    if estado == 'asistio':
-        asistencia.presente = True
-        asistencia.justificacion = None
-    elif estado == 'no_asistio':
-        asistencia.presente = False
-        asistencia.justificacion = razon if razon else None
-    else:  # acuerdo
-        asistencia.presente = False
-        asistencia.justificacion = razon if razon else 'acuerdo'
-
-    asistencia.fecha_registro = datetime.utcnow()
     try:
+        # Validar que el curso tiene periodo_id asignado
+        if not curso.periodo_id:
+            return ({'success': False, 'error': 'El curso no tiene un período asignado'}, 400)
+            
+        clase = Clase.query.filter_by(curso_id=curso.id, fecha=fecha_obj).first()
+        if not clase:
+            # Si el curso tiene dias_semana definidos, solo permitir crear clase si la fecha seleccionada es uno de esos días
+            dias_definidos = curso.get_dias_semana_list() if hasattr(curso, 'get_dias_semana_list') else []
+            if dias_definidos and fecha_obj.weekday() not in dias_definidos:
+                return ({'success': False, 'error': 'La fecha seleccionada no corresponde a un día de clase programado para este curso'}, 400)
+
+            clase = Clase(curso_id=curso.id, periodo_id=curso.periodo_id, fecha=fecha_obj)
+            db.session.add(clase)
+            db.session.flush()  # obtener id
+
+        asistencia = Asistencia.query.filter_by(clase_id=clase.id, estudiante_id=estudiante_id).first()
+        if not asistencia:
+            asistencia = Asistencia(clase_id=clase.id, curso_id=curso.id, estudiante_id=estudiante_id)
+            db.session.add(asistencia)
+
+        if estado == 'asistio':
+            asistencia.presente = True
+            asistencia.justificacion = None
+        elif estado == 'no_asistio':
+            asistencia.presente = False
+            asistencia.justificacion = razon if razon else None
+        else:  # acuerdo
+            asistencia.presente = False
+            asistencia.justificacion = razon if razon else 'acuerdo'
+
+        asistencia.fecha_registro = datetime.utcnow()
         db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return ({'success': False, 'error': 'Error al guardar'}, 500)
-
-    try:
+        
+        # Sincronizar alerta después de guardar la asistencia
         curso.sincronizar_alerta_inasistencia(estudiante_id, usuario.id)
         db.session.commit()
-    except Exception:
+        
+        return ({'success': True, 'estado': estado, 'clase_id': clase.id}, 200)
+        
+    except Exception as e:
         db.session.rollback()
-
-    return ({'success': True, 'estado': estado, 'clase_id': clase.id}, 200)
+        import traceback
+        error_msg = str(e)
+        print(f"Error en registro de asistencia: {error_msg}")
+        print(traceback.format_exc())
+        return ({'success': False, 'error': f'Error al guardar: {error_msg}'}, 500)
 
 
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia/por_fecha')

@@ -17,14 +17,17 @@
     <div class="admin-local-shell">
         <aside class="admin-local-sidebar">
             <div class="sidebar-brand">
-                <div class="brand-icon">
-                    <i class="fas fa-cube"></i>
-                </div>
+                <img src="{{ url_for('static', filename='imagenes/logo sin fondo.png') }}" alt="AnimApp" class="brand-logo-img">
                 <div class="brand-text">
                     <span class="brand-label">Panel Local</span>
                     <h1>Gestor Académico</h1>
                 </div>
             </div>
+            {% if usuario.institucion and usuario.institucion.logo_filename %}
+            <div class="inst-logo-sidebar">
+                <img src="{{ url_for('static', filename='imagenes/instituciones/' + usuario.institucion.logo_filename) }}" alt="{{ usuario.institucion.nombre }}" title="{{ usuario.institucion.nombre }}">
+            </div>
+            {% endif %}
             <nav class="sidebar-menu">
                 <a class="active" href="{{ url_for('admin.dashboard') }}">
                     <i class="fas fa-chart-pie"></i> Dashboard
@@ -203,5 +206,6 @@
             </section>
         </main>
     </div>
+    {% include 'components/chatbot.html' %}
 </body>
 </html>

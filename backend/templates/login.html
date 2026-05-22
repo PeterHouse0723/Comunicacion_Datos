@@ -11,7 +11,7 @@
     <style>
         /* Forzar texto general a blanco */
         body, h1 {
-            color: #000000 !important;
+            color: #c5c5c5 !important;
         }
         
         /* Estilo de los inputs (Efecto vidrio para que se lea bien) */
@@ -69,6 +69,9 @@
 </head>
 <body>
     <div class="login-container">
+        <div style="text-align:center;margin-bottom:22px;">
+            <img src="{{ url_for('static', filename='imagenes/logo sin fondo.png') }}" alt="AnimApp" style="height:64px;width:auto;">
+        </div>
         <h1>Welcome</h1>
         
         {% if error %}

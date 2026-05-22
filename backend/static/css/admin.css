@@ -25,7 +25,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f8f9fa;
+    background: url('../imagenes/fondo general.jpg') no-repeat center center fixed;
+    background-size: cover;
     color: #333;
     line-height: 1.6;
 }
@@ -35,13 +36,13 @@ body {
    ============================================================================ */
 
 .admin-navbar {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d1b4e 100%);
     color: white;
-    padding: 1rem 2rem;
+    padding: 0.8rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -67,6 +68,21 @@ body {
 .navbar-brand h1 {
     font-size: 1.8rem;
     font-weight: 600;
+}
+
+.navbar-brand img.app-logo {
+    height: 36px;
+    width: auto;
+}
+
+.navbar-inst-logo {
+    height: 36px;
+    width: auto;
+    border-radius: 6px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.12);
+    padding: 3px;
+    margin-right: 8px;
 }
 
 .navbar-user {

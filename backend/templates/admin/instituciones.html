@@ -40,6 +40,7 @@
                 <table class="admin-table">
                     <thead>
                         <tr>
+                            <th>Logo</th>
                             <th>Nombre</th>
                             <th>Ciudad</th>
                             <th>País</th>
@@ -50,6 +51,13 @@
                         {% if instituciones %}
                             {% for inst in instituciones %}
                             <tr data-inst-id="{{ inst.id }}">
+                                <td>
+                                    {% if inst.logo_filename %}
+                                    <img src="{{ url_for('static', filename='imagenes/instituciones/' + inst.logo_filename) }}" alt="" style="height:32px;border-radius:4px;object-fit:contain;">
+                                    {% else %}
+                                    <span style="color:#ccc;font-size:12px;">—</span>
+                                    {% endif %}
+                                </td>
                                 <td><strong>{{ inst.nombre }}</strong></td>
                                 <td>{{ inst.ciudad }}</td>
                                 <td>{{ inst.pais }}</td>
@@ -107,7 +115,7 @@
                 <h3 id="modalTitle">Nueva Institución</h3>
                 <button type="button" class="modal-close" onclick="cerrarModal()">&times;</button>
             </div>
-            <form id="instForm">
+            <form id="instForm" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="instId">
 
@@ -125,6 +133,14 @@
                         <div class="form-group">
                             <label for="pais">País *</label>
                             <input type="text" id="pais" name="pais" placeholder="ej: Colombia" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="logoInst">Logo de la Institución (PNG, JPG, SVG)</label>
+                        <input type="file" id="logoInst" name="logo" accept="image/*" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;font-size:0.9rem;">
+                        <div id="logoPreviewWrap" style="display:none;margin-top:8px;">
+                            <img id="logoPreview" src="" alt="Vista previa" style="max-height:60px;border-radius:4px;border:1px solid var(--border-color);">
                         </div>
                     </div>
                 </div>
@@ -194,27 +210,35 @@
             }
         }
 
+        document.getElementById('logoInst').addEventListener('change', function() {
+            const file = this.files[0];
+            const wrap = document.getElementById('logoPreviewWrap');
+            const preview = document.getElementById('logoPreview');
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                wrap.style.display = 'block';
+            } else {
+                wrap.style.display = 'none';
+            }
+        });
+
         document.getElementById('instForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const formData = {
-                nombre: document.getElementById('nombre').value,
-                ciudad: document.getElementById('ciudad').value,
-                pais: document.getElementById('pais').value
-            };
+            const fd = new FormData(this);
+            // asegurar que los campos estén incluidos
+            fd.set('nombre', document.getElementById('nombre').value);
+            fd.set('ciudad', document.getElementById('ciudad').value);
+            fd.set('pais', document.getElementById('pais').value);
 
-            const url = instEnEdicion 
+            const url = instEnEdicion
                 ? `{{ url_for('admin.actualizar_institucion', inst_id=0) }}`.replace('0', instEnEdicion)
                 : `{{ url_for('admin.crear_institucion') }}`;
 
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
+            fetch(url, { method: 'POST', body: fd })
             .then(res => res.json())
             .then(data => {
-                showToast(data.mensaje, data.success);
+                showToast(data.mensaje || data.error, data.success);
                 if (data.success) {
                     cerrarModal();
                     setTimeout(() => location.reload(), 1500);

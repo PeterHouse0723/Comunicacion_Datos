@@ -7,333 +7,253 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
     <style>
-        .header-actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
 
         .btn-mensajes-campana {
             position: relative;
-            padding: 8px 12px;
+            padding: 8px 16px;
             background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             font-size: 14px;
-            transition: background 0.3s;
+            font-weight: 500;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(76,175,80,0.35);
         }
-
-        .btn-mensajes-campana:hover {
-            background: #45a049;
-        }
+        .btn-mensajes-campana:hover { background: #43A047; box-shadow: 0 4px 14px rgba(76,175,80,0.45); }
 
         .badge-mensajes {
             position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ff4444;
+            top: -6px; right: -6px;
+            background: #f44336;
             color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
+            border-radius: 10px;
+            min-width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            border: 2px solid white;
+            padding: 0 3px;
         }
 
-        /* Modal de Mensajes */
+        /* ===== MODAL MENSAJES ===== */
         .modal-mensajes {
             display: none;
             position: fixed;
             z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-            animation: fadeIn 0.3s;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            animation: fadeIn 0.2s ease;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
         .modal-content-mensajes {
-            background-color: white;
-            margin: auto;
-            padding: 0;
-            width: 90%;
-            max-width: 600px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            background: white;
+            width: 92%; max-width: 800px;
+            height: 88vh; max-height: 650px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            animation: slideIn 0.3s;
-            display: flex;
-            flex-direction: column;
-            max-height: 80vh;
+            animation: slideUp 0.25s ease;
+            display: flex; flex-direction: column;
+            overflow: hidden;
         }
-
-        @keyframes slideIn {
-            from {
-                transform: translate(-50%, -60%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, -50%);
-                opacity: 1;
-            }
+        @keyframes slideUp {
+            from{transform:translate(-50%,-46%);opacity:0}
+            to{transform:translate(-50%,-50%);opacity:1}
         }
 
         .modal-header-mensajes {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
             color: white;
-            padding: 15px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
             flex-shrink: 0;
         }
-
         .modal-header-mensajes h3 {
-            margin: 0;
-            font-size: 18px;
+            margin: 0; font-size: 16px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
         }
-
         .close-mensajes {
-            color: white;
-            cursor: pointer;
-            font-size: 24px;
-            font-weight: bold;
-            background: none;
-            border: none;
-            transition: transform 0.2s;
+            color: rgba(255,255,255,0.85);
+            cursor: pointer; font-size: 22px;
+            background: none; border: none;
+            padding: 4px 7px; border-radius: 6px;
+            transition: background 0.2s; line-height: 1;
         }
-
-        .close-mensajes:hover {
-            transform: scale(1.2);
-        }
+        .close-mensajes:hover { background: rgba(255,255,255,0.15); color: white; }
 
         .modal-body-mensajes {
-            padding: 0;
-            display: flex;
-            flex: 1;
-            min-height: 0;
+            display: flex; flex: 1; min-height: 0; overflow: hidden;
         }
 
+        /* Sidebar */
         .conversaciones-list {
-            width: 30%;
-            border-right: 1px solid #ddd;
+            width: 240px; min-width: 180px;
+            border-right: 1px solid #f0f0f0;
             overflow-y: auto;
-            background: #f5f5f5;
+            background: #fafafa;
+            flex-shrink: 0;
+            display: flex; flex-direction: column;
         }
-
+        .conv-list-header {
+            padding: 10px 14px;
+            font-size: 10px; font-weight: 700; color: #aaa;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            border-bottom: 1px solid #eee;
+            background: white; flex-shrink: 0;
+        }
         .conversacion-item {
-            padding: 12px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 11px 14px;
+            border-bottom: 1px solid #f0f0f0;
             cursor: pointer;
-            transition: background 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            transition: background 0.15s;
+            display: flex; align-items: center; gap: 10px;
         }
-
-        .conversacion-item:hover {
-            background: #efefef;
-        }
-
+        .conversacion-item:hover { background: #f0f7f0; }
         .conversacion-item.activa {
-            background: #d4edda;
+            background: #e8f5e9;
             border-left: 3px solid #4CAF50;
+            padding-left: 11px;
         }
-
-        .conversacion-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .conversacion-nombre {
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .conversacion-fecha {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .badge-no-leidos {
-            background: #ff4444;
-            color: white;
+        .conv-avatar {
+            width: 36px; height: 36px;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            margin-left: 8px;
+            background: #4CAF50; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
             flex-shrink: 0;
         }
+        .conversacion-info { flex: 1; min-width: 0; }
+        .conversacion-nombre {
+            font-size: 13px; font-weight: 600; color: #222;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .conversacion-fecha { font-size: 11px; color: #bbb; margin-top: 2px; }
+        .badge-no-leidos {
+            background: #f44336; color: white;
+            border-radius: 10px; min-width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            padding: 0 5px; flex-shrink: 0;
+        }
+        .conv-empty {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #ccc; padding: 20px; text-align: center;
+        }
+        .conv-empty i { font-size: 28px; margin-bottom: 8px; }
+        .conv-empty p { margin: 0; font-size: 12px; }
 
+        /* Chat area */
         .mensajes-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            flex: 1; display: flex; flex-direction: column;
+            min-width: 0; background: #f7f8fa;
         }
-
-        .mensajes-vacio {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #999;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .mensajes-contenedor {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: white;
-        }
-
-        .mensaje-item {
-            margin-bottom: 12px;
-            padding: 10px;
-            border-radius: 6px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .mensaje-item.enviado {
-            align-self: flex-end;
-            background: #d4edda;
-            border-left: 3px solid #4CAF50;
-            margin-left: auto;
-            margin-right: 0;
-        }
-
-        .mensaje-item.recibido {
-            align-self: flex-start;
-            background: #f0f0f0;
-            border-left: 3px solid #666;
-            margin-right: auto;
-            margin-left: 0;
-        }
-
-        .mensaje-hora {
-            font-size: 12px;
-            color: #999;
-            margin-top: 4px;
-        }
-
-        .modal-footer-mensajes {
-            padding: 15px;
-            border-top: 1px solid #ddd;
-            display: flex;
-            gap: 10px;
+        .chat-contact-header {
+            padding: 11px 16px;
+            background: white; border-bottom: 1px solid #eee;
+            display: flex; align-items: center; gap: 10px;
             flex-shrink: 0;
-            background: #f9f9f9;
         }
+        .chat-contact-header .conv-avatar { width: 30px; height: 30px; font-size: 11px; }
+        .chat-contact-nombre { font-weight: 600; color: #333; font-size: 14px; }
 
-        .modal-footer-mensajes textarea {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            resize: none;
-            min-height: 40px;
+        .mensajes-scroll {
+            flex: 1; overflow-y: auto;
+            padding: 16px;
+            display: flex; flex-direction: column; gap: 5px;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 18px 18px;
+            background-color: #f7f8fa;
         }
-
-        .btn-enviar-mensaje {
-            padding: 10px 15px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
-            white-space: nowrap;
-        }
-
-        .btn-enviar-mensaje:hover {
-            background: #45a049;
-        }
-
-        .btn-enviar-mensaje:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
         .conversacion-no-seleccionada {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #999;
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #ccc; gap: 8px; padding: 20px;
         }
+        .conversacion-no-seleccionada i { font-size: 44px; }
+        .conversacion-no-seleccionada p { font-size: 13px; margin: 0; }
 
-        @media (max-width: 768px) {
-            .modal-content-mensajes {
-                width: 95%;
-                max-width: 100%;
-            }
+        /* Bubbles */
+        .mensaje-item { max-width: 72%; display: flex; flex-direction: column; }
+        .mensaje-item.enviado { align-self: flex-end; align-items: flex-end; }
+        .mensaje-item.recibido { align-self: flex-start; align-items: flex-start; }
+        .mensaje-burbuja {
+            padding: 9px 14px; border-radius: 18px;
+            line-height: 1.45; font-size: 14px;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .mensaje-item.enviado .mensaje-burbuja {
+            background: #4CAF50; color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .mensaje-item.recibido .mensaje-burbuja {
+            background: white; color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .mensaje-hora { font-size: 11px; color: #bbb; margin-top: 3px; padding: 0 4px; }
 
-            .conversaciones-list {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #ddd;
-                max-height: 150px;
-                display: flex;
-                overflow-x: auto;
-            }
+        /* Footer */
+        .modal-footer-mensajes {
+            padding: 10px 14px;
+            border-top: 1px solid #eee;
+            display: flex; align-items: flex-end; gap: 10px;
+            background: white; flex-shrink: 0;
+        }
+        .input-mensaje-wrapper {
+            flex: 1;
+            background: #f5f5f5; border-radius: 22px;
+            padding: 8px 14px;
+            border: 1.5px solid #e8e8e8;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .input-mensaje-wrapper:focus-within { border-color: #4CAF50; background: white; }
+        .input-mensaje-wrapper textarea {
+            width: 100%; background: none; border: none; outline: none;
+            font-family: inherit; font-size: 14px;
+            resize: none; max-height: 100px; overflow-y: auto;
+            line-height: 1.4; color: #333; display: block;
+        }
+        .char-counter { font-size: 10px; color: #ccc; text-align: right; margin-top: 2px; }
+        .char-counter.warn { color: #ff9800; }
+        .char-counter.danger { color: #f44336; }
+        .btn-enviar-mensaje {
+            width: 42px; height: 42px;
+            background: #4CAF50; color: white;
+            border: none; border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            transition: background 0.2s, transform 0.1s;
+            flex-shrink: 0;
+        }
+        .btn-enviar-mensaje:hover { background: #43A047; transform: scale(1.06); }
+        .btn-enviar-mensaje:disabled { background: #ccc; cursor: not-allowed; transform: none; }
 
-            .conversacion-item {
-                flex: 0 0 150px;
-                border-bottom: none;
-                border-right: 1px solid #e0e0e0;
-                flex-direction: column;
-            }
-
-            .mensajes-area {
-                flex: 1;
-            }
-
-            .mensaje-item {
-                max-width: 90%;
-            }
-
-            .header-actions {
-                flex-direction: column;
-                gap: 8px;
-            }
+        @media (max-width: 640px) {
+            .modal-content-mensajes { width: 100%; height: 100vh; max-height: 100vh; border-radius: 0; top: 0; left: 0; transform: none; }
+            .conversaciones-list { width: 150px; min-width: 120px; }
+            .mensaje-item { max-width: 85%; }
+            .header-actions { flex-direction: column; gap: 6px; }
         }
     </style>
 </head>
 <body>
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+            {% if usuario.institucion and usuario.institucion.logo_filename %}
+            <img src="{{ url_for('static', filename='imagenes/instituciones/' + usuario.institucion.logo_filename) }}" alt="{{ usuario.institucion.nombre }}" class="inst-logo" title="{{ usuario.institucion.nombre }}">
+            {% endif %}
+            <img src="{{ url_for('static', filename='imagenes/logo sin fondo.png') }}" alt="AnimApp" class="app-logo">
+            Panel de Docente
         </div>
         <div class="user-info">
             <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
@@ -358,7 +278,7 @@
             </div>
             {% endif %}
 
-            <p>Desde aquí puedes gestionar tus cursos, visualizar alertas de riesgo académico y solicitar la inclusión de estudiantes.</p>
+            <p>Desde aquí puedes gestionar tus cursos y visualizar alertas de riesgo académico.</p>
         </div>
 
         <div class="dashboard-grid">
@@ -373,50 +293,6 @@
                 <h3>Alertas de Riesgo</h3>
                 <p>Consulta qué estudiantes presentan bajo rendimiento o inasistencias.</p>
             </a>
-
-            <div class="dashboard-card" onclick="abrirSolicitudModal()" style="cursor: pointer;">
-                <i class="fas fa-user-plus"></i>
-                <h3>Solicitar Estudiante</h3>
-                <p>Pide al administrador agregar un estudiante a una de tus materias.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL SOLICITUD -->
-    <div id="solicitudModal" class="modal-overlay">
-        <div class="modal-card">
-            <h3 class="modal-title">Solicitud de estudiante</h3>
-            <form id="solicitudForm">
-                <div class="form-group">
-                    <label for="materiaSelect">Materia *</label>
-                    <select id="materiaSelect" required>
-                        <option value="">Selecciona una materia</option>
-                        {% for materia in materias %}
-                            <option value="{{ materia.id }}">{{ materia.codigo }} - {{ materia.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="estudianteNombre">Nombre del estudiante *</label>
-                    <input id="estudianteNombre" type="text" placeholder="Ej: Juan" required>
-                </div>
-                <div class="form-group">
-                    <label for="estudianteApellido">Apellido del estudiante *</label>
-                    <input id="estudianteApellido" type="text" placeholder="Ej: Pérez" required>
-                </div>
-                <div class="form-group">
-                    <label for="estudianteEmail">Email del estudiante *</label>
-                    <input id="estudianteEmail" type="email" placeholder="correo@ejemplo.com" required>
-                </div>
-                <div class="form-group">
-                    <label for="motivo">Motivo (Opcional)</label>
-                    <textarea id="motivo" rows="3" placeholder="Escribe el motivo de la solicitud..."></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn" onclick="cerrarSolicitudModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -424,22 +300,27 @@
     <div id="modalMensajesDocente" class="modal-mensajes">
         <div class="modal-content-mensajes">
             <div class="modal-header-mensajes">
-                <h3>Mensajes de Estudiantes</h3>
-                <button class="close-mensajes" onclick="cerrarModalMensajesDocente()">&times;</button>
+                <h3><i class="fas fa-comments"></i> Mensajes de Estudiantes</h3>
+                <button class="close-mensajes" onclick="cerrarModalMensajesDocente()" title="Cerrar">&times;</button>
             </div>
             <div class="modal-body-mensajes">
                 <div class="conversaciones-list" id="conversacionesListDocente">
-                    <p style="text-align: center; color: #999; padding: 20px;">Cargando conversaciones...</p>
+                    <div class="conv-list-header">Conversaciones</div>
+                    <div class="conv-empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
                 </div>
                 <div class="mensajes-area" id="mensajesAreaDocente">
                     <div class="conversacion-no-seleccionada">
+                        <i class="fas fa-comment-dots"></i>
                         <p>Selecciona una conversación</p>
                     </div>
                 </div>
             </div>
             <div class="modal-footer-mensajes" id="footerMensajesDocente" style="display: none;">
-                <textarea id="inputMensajeDocente" placeholder="Escribe tu mensaje..."></textarea>
-                <button class="btn-enviar-mensaje" onclick="enviarMensajeDocente()">
+                <div class="input-mensaje-wrapper">
+                    <textarea id="inputMensajeDocente" placeholder="Escribe un mensaje... (Enter para enviar)" rows="1"></textarea>
+                    <div class="char-counter" id="charCounterDocente">0 / 5000</div>
+                </div>
+                <button class="btn-enviar-mensaje" id="btnEnviarDocente" onclick="enviarMensajeDocente()" title="Enviar">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -450,326 +331,172 @@
         let docenteMensajesData = {
             usuarioId: {{ session.get('usuario_id') }},
             conversacionActualId: null,
-            cursoActual: null
+            cursoActual: null,
+            contactoNombre: ''
         };
 
-        // ==================== Modal Solicitud ====================
-        function abrirSolicitudModal() {
-            document.getElementById('solicitudModal').classList.add('modal-visible');
+        function getInitials(nombre) {
+            return nombre.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+        }
+        function formatTimestamp(dateStr) {
+            const d = new Date(dateStr);
+            const now = new Date();
+            const hm = d.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+            if (d.toDateString() === now.toDateString()) return hm;
+            return d.toLocaleDateString('es-CO', {day: '2-digit', month: '2-digit'}) + ' ' + hm;
+        }
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
         }
 
-        function cerrarSolicitudModal() {
-            document.getElementById('solicitudModal').classList.remove('modal-visible');
-        }
-
-        window.addEventListener('click', function(e) {
-            if (e.target === document.getElementById('solicitudModal')) {
-                cerrarSolicitudModal();
-            }
-        });
-
-        document.getElementById('solicitudForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const nombre = document.getElementById('estudianteNombre').value.trim();
-            const apellido = document.getElementById('estudianteApellido').value.trim();
-            const correo = document.getElementById('estudianteEmail').value.trim();
-            const cursoId = document.getElementById('materiaSelect').value;
-
-            fetch("{{ url_for('dashboard.crear_solicitud_nuevo_estudiante') }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    nombre: nombre, 
-                    apellido: apellido, 
-                    correo: correo, 
-                    curso_id: parseInt(cursoId)
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.mensaje || data.error || 'No se pudo enviar la solicitud');
-                if (data.success) {
-                    cerrarSolicitudModal();
-                    document.getElementById('solicitudForm').reset();
-                }
-            })
-            .catch(() => alert('Error en la conexión'));
-        });
-
-        // ==================== Modal Mensajes Docente ====================
         function abrirModalMensajesDocente() {
             document.getElementById('modalMensajesDocente').style.display = 'block';
-            cargarConversacionesDocente();
+            obtenerMensajesGlobales();
             actualizarBadgeMensajesDocente();
         }
-
         function cerrarModalMensajesDocente() {
             document.getElementById('modalMensajesDocente').style.display = 'none';
             docenteMensajesData.conversacionActualId = null;
         }
 
-        function cargarConversacionesDocente() {
-            // Obtener todos los cursos del docente para buscar mensajes
-            // Utilizamos una combinación de llamadas para cada curso
-            const usuarioId = docenteMensajesData.usuarioId;
-            
-            fetch("{{ url_for('dashboard.cursos_docente') }}")
-                .then(() => {
-                    // Simulamos obtener cursos - en realidad obteneremos los mensajes de todos los cursos
-                    obtenerMensajesGlobales();
-                })
-                .catch(err => {
-                    console.error('Error:', err);
-                    document.getElementById('conversacionesListDocente').innerHTML = '<p style="text-align: center; color: #d32f2f; padding: 20px;">Error al cargar conversaciones</p>';
-                });
-        }
-
         function obtenerMensajesGlobales() {
-            // Obtener mensajes sin filtro de curso (todos los cursos)
-            fetch(`/dashboard/api/mensajes-docente-global`)
-                .then(response => {
-                    if (response.status === 404) {
-                        // Si la ruta no existe, simplemente mostrar que no hay mensajes
-                        document.getElementById('conversacionesListDocente').innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay conversaciones</p>';
-                        return { success: true, estudiantes: [] };
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success && Array.isArray(data.estudiantes)) {
-                        mostrarConversacionesDocente(data.estudiantes);
-                    } else if (data.estudiantes === undefined) {
-                        // Fallback: mostrar sin conversaciones
-                        document.getElementById('conversacionesListDocente').innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay conversaciones</p>';
-                    }
-                })
-                .catch(err => {
-                    console.error('Error:', err);
-                    document.getElementById('conversacionesListDocente').innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay conversaciones</p>';
-                });
+            fetch('/dashboard/api/mensajes-docente-global')
+                .then(r => r.status === 404 ? {success:true,estudiantes:[]} : r.json())
+                .then(data => mostrarConversacionesDocente(data.success && Array.isArray(data.estudiantes) ? data.estudiantes : []))
+                .catch(() => mostrarConversacionesDocente([]));
         }
 
         function mostrarConversacionesDocente(estudiantes) {
-            let html = '';
+            const lista = document.getElementById('conversacionesListDocente');
             if (estudiantes.length === 0) {
-                html = '<p style="text-align: center; color: #999; padding: 20px;">No hay conversaciones</p>';
-            } else {
-                estudiantes.forEach(est => {
-                    const clase = docenteMensajesData.conversacionActualId === `${est.id}_${est.curso_id}` ? 'activa' : '';
-                    const badge = est.no_leidos > 0 ? `<div class="badge-no-leidos">${est.no_leidos}</div>` : '';
-                    const nombre = `${est.nombre} ${est.apellido}`;
-                    const fecha = est.ultimo_mensaje_fecha ? new Date(est.ultimo_mensaje_fecha).toLocaleString('es-CO', {hour: '2-digit', minute: '2-digit'}) : '';
-                    html += `
-                        <div class="conversacion-item ${clase}" onclick="seleccionarConversacionDocente(${est.id}, '${est.curso_id}', '${nombre.replace(/'/g, "\\'")}')">
-                            <div class="conversacion-info">
-                                <div class="conversacion-nombre">${nombre}</div>
-                                <div class="conversacion-fecha">${est.curso_codigo || ''} - ${fecha}</div>
-                            </div>
-                            ${badge}
-                        </div>
-                    `;
-                });
+                lista.innerHTML = '<div class="conv-list-header">Conversaciones</div><div class="conv-empty"><i class="fas fa-inbox"></i><p>Sin conversaciones aún</p></div>';
+                return;
             }
-            document.getElementById('conversacionesListDocente').innerHTML = html;
+            let html = '<div class="conv-list-header">Conversaciones</div>';
+            estudiantes.forEach(est => {
+                const key = `${est.id}_${est.curso_id}`;
+                const activa = docenteMensajesData.conversacionActualId === key ? 'activa' : '';
+                const badge = est.no_leidos > 0 ? `<div class="badge-no-leidos">${est.no_leidos}</div>` : '';
+                const nombre = `${est.nombre} ${est.apellido}`;
+                const fecha = est.ultimo_mensaje_fecha ? formatTimestamp(est.ultimo_mensaje_fecha) : '';
+                html += `<div class="conversacion-item ${activa}" onclick="seleccionarConversacionDocente(${est.id}, '${est.curso_id}', '${nombre.replace(/'/g,"\\'")}', this)">
+                    <div class="conv-avatar">${getInitials(nombre)}</div>
+                    <div class="conversacion-info">
+                        <div class="conversacion-nombre">${escapeHtml(nombre)}</div>
+                        <div class="conversacion-fecha">${escapeHtml(est.curso_codigo || '')}${fecha ? ' · ' + fecha : ''}</div>
+                    </div>
+                    ${badge}
+                </div>`;
+            });
+            lista.innerHTML = html;
         }
 
-        function seleccionarConversacionDocente(estudianteId, cursoId, estudianteName) {
+        function seleccionarConversacionDocente(estudianteId, cursoId, estudianteName, el) {
             docenteMensajesData.conversacionActualId = `${estudianteId}_${cursoId}`;
             docenteMensajesData.cursoActual = cursoId;
-            
-            document.querySelectorAll('#conversacionesListDocente .conversacion-item').forEach(el => el.classList.remove('activa'));
-            event.currentTarget.classList.add('activa');
-            
+            docenteMensajesData.contactoNombre = estudianteName;
+            document.querySelectorAll('#conversacionesListDocente .conversacion-item').forEach(e => e.classList.remove('activa'));
+            el.classList.add('activa');
             cargarMensajesDocente(estudianteId, cursoId);
             document.getElementById('footerMensajesDocente').style.display = 'flex';
-            document.getElementById('inputMensajeDocente').focus();
+            setTimeout(() => document.getElementById('inputMensajeDocente').focus(), 50);
         }
 
         function cargarMensajesDocente(estudianteId, cursoId) {
+            const nombre = docenteMensajesData.contactoNombre || 'Estudiante';
+            document.getElementById('mensajesAreaDocente').innerHTML = `
+                <div class="chat-contact-header">
+                    <div class="conv-avatar">${getInitials(nombre)}</div>
+                    <span class="chat-contact-nombre">${escapeHtml(nombre)}</span>
+                </div>
+                <div class="mensajes-scroll" id="mensajesScrollDocente">
+                    <div style="text-align:center;padding:30px;color:#ccc"><i class="fas fa-spinner fa-spin fa-lg"></i></div>
+                </div>`;
             fetch(`/dashboard/api/mensajes/${estudianteId}/${cursoId}?limit=50`)
-                .then(response => response.json())
+                .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
-                        let html = '';
-                        if (data.mensajes.length === 0) {
-                            html = '<div class="conversacion-no-seleccionada"><p>No hay mensajes previos</p></div>';
-                        } else {
-                            data.mensajes.forEach(msg => {
-                                const fecha = new Date(msg.fecha_creacion).toLocaleString('es-CO', {hour: '2-digit', minute: '2-digit'});
-                                const clase = msg.remitente_id === docenteMensajesData.usuarioId ? 'enviado' : 'recibido';
-                                html += `
-                                    <div class="mensaje-item ${clase}">
-                                        <div>${escapeHtml(msg.contenido)}</div>
-                                        <div class="mensaje-hora">${fecha}</div>
-                                    </div>
-                                `;
-                            });
-                        }
-                        document.getElementById('mensajesAreaDocente').innerHTML = html;
-                        document.getElementById('mensajesAreaDocente').scrollTop = document.getElementById('mensajesAreaDocente').scrollHeight;
+                    const scroll = document.getElementById('mensajesScrollDocente');
+                    if (!scroll) return;
+                    if (!data.success) { scroll.innerHTML = '<div style="text-align:center;padding:20px;color:#f44336"><i class="fas fa-exclamation-circle"></i> Error al cargar</div>'; return; }
+                    if (data.mensajes.length === 0) {
+                        scroll.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc"><i class="fas fa-comment-dots" style="font-size:32px;display:block;margin-bottom:8px"></i><p style="margin:0;font-size:13px">Sin mensajes. ¡Inicia la conversación!</p></div>';
+                        return;
                     }
+                    scroll.innerHTML = data.mensajes.map(msg => {
+                        const clase = msg.remitente_id === docenteMensajesData.usuarioId ? 'enviado' : 'recibido';
+                        return `<div class="mensaje-item ${clase}"><div class="mensaje-burbuja">${escapeHtml(msg.contenido)}</div><div class="mensaje-hora">${formatTimestamp(msg.fecha_creacion)}</div></div>`;
+                    }).join('');
+                    scroll.scrollTop = scroll.scrollHeight;
                 })
-                .catch(err => {
-                    console.error('Error:', err);
-                    document.getElementById('mensajesAreaDocente').innerHTML = '<div class="conversacion-no-seleccionada"><p style="color: #d32f2f;">Error al cargar mensajes</p></div>';
+                .catch(() => {
+                    const scroll = document.getElementById('mensajesScrollDocente');
+                    if (scroll) scroll.innerHTML = '<div style="text-align:center;padding:20px;color:#f44336"><i class="fas fa-exclamation-circle"></i> Error al cargar</div>';
                 });
         }
 
         function enviarMensajeDocente() {
+            if (!docenteMensajesData.conversacionActualId) return;
             const ids = docenteMensajesData.conversacionActualId.split('_');
             const estudianteId = parseInt(ids[0]);
             const cursoId = parseInt(ids[1]);
-            
-            if (!estudianteId || !cursoId) {
-                alert('Selecciona una conversación');
-                return;
-            }
-            
-            const contenido = document.getElementById('inputMensajeDocente').value.trim();
-            
-            if (!contenido) {
-                return;
-            }
-            
-            const btn = event.target;
+            const input = document.getElementById('inputMensajeDocente');
+            const contenido = input.value.trim();
+            if (!contenido) return;
+            const btn = document.getElementById('btnEnviarDocente');
             btn.disabled = true;
-            
             fetch('/dashboard/api/mensajes', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    destinatario_id: estudianteId,
-                    curso_id: cursoId,
-                    contenido: contenido
-                })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({destinatario_id: estudianteId, curso_id: cursoId, contenido})
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('inputMensajeDocente').value = '';
+                    input.value = ''; input.style.height = 'auto';
+                    document.getElementById('charCounterDocente').textContent = '0 / 5000';
+                    document.getElementById('charCounterDocente').className = 'char-counter';
                     cargarMensajesDocente(estudianteId, cursoId);
-                    cargarConversacionesDocente();
-                } else {
-                    alert('Error: ' + data.error);
-                }
+                    obtenerMensajesGlobales();
+                } else { alert('Error: ' + data.error); }
             })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Error al enviar mensaje');
-            })
-            .finally(() => {
-                btn.disabled = false;
-            });
+            .catch(() => alert('Error al enviar mensaje'))
+            .finally(() => { btn.disabled = false; });
         }
 
         function actualizarBadgeMensajesDocente() {
-            // Obtener todos los mensajes no leídos del docente
-            fetch(`/dashboard/api/mensajes-docente-no-leidos`)
-                .then(response => {
-                    if (response.status === 404) {
-                        return { total: 0 };
-                    }
-                    return response.json();
-                })
+            fetch('/dashboard/api/mensajes-docente-no-leidos')
+                .then(r => r.status === 404 ? {total:0} : r.json())
                 .then(data => {
                     const total = data.total || 0;
-                    if (total > 0) {
-                        document.getElementById('badgeMensajesDocente').textContent = total;
-                        document.getElementById('badgeMensajesDocente').style.display = 'flex';
-                    } else {
-                        document.getElementById('badgeMensajesDocente').style.display = 'none';
-                    }
+                    const badge = document.getElementById('badgeMensajesDocente');
+                    badge.textContent = total;
+                    badge.style.display = total > 0 ? 'flex' : 'none';
                 })
-                .catch(err => console.error('Error:', err));
+                .catch(() => {});
         }
 
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('inputMensajeDocente');
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensajeDocente(); }
+            });
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                const len = this.value.length;
+                const c = document.getElementById('charCounterDocente');
+                c.textContent = `${len} / 5000`;
+                c.className = 'char-counter' + (len > 4500 ? ' danger' : len > 4000 ? ' warn' : '');
+            });
+        });
 
-        // Cerrar modal al hacer clic fuera
         window.onclick = function(event) {
-            const modal = document.getElementById('modalMensajesDocente');
-            if (event.target === modal) {
-                cerrarModalMensajesDocente();
-            }
-        }
+            if (event.target === document.getElementById('modalMensajesDocente')) cerrarModalMensajesDocente();
+        };
 
-        // Auto-actualizar badge cada 30 segundos
         setInterval(actualizarBadgeMensajesDocente, 30000);
-
-        // Inicializar badge al cargar
         window.addEventListener('load', actualizarBadgeMensajesDocente);
     </script>
-</body>
-</html>
-                </div>
-                <div class="form-group">
-                    <label for="motivo">Motivo (Opcional)</label>
-                    <textarea id="motivo" rows="3" placeholder="Escribe el motivo de la solicitud..."></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn" onclick="cerrarSolicitudModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function abrirSolicitudModal() {
-            document.getElementById('solicitudModal').classList.add('modal-visible');
-        }
-
-        function cerrarSolicitudModal() {
-            document.getElementById('solicitudModal').classList.remove('modal-visible');
-        }
-
-        // Cerrar modal si se hace clic fuera del cuadro
-        window.addEventListener('click', function(e) {
-            if (e.target === document.getElementById('solicitudModal')) {
-                cerrarSolicitudModal();
-            }
-        });
-
-        document.getElementById('solicitudForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const nombre = document.getElementById('estudianteNombre').value.trim();
-            const apellido = document.getElementById('estudianteApellido').value.trim();
-            const correo = document.getElementById('estudianteEmail').value.trim();
-            const cursoId = document.getElementById('materiaSelect').value;
-
-            fetch("{{ url_for('dashboard.crear_solicitud_nuevo_estudiante') }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    nombre: nombre, 
-                    apellido: apellido, 
-                    correo: correo, 
-                    curso_id: parseInt(cursoId)
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.mensaje || data.error || 'No se pudo enviar la solicitud');
-                if (data.success) {
-                    cerrarSolicitudModal();
-                    document.getElementById('solicitudForm').reset();
-                }
-            })
-            .catch(() => alert('Error en la conexión'));
-        });
-    </script>
+    {% include 'components/chatbot.html' %}
 </body>
 </html>

@@ -23,7 +23,8 @@ def apply_migrations(app):
         'add_authentication_fields.sql',
         'add_contraseña_cambiada.sql',
         'create_solicitudes_nuevo_estudiante.sql',
-        'create_mensajes.sql'
+        'create_mensajes.sql',
+        'add_institucion_logo.sql'
     ]
     
     for migration_file in migration_files:
@@ -85,9 +86,11 @@ def create_app(config_name=None):
     from routes.auth import auth_bp
     from routes.dashboard import dashboard_bp
     from routes.admin import admin_bp
+    from chatbot.routes import chatbot_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(chatbot_bp)
     
     # Inicializar base de datos y aplicar migraciones
     with app.app_context():
