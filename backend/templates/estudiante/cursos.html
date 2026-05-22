@@ -22,7 +22,7 @@
         <div class="course-header">
             <div>
                 <h2>Mis Cursos</h2>
-                <p>Cursos inscritos y cargados en mi institución</p>
+                <p>Cursos en los que estoy inscrito</p>
             </div>
         </div>
 
@@ -39,9 +39,6 @@
                                     <div class="course-title">{{ curso.codigo }}</div>
                                     <div class="course-meta">
                                         <span>{{ curso.nombre }}</span>
-                                    </div>
-                                    <div style="margin-top: 10px; display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: {{ '#e8f5e9' if curso.inscrito else '#eef2ff' }}; color: {{ '#2e7d32' if curso.inscrito else '#495057' }};">
-                                        {{ 'Inscrito' if curso.inscrito else 'Cargado' }}
                                     </div>
                                 </div>
                             </div>

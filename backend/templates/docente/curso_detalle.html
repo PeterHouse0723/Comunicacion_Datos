@@ -42,7 +42,175 @@
                 <h3>Asistencia</h3>
                 <p>Control de asistencia por clase</p>
             </a>
+            <button class="course-action-card" onclick="openModalSolicitarEstudiante()">
+                <i class="fas fa-user-plus"></i>
+                <h3>Solicitar estudiante</h3>
+                <p>Solicitar agregar un nuevo estudiante al curso</p>
+            </button>
         </div>
+
+        <!-- MODAL: Solicitar Nuevo Estudiante -->
+        <div id="modalSolicitarEstudiante" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Solicitar Nuevo Estudiante</h2>
+                    <button class="modal-close" onclick="closeModalSolicitarEstudiante()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formSolicitarEstudiante">
+                        <div class="form-group">
+                            <label for="inputNombre">Nombre *</label>
+                            <input type="text" id="inputNombre" name="nombre" placeholder="Nombre del estudiante" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputApellido">Apellido *</label>
+                            <input type="text" id="inputApellido" name="apellido" placeholder="Apellido del estudiante" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputCorreo">Correo Electrónico *</label>
+                            <input type="email" id="inputCorreo" name="correo" placeholder="correo@ejemplo.com" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModalSolicitarEstudiante()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .modal-content {
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                width: 90%;
+                max-width: 500px;
+                overflow: hidden;
+            }
+            .modal-header {
+                padding: 20px;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modal-header h2 {
+                margin: 0;
+                font-size: 1.5rem;
+            }
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #999;
+            }
+            .modal-body {
+                padding: 20px;
+            }
+            .form-group {
+                margin-bottom: 16px;
+            }
+            .form-group label {
+                display: block;
+                margin-bottom: 6px;
+                font-weight: 500;
+                color: #333;
+            }
+            .form-group input {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 1rem;
+                box-sizing: border-box;
+            }
+            .form-actions {
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+                margin-top: 20px;
+            }
+            .btn {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 1rem;
+            }
+            .btn-primary {
+                background: #6366f1;
+                color: white;
+            }
+            .btn-primary:hover {
+                background: #4f46e5;
+            }
+            .btn-secondary {
+                background: #e0e0e0;
+                color: #333;
+            }
+            .btn-secondary:hover {
+                background: #d0d0d0;
+            }
+        </style>
+
+        <script>
+            function openModalSolicitarEstudiante() {
+                document.getElementById('modalSolicitarEstudiante').style.display = 'flex';
+                document.getElementById('formSolicitarEstudiante').reset();
+            }
+
+            function closeModalSolicitarEstudiante() {
+                document.getElementById('modalSolicitarEstudiante').style.display = 'none';
+            }
+
+            document.getElementById('formSolicitarEstudiante').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const nombre = document.getElementById('inputNombre').value;
+                const apellido = document.getElementById('inputApellido').value;
+                const correo = document.getElementById('inputCorreo').value;
+                const curso_id = {{ curso.id }};
+
+                try {
+                    const res = await fetch("{{ url_for('dashboard.crear_solicitud_nuevo_estudiante') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre, apellido, correo, curso_id })
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('✓ Solicitud enviada exitosamente al administrador');
+                        closeModalSolicitarEstudiante();
+                    } else {
+                        alert('✗ Error: ' + data.error);
+                    }
+                } catch (e) {
+                    alert('✗ Error en la petición: ' + e.message);
+                }
+            });
+
+            // Cerrar modal al hacer click fuera de él
+            document.getElementById('modalSolicitarEstudiante').addEventListener('click', (e) => {
+                if (e.target.id === 'modalSolicitarEstudiante') {
+                    closeModalSolicitarEstudiante();
+                }
+            });
+        </script>
     </div>
 </body>
 </html>
