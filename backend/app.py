@@ -24,7 +24,9 @@ def apply_migrations(app):
         'add_contraseña_cambiada.sql',
         'create_solicitudes_nuevo_estudiante.sql',
         'create_mensajes.sql',
-        'add_institucion_logo.sql'
+        'add_institucion_logo.sql',
+        'create_actividades.sql',
+        'create_calificaciones.sql'
     ]
     
     for migration_file in migration_files:
