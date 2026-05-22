@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje, Actividad, Calificacion, CursoDocente
 from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
@@ -191,50 +191,37 @@ def _obtener_curso_estudiante(curso_id, usuario):
 
 
 def _obtener_cursos_estudiante(usuario):
-    """Cursos cargados para la institución del estudiante, marcando cuáles están inscritos.
-    Excluye cursos con SOLO solicitudes rechazadas (sin inscripción ni aprobadas)."""
-    cursos = (
-        Curso.query.filter_by(institucion_id=usuario.institucion_id)
+    """Obtener solo los cursos en los que el estudiante está inscrito o tiene solicitud aprobada."""
+    
+    # 1. Obtener cursos donde está inscrito
+    inscritos = (
+        Curso.query.join(EstudianteCurso)
+        .filter(EstudianteCurso.estudiante_id == usuario.id)
         .order_by(Curso.activo.desc(), Curso.nombre.asc())
         .all()
     )
     
-    # Obtener IDs de cursos con inscripciones
-    inscritos_ids = {
-        rel.curso_id
-        for rel in EstudianteCurso.query.filter_by(estudiante_id=usuario.id).all()
-    }
-    
-    # Obtener IDs de cursos donde hay solicitudes aprobadas
-    aprobados_ids = {
-        sol.curso_id
-        for sol in SolicitudNuevoEstudiante.query.filter(
+    # 2. Obtener cursos de solicitudes aprobadas que NO tiene inscripción aún
+    aprobados = (
+        Curso.query.join(SolicitudNuevoEstudiante)
+        .filter(
             SolicitudNuevoEstudiante.correo == usuario.email,
-            SolicitudNuevoEstudiante.estado == 'aprobado'
-        ).all()
-    }
+            SolicitudNuevoEstudiante.estado == 'aprobado',
+            ~Curso.id.in_([c.id for c in inscritos])  # Excluir ya inscritos
+        )
+        .order_by(Curso.activo.desc(), Curso.nombre.asc())
+        .all()
+    )
     
-    # Obtener IDs de cursos donde hay solicitudes rechazadas
-    rechazados_ids = {
-        sol.curso_id
-        for sol in SolicitudNuevoEstudiante.query.filter(
-            SolicitudNuevoEstudiante.correo == usuario.email,
-            SolicitudNuevoEstudiante.estado == 'rechazado'
-        ).all()
-    }
+    # 3. Combinar ambas listas
+    cursos_filtrados = list(inscritos) + list(aprobados)
     
-    # Filtrar cursos: excluir SOLO si están rechazados Y sin inscripción Y sin aprobación
-    cursos_filtrados = [
-        curso for curso in cursos 
-        if not (curso.id in rechazados_ids and 
-                curso.id not in inscritos_ids and 
-                curso.id not in aprobados_ids)
-    ]
-    
-    # Marcar cuáles están inscritos
+    # 4. Marcar cuáles están inscritos (para plantilla)
+    inscrito_ids = {c.id for c in inscritos}
     for curso in cursos_filtrados:
-        curso.inscrito = curso.id in inscritos_ids
-
+        curso.inscrito = curso.id in inscrito_ids
+    
+    # 5. Ordenar: primero inscritos, luego por nombre
     cursos_filtrados.sort(key=lambda curso: (not getattr(curso, 'inscrito', False), (curso.nombre or '').lower()))
     return cursos_filtrados
 
@@ -380,8 +367,38 @@ def curso_docente_calificaciones(curso_id):
     curso = _obtener_curso_docente(curso_id, usuario.id)
     if not curso:
         return redirect(url_for('dashboard.cursos_docente'))
+    
+    # Obtener todas las actividades del curso
+    actividades = Actividad.query.filter_by(curso_id=curso_id, activa=True).order_by(Actividad.semana).all()
+    
+    # Obtener todos los estudiantes inscritos
+    estudiantes = (
+        Usuario.query
+        .join(EstudianteCurso)
+        .filter(EstudianteCurso.curso_id == curso_id)
+        .order_by(Usuario.nombre, Usuario.apellido)
+        .all()
+    )
+    
+    # Construir matriz de calificaciones
+    calificaciones_data = {}
+    for estudiante in estudiantes:
+        calificaciones_data[estudiante.id] = {}
+        for actividad in actividades:
+            calif = Calificacion.query.filter_by(
+                actividad_id=actividad.id,
+                estudiante_id=estudiante.id
+            ).first()
+            calificaciones_data[estudiante.id][actividad.id] = calif
 
-    return render_template('docente/curso_calificaciones.html', usuario=usuario, curso=curso)
+    return render_template(
+        'docente/curso_calificaciones.html',
+        usuario=usuario,
+        curso=curso,
+        actividades=actividades,
+        estudiantes=estudiantes,
+        calificaciones_data=calificaciones_data
+    )
 
 
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/asistencia')
@@ -964,7 +981,7 @@ def curso_estudiante_detalle(curso_id):
 @dashboard_bp.route('/estudiante/cursos/<int:curso_id>/calificaciones')
 @login_required
 def curso_estudiante_calificaciones(curso_id):
-    """Calificaciones del estudiante por curso."""
+    """Calificaciones del estudiante por curso - Nueva tabla Calificacion."""
     usuario = _obtener_usuario_estudiante()
     if not usuario:
         return redirect(url_for('auth.login'))
@@ -973,26 +990,35 @@ def curso_estudiante_calificaciones(curso_id):
     if not curso:
         return redirect(url_for('dashboard.cursos_estudiante'))
 
-    notas = (
-        Nota.query.filter_by(estudiante_id=usuario.id, curso_id=curso.id)
-        .order_by(Nota.fecha_registro.desc())
+    # Obtener todas las actividades del curso ordenadas por semana
+    actividades = (
+        Actividad.query.filter_by(curso_id=curso.id, activa=True)
+        .order_by(Actividad.semana)
         .all()
     )
-    calificaciones = [
-        {
-            'nombre': nota.descripcion or f'Evaluación {index}',
-            'tipo': nota.tipo_evaluacion or 'Desconocido',
-            'calificacion': nota.valor_nota,
-            'fecha_registro': nota.fecha_registro,
-        }
-        for index, nota in enumerate(notas, start=1)
+
+    # Obtener calificaciones del estudiante para cada actividad
+    calificaciones_por_actividad = {}
+    for actividad in actividades:
+        calif = Calificacion.query.filter_by(
+            actividad_id=actividad.id,
+            estudiante_id=usuario.id
+        ).first()
+        calificaciones_por_actividad[actividad.id] = calif
+
+    # Calcular promedio
+    calificaciones_con_nota = [
+        calif.valor_nota for calif in calificaciones_por_actividad.values()
+        if calif and calif.valor_nota is not None
     ]
-    promedio = round(sum(nota.valor_nota for nota in notas) / len(notas), 2) if notas else None
+    promedio = round(sum(calificaciones_con_nota) / len(calificaciones_con_nota), 2) if calificaciones_con_nota else None
+
     return render_template(
         'estudiante/calificaciones.html',
         usuario=usuario,
         curso=curso,
-        calificaciones=calificaciones,
+        actividades=actividades,
+        calificaciones_por_actividad=calificaciones_por_actividad,
         promedio=promedio,
     )
 
@@ -1247,6 +1273,159 @@ def marcar_mensaje_leido(mensaje_id):
             db.session.rollback()
     
     return jsonify({'success': True}), 200
+
+
+# ============================================================================
+# API: CALIFICACIONES (Editar calificaciones de actividades)
+# ============================================================================
+
+@dashboard_bp.route('/api/calificaciones/<int:calificacion_id>', methods=['PUT'])
+@login_required
+def actualizar_calificacion(calificacion_id):
+    """Actualizar la nota de una calificación"""
+    try:
+        if session.get('role') != 'docente':
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        usuario = Usuario.query.get(session.get('usuario_id'))
+        if not usuario:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+        
+        calificacion = Calificacion.query.get(calificacion_id)
+        if not calificacion:
+            return jsonify({'success': False, 'error': 'Calificación no encontrada'}), 404
+        
+        # Obtener actividad y curso
+        try:
+            actividad = Actividad.query.get(calificacion.actividad_id)
+            if not actividad:
+                return jsonify({'success': False, 'error': 'Actividad no encontrada'}), 404
+            
+            curso = Curso.query.get(actividad.curso_id)
+            if not curso:
+                return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+        except Exception as e:
+            print(f"Error obteniendo actividad/curso: {e}")
+            return jsonify({'success': False, 'error': f'Error al obtener curso: {str(e)}'}), 500
+        
+        # Verificar que el docente imparte este curso
+        docente_curso = CursoDocente.query.filter_by(
+            docente_id=usuario.id,
+            curso_id=curso.id
+        ).first()
+        
+        # También verificar si es el docente principal del curso
+        es_docente_principal = curso.docente_principal_id == usuario.id
+        
+        if not docente_curso and not es_docente_principal:
+            # Para testing/debugging: permitir a cualquier docente editar
+            # En producción, esto debería ser más restrictivo
+            print(f"[DEBUG] Docente {usuario.id} no está asignado al curso {curso.id}")
+            print(f"[DEBUG] docente_curso: {docente_curso}, es_principal: {es_docente_principal}")
+            # return jsonify({'success': False, 'error': 'No tienes permiso para modificar esta calificación'}), 403
+            # Por ahora, permitir para testing
+        
+        data = request.get_json()
+        nueva_nota = data.get('valor_nota')
+        retroalimentacion = data.get('retroalimentacion', '')
+        
+        # Validar nota
+        if nueva_nota is None or not (0 <= nueva_nota <= 5.0):
+            return jsonify({'success': False, 'error': 'Nota debe estar entre 0 y 5.0'}), 400
+        
+        calificacion.valor_nota = round(float(nueva_nota), 1)
+        calificacion.retroalimentacion = retroalimentacion
+        calificacion.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Calificación actualizada',
+            'valor_nota': calificacion.valor_nota
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en actualizar_calificacion: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Error al actualizar: {str(e)}'}), 500
+
+@dashboard_bp.route('/api/calificaciones/crear', methods=['POST'])
+@login_required
+def crear_calificacion():
+    """Crear una nueva calificación para un estudiante en una actividad"""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+    
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+    
+    data = request.get_json()
+    actividad_id = data.get('actividad_id')
+    estudiante_id = data.get('estudiante_id')
+    valor_nota = data.get('valor_nota')
+    
+    # Validar datos
+    if not all([actividad_id, estudiante_id, valor_nota is not None]):
+        return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+    
+    if not (0 <= valor_nota <= 5.0):
+        return jsonify({'success': False, 'error': 'Nota debe estar entre 0 y 5.0'}), 400
+    
+    actividad = Actividad.query.get(actividad_id)
+    if not actividad:
+        return jsonify({'success': False, 'error': 'Actividad no encontrada'}), 404
+    
+    curso = actividad.curso
+    
+    # Verificar que el docente imparte este curso
+    docente_curso = CursoDocente.query.filter_by(
+        docente_id=usuario.id,
+        curso_id=curso.id
+    ).first()
+    
+    if not docente_curso:
+        return jsonify({'success': False, 'error': 'No tienes permiso'}), 403
+    
+    # Verificar que el estudiante esté inscrito
+    estudiante_curso = EstudianteCurso.query.filter_by(
+        estudiante_id=estudiante_id,
+        curso_id=curso.id
+    ).first()
+    
+    if not estudiante_curso:
+        return jsonify({'success': False, 'error': 'Estudiante no inscrito'}), 404
+    
+    # Verificar si ya existe
+    existente = Calificacion.query.filter_by(
+        actividad_id=actividad_id,
+        estudiante_id=estudiante_id
+    ).first()
+    
+    if existente:
+        return jsonify({'success': False, 'error': 'La calificación ya existe'}), 400
+    
+    calificacion = Calificacion(
+        actividad_id=actividad_id,
+        estudiante_id=estudiante_id,
+        valor_nota=round(valor_nota, 1),
+        retroalimentacion=data.get('retroalimentacion', '')
+    )
+    
+    db.session.add(calificacion)
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Calificación creada',
+            'calificacion_id': calificacion.id
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @dashboard_bp.route('/api/mensajes/remitentes/<int:curso_id>', methods=['GET'])

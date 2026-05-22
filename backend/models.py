@@ -442,6 +442,70 @@ class Nota(db.Model):
         return self.valor_nota >= 3.2
 
 # ============================================================================
+# TABLA: ACTIVIDAD (Actividades/Evaluaciones de un curso)
+# ============================================================================
+
+class Actividad(db.Model):
+    """Tabla de actividades y evaluaciones de un curso"""
+    __tablename__ = 'actividades'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    descripcion = db.Column(db.Text)
+    tipo_evaluacion = db.Column(db.String(50), nullable=False)  # taller, parcial, proyecto, examen, tarea
+    semana = db.Column(db.Integer)  # Número de semana (1-18)
+    ponderacion = db.Column(db.Float, default=1.0)  # Peso porcentual (ej: 0.15 = 15%)
+    fecha_asignacion = db.Column(db.Date, nullable=False)
+    fecha_vencimiento = db.Column(db.Date, nullable=False)
+    activa = db.Column(db.Boolean, default=True)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    curso = db.relationship('Curso', backref='actividades', foreign_keys=[curso_id])
+    calificaciones = db.relationship('Calificacion', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Actividad {self.nombre}, Semana {self.semana}>'
+    
+    def promedio_clase(self):
+        """Calcula el promedio de la actividad en la clase"""
+        if not self.calificaciones:
+            return 0.0
+        total = sum(c.valor_nota for c in self.calificaciones)
+        return round(total / len(self.calificaciones), 2)
+
+# ============================================================================
+# TABLA: CALIFICACION (Notas de estudiantes en actividades)
+# ============================================================================
+
+class Calificacion(db.Model):
+    """Tabla de calificaciones de estudiantes en actividades específicas"""
+    __tablename__ = 'calificaciones'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    actividad_id = db.Column(db.Integer, db.ForeignKey('actividades.id'), nullable=False, index=True)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    valor_nota = db.Column(db.Float, nullable=False)  # 0.0 a 5.0
+    retroalimentacion = db.Column(db.Text)
+    fecha_calificacion = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relaciones
+    actividad = db.relationship('Actividad', foreign_keys=[actividad_id], overlaps="calificaciones")
+    estudiante = db.relationship('Usuario', backref='calificaciones', foreign_keys=[estudiante_id])
+    
+    # Índice único
+    __table_args__ = (db.UniqueConstraint('actividad_id', 'estudiante_id', name='uq_actividad_estudiante'),)
+    
+    def __repr__(self):
+        return f'<Calificacion Est:{self.estudiante_id}, Act:{self.actividad_id}, Nota:{self.valor_nota}>'
+    
+    def esta_aprobada(self):
+        """Verifica si la nota está aprobada (>= 3.2)"""
+        return self.valor_nota >= 3.2
+
+# ============================================================================
 # TABLA: ASISTENCIA (Registro de asistencia por clase)
 # ============================================================================
 

@@ -3,14 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Calificaciones - {{ curso.codigo }}</title>
+    <title>Mis Calificaciones - {{ curso.nombre }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+    <style>
+        .calificaciones-table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .table-calificaciones {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table-calificaciones thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table-calificaciones th {
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .header-actividad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .actividad-nombre {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .actividad-tipo {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: capitalize;
+        }
+
+        .actividad-semana {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .table-calificaciones td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        .nota-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-direction: column;
+        }
+
+        .nota-valor {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .estado-nota {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .estado-nota.aprobado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .estado-nota.desaprobado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .estado-nota.sin-calificar {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .nota-retroalimentacion {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            max-width: 200px;
+            font-style: italic;
+        }
+
+        .col-promedio {
+            min-width: 80px;
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .promedio-valor {
+            padding: 8px 4px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .promedio-valor.aprobado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .promedio-valor.desaprobado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .promedio-valor.sin-datos {
+            color: #999;
+        }
+
+        .resumen-section {
+            margin: 30px 0;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .resumen-title {
+            margin: 0 0 15px 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .resumen-title i {
+            color: #667eea;
+            font-size: 20px;
+        }
+
+        .actividades-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .actividades-list li {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        .actividades-list li:last-child {
+            border-bottom: none;
+        }
+
+        .actividad-item-nombre {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .actividad-item-tipo {
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            text-transform: capitalize;
+        }
+
+        .actividad-item-nota {
+            text-align: center;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .actividad-item-estado {
+            text-align: center;
+        }
+
+        .info-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-box.warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .info-box.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .course-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .course-tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            color: #666;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .course-tab:hover {
+            color: #667eea;
+        }
+
+        .course-tab.is-active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .course-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .table-calificaciones {
+                font-size: 12px;
+            }
+
+            .table-calificaciones th,
+            .table-calificaciones td {
+                padding: 8px 4px;
+            }
+
+            .actividades-list li {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .actividad-item-tipo {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body class="courses-page">
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <i class="fas fa-book"></i> Panel de Estudiante
+            <i class="fas fa-graduation-cap"></i> Panel de Estudiante
         </div>
         <div class="user-info">
             <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
@@ -22,61 +297,146 @@
         <div class="course-header">
             <div>
                 <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
-                <p>Mis calificaciones</p>
+                <p>Mis calificaciones en las actividades</p>
             </div>
         </div>
 
         <div class="course-tabs">
-            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}">Resumen</a>
+            <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso.id) }}" class="course-tab">Detalles</a>
+            <a href="{{ url_for('dashboard.curso_estudiante_asistencia', curso_id=curso.id) }}" class="course-tab">Asistencia</a>
             <a class="course-tab is-active">Mis Calificaciones</a>
-            <a class="course-tab" href="{{ url_for('dashboard.curso_estudiante_asistencia', curso_id=curso.id) }}">Mi Asistencia</a>
         </div>
 
         <div class="course-content">
-            {% if calificaciones %}
-                <table class="grades-table">
+            {% if not actividades %}
+            <div class="info-box warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <strong>Sin actividades</strong>
+                    <p>Este curso aún no tiene actividades. Vuelve más tarde.</p>
+                </div>
+            </div>
+            {% else %}
+            
+            <!-- Tabla de Calificaciones -->
+            <div class="calificaciones-table-container">
+                <table class="table-calificaciones">
                     <thead>
                         <tr>
-                            <th>Evaluación</th>
-                            <th>Tipo</th>
-                            <th>Calificación</th>
-                            <th>Sobre</th>
-                            <th>Fecha</th>
+                            <th>Actividad</th>
+                            {% for actividad in actividades %}
+                            <th>
+                                <div class="header-actividad">
+                                    <span class="actividad-nombre">{{ actividad.nombre }}</span>
+                                    <span class="actividad-tipo">{{ actividad.tipo_evaluacion }}</span>
+                                    <span class="actividad-semana">Sem. {{ actividad.semana }}</span>
+                                </div>
+                            </th>
+                            {% endfor %}
+                            <th class="col-promedio">Mi Promedio</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for calif in calificaciones %}
-                            <tr>
-                                <td>{{ calif.nombre or 'Evaluación' }}</td>
-                                <td>{{ calif.tipo or 'Desconocido' }}</td>
-                                <td>
-                                    {% set score = calif.calificacion or 0 %}
-                                    {% if score >= 4 %}
-                                        <span class="grade-badge grade-badge--high">{{ score }}</span>
-                                    {% elif score >= 3 %}
-                                        <span class="grade-badge grade-badge--medium">{{ score }}</span>
-                                    {% else %}
-                                        <span class="grade-badge grade-badge--low">{{ score }}</span>
+                        <tr>
+                            <td><strong>Mi Calificación</strong></td>
+                            
+                            {% set mis_notas = [] %}
+                            {% for actividad in actividades %}
+                            {% set calif = calificaciones_por_actividad[actividad.id] %}
+                            <td>
+                                {% if calif %}
+                                <div class="nota-display">
+                                    <span class="nota-valor">{{ calif.valor_nota }}</span>
+                                    <span class="estado-nota {% if calif.valor_nota >= 3.2 %}aprobado{% else %}desaprobado{% endif %}">
+                                        {% if calif.valor_nota >= 3.2 %}✓{% else %}✗{% endif %}
+                                    </span>
+                                    {% if calif.retroalimentacion %}
+                                    <div class="nota-retroalimentacion" title="{{ calif.retroalimentacion }}">
+                                        <em>"{{ calif.retroalimentacion[:50] }}..."</em>
+                                    </div>
                                     {% endif %}
-                                </td>
-                                <td>5.0</td>
-                                <td>{{ calif.fecha_registro.strftime('%d/%m/%Y') if calif.fecha_registro else 'N/A' }}</td>
-                            </tr>
-                        {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="nota-display">
+                                    <span class="estado-nota sin-calificar">—</span>
+                                    <small style="color: #999;">Sin calificar</small>
+                                </div>
+                                {% endif %}
+                            </td>
+                            {% if calif %}
+                                {% set _ = mis_notas.append(calif.valor_nota) %}
+                            {% endif %}
+                            {% endfor %}
+                            
+                            <td class="col-promedio">
+                                {% if promedio %}
+                                <div class="promedio-valor {% if promedio >= 3.2 %}aprobado{% else %}desaprobado{% endif %}">
+                                    {{ promedio }}
+                                </div>
+                                {% else %}
+                                <div class="promedio-valor sin-datos">—</div>
+                                {% endif %}
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
 
-                {% if promedio %}
-                    <div style="margin-top: 20px; background: #f7f9fb; padding: 16px; border-radius: 10px; border-left: 4px solid var(--primary);">
-                        <div style="font-weight: 600; color: var(--primary);">Promedio General</div>
-                        <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 4px;">{{ promedio }}</div>
-                    </div>
-                {% endif %}
-            {% else %}
-                <div class="course-empty">
-                    <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 16px;"></i>
-                    <p>No hay calificaciones registradas aún.</p>
+            <!-- Información de estado -->
+            {% if promedio %}
+            <div class="info-box info">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Tu desempeño en el curso</strong>
+                    <p>
+                        Promedio actual: <strong>{{ promedio }}</strong>
+                        {% if promedio >= 3.2 %}
+                        — ¡Vas bien! Sigue así 👍
+                        {% else %}
+                        — Necesitas mejorar para aprobar (mínimo 3.2)
+                        {% endif %}
+                    </p>
                 </div>
+            </div>
+            {% endif %}
+
+            <!-- Resumen de Actividades -->
+            <div class="resumen-section">
+                <h3 class="resumen-title">
+                    <i class="fas fa-tasks"></i> Resumen de Actividades
+                </h3>
+                <ul class="actividades-list">
+                    {% for actividad in actividades %}
+                    {% set calif = calificaciones_por_actividad[actividad.id] %}
+                    <li>
+                        <div>
+                            <div class="actividad-item-nombre">{{ actividad.nombre }}</div>
+                            <div style="font-size: 12px; color: #999;">Semana {{ actividad.semana }}</div>
+                        </div>
+                        <div class="actividad-item-tipo">{{ actividad.tipo_evaluacion }}</div>
+                        <div class="actividad-item-nota">
+                            {% if calif %}
+                                {{ calif.valor_nota }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="actividad-item-estado">
+                            {% if calif %}
+                                {% if calif.valor_nota >= 3.2 %}
+                                    <span style="color: #155724; font-weight: 600;">✓ Aprobado</span>
+                                {% else %}
+                                    <span style="color: #721c24; font-weight: 600;">✗ Desaprobado</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #666; font-size: 12px;">Pendiente</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
             {% endif %}
         </div>
     </div>

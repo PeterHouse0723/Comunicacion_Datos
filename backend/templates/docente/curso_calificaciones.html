@@ -3,9 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calificaciones - {{ curso.codigo }}</title>
+    <title>Calificaciones - {{ curso.nombre }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+    <style>
+        .calificaciones-table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .table-valoraciones {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table-valoraciones thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table-valoraciones th {
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .table-valoraciones th.sticky-col {
+            position: sticky;
+            left: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 11;
+        }
+
+        .header-actividad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .actividad-nombre {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .actividad-tipo {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            text-transform: capitalize;
+        }
+
+        .actividad-semana {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .table-valoraciones td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .table-valoraciones td.sticky-col {
+            position: sticky;
+            left: 0;
+            background: #f9f9f9;
+            z-index: 9;
+            text-align: left;
+        }
+
+        .estudiante-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+        }
+
+        .estudiante-info .nombre {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .estudiante-info .email {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .nota-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .nota-cell.sin-calificacion {
+            background: #f5f5f5;
+        }
+
+        .nota-input, .nota-input-nueva {
+            width: 50px;
+            padding: 6px 4px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .nota-input:focus, .nota-input-nueva:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .nota-input-nueva {
+            background: #fff9e6;
+        }
+
+        .estado-nota {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .estado-nota.aprobado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .estado-nota.desaprobado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .nota-retroalimentacion {
+            font-size: 10px;
+            color: #666;
+            max-width: 80px;
+            word-break: break-word;
+        }
+
+        .col-promedio {
+            min-width: 70px;
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .promedio-cell {
+            padding: 8px 4px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .promedio-cell.aprobado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .promedio-cell.desaprobado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .promedio-cell.sin-datos {
+            color: #999;
+        }
+
+        .stats-section {
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .stat-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .stat-card li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-card li:last-child {
+            border-bottom: none;
+        }
+
+        .stat-card strong {
+            flex: 1;
+        }
+
+        .stat-card span {
+            font-size: 12px;
+            margin: 0 10px;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .promedio {
+            background: #e7f3ff;
+            color: #0066cc;
+        }
+
+        .aprobados {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .info-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .info-box.warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .course-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .course-tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            color: #666;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .course-tab:hover {
+            color: #667eea;
+        }
+
+        .course-tab.is-active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .course-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 1024px) {
+            .col-actividad {
+                padding: 8px 4px;
+            }
+
+            .header-actividad {
+                font-size: 11px;
+            }
+
+            .nota-input, .nota-input-nueva {
+                width: 45px;
+                font-size: 12px;
+            }
+        }
+    </style>
 </head>
 <body class="courses-page">
     <div class="dashboard-header">
@@ -22,18 +320,185 @@
         <div class="course-header">
             <div>
                 <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
-                <p>Calificaciones del curso</p>
+                <p>Calificaciones de las actividades</p>
             </div>
         </div>
 
         <div class="course-tabs">
+            <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso.id) }}" class="course-tab">Detalles</a>
+            <a href="{{ url_for('dashboard.curso_docente_asistencia', curso_id=curso.id) }}" class="course-tab">Asistencia</a>
             <a class="course-tab is-active">Calificaciones</a>
         </div>
 
         <div class="course-content">
-            <p>Aquí podrás ver y editar las calificaciones de los estudiantes. (Funcionalidad pendiente de implementación detallada).</p>
-            <!-- Placeholder: mostrar tabla de estudiantes y notas -->
+            {% if not actividades %}
+            <div class="info-box warning">
+                <strong>[!] Sin actividades</strong>
+                <p>Este curso aun no tiene actividades creadas. Las actividades apareceran aqui.</p>
+            </div>
+            {% elif not estudiantes %}
+            <div class="info-box warning">
+                <strong>[!] Sin estudiantes</strong>
+                <p>No hay estudiantes inscritos en este curso aun.</p>
+            </div>
+            {% else %}
+            
+            <!-- Tabla de Calificaciones -->
+            <div class="calificaciones-table-container">
+                <table class="table-valoraciones">
+                    <thead>
+                        <tr>
+                            <th class="sticky-col">Estudiante</th>
+                            {% for actividad in actividades %}
+                            <th class="col-actividad" title="{{ actividad.descripcion }}">
+                                <div class="header-actividad">
+                                    <span class="actividad-nombre">{{ actividad.nombre }}</span>
+                                    <span class="actividad-tipo">{{ actividad.tipo_evaluacion }}</span>
+                                    <span class="actividad-semana">Sem. {{ actividad.semana }}</span>
+                                </div>
+                            </th>
+                            {% endfor %}
+                            <th class="col-promedio">Promedio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for estudiante in estudiantes %}
+                        <tr>
+                            <td class="sticky-col estudiante-cell">
+                                <div class="estudiante-info">
+                                    <span class="nombre">{{ estudiante.nombre }} {{ estudiante.apellido }}</span>
+                                    <span class="email">{{ estudiante.email }}</span>
+                                </div>
+                            </td>
+                            
+                            {% set promedio_estudiante = [] %}
+                            {% for actividad in actividades %}
+                            {% set calif = calificaciones_data[estudiante.id][actividad.id] %}
+                            <td class="col-nota">
+                                {% if calif %}
+                                <div class="nota-cell">
+                                    <input 
+                                        type="number" 
+                                        class="nota-input" 
+                                        min="0" 
+                                        max="5" 
+                                        step="0.1"
+                                        value="{{ calif.valor_nota }}"
+                                        data-calificacion-id="{{ calif.id }}"
+                                        data-estudiante="{{ estudiante.id }}"
+                                        data-actividad="{{ actividad.id }}"
+                                        placeholder="0.0"
+                                    >
+                                    <span class="estado-nota {% if calif.valor_nota >= 3.2 %}aprobado{% else %}desaprobado{% endif %}">
+                                        {% if calif.valor_nota >= 3.2 %}✓{% else %}✗{% endif %}
+                                    </span>
+                                </div>
+                                <div class="nota-retroalimentacion">
+                                    <small>{{ calif.retroalimentacion[:30] if calif.retroalimentacion else '-' }}</small>
+                                </div>
+                                {% else %}
+                                <div class="nota-cell sin-calificacion">
+                                    <span style="color: #999;">-</span>
+                                </div>
+                                {% endif %}
+                            </td>
+                            {% if calif %}
+                                {% set _ = promedio_estudiante.append(calif.valor_nota) %}
+                            {% endif %}
+                            {% endfor %}
+                            
+                            <td class="col-promedio">
+                                {% if promedio_estudiante %}
+                                <div class="promedio-cell {% if (promedio_estudiante | sum) / (promedio_estudiante | length) >= 3.2 %}aprobado{% else %}desaprobado{% endif %}">
+                                    {{ "%.2f" | format((promedio_estudiante | sum) / (promedio_estudiante | length)) }}
+                                </div>
+                                {% else %}
+                                <div class="promedio-cell sin-datos">-</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estadisticas -->
+            <div class="stats-section">
+                <div class="stat-card">
+                    <h3>[*] Resumen Actividades</h3>
+                    <ul>
+                        {% for actividad in actividades %}
+                        <li>
+                            <strong>{{ actividad.nombre }}</strong>
+                            <span class="promedio">Promedio: {{ "%.2f" | format(actividad.promedio_clase()) }}</span>
+                            <span class="aprobados">Aprobados: {{ (actividad.calificaciones | selectattr('valor_nota', 'ge', 3.2) | list | length) }} / {{ actividad.calificaciones | length }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            {% endif %}
         </div>
     </div>
+
+    <script>
+        // Actualizar nota cuando cambia
+        document.querySelectorAll('.nota-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const calificacionId = this.dataset.calificacionId;
+                const nuevaNota = parseFloat(this.value);
+
+                if (isNaN(nuevaNota) || nuevaNota < 0 || nuevaNota > 5) {
+                    alert('Nota debe estar entre 0 y 5');
+                    location.reload();
+                    return;
+                }
+
+                actualizarCalificacion(calificacionId, nuevaNota);
+            });
+
+            // Permitir edicion inline
+            input.addEventListener('blur', function() {
+                const nuevaNota = parseFloat(this.value);
+                if (!isNaN(nuevaNota)) {
+                    this.value = nuevaNota.toFixed(1);
+                }
+            });
+        });
+
+        function actualizarCalificacion(calificacionId, nuevaNota) {
+            const url = `/dashboard/api/calificaciones/${calificacionId}`;
+            
+            fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    valor_nota: nuevaNota
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('[+] Calificacion actualizada');
+                    // Recargar para actualizar promedios
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al actualizar la calificacion');
+            });
+        }
+    </script>
 </body>
 </html>
