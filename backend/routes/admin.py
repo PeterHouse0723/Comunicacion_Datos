@@ -1471,6 +1471,97 @@ def actualizar_institucion(inst_id):
 # RUTA: ELIMINAR INSTITUCIÓN (AJAX)
 # ============================================================================
 
+@admin_bp.route('/simular-datos', methods=['POST'])
+@admin_required
+def simular_datos():
+    """Crea actividades simuladas y calificaciones para todos los cursos activos sin actividades."""
+    from models import Actividad, Calificacion, EstudianteCurso
+    from datetime import datetime, timedelta
+    from random import uniform, randint
+
+    usuario = Usuario.query.get(session['usuario_id'])
+    if usuario.role != 'admin_global':
+        return jsonify({'success': False, 'error': 'Solo el admin global puede ejecutar esto'}), 403
+
+    cursos = Curso.query.filter_by(activo=True).all()
+    if not cursos:
+        return jsonify({'success': False, 'error': 'No hay cursos activos'}), 400
+
+    total_actividades = 0
+    total_calificaciones = 0
+    cursos_procesados = []
+    cursos_saltados = []
+
+    tipos = ['Taller', 'Parcial', 'Proyecto', 'Examen', 'Tarea']
+    retroalimentaciones = [
+        'Excelente trabajo. Siga así.',
+        'Buen desempeño.',
+        'Trabajo aceptable. Puede mejorar.',
+        'Necesita más dedicación.',
+        'Muy buena participación.',
+        'Cumple con los requisitos mínimos.',
+    ]
+
+    try:
+        for curso in cursos:
+            if Actividad.query.filter_by(curso_id=curso.id).count() > 0:
+                cursos_saltados.append(curso.codigo)
+                continue
+
+            fecha_inicio = curso.periodo.fecha_inicio if curso.periodo else datetime.now().date()
+            estudiantes = (
+                Usuario.query
+                .join(EstudianteCurso)
+                .filter(EstudianteCurso.curso_id == curso.id)
+                .all()
+            )
+
+            for i in range(1, 10):
+                tipo = tipos[i % len(tipos)]
+                fecha_asig = fecha_inicio + timedelta(weeks=i * 2 - 2)
+                fecha_venc = fecha_asig + timedelta(days=7)
+
+                actividad = Actividad(
+                    curso_id=curso.id,
+                    nombre=f'{tipo} {i} - {curso.nombre}',
+                    descripcion=f'Evaluación {tipo.lower()} número {i}',
+                    tipo_evaluacion=tipo.lower(),
+                    semana=i * 2,
+                    ponderacion=round(1.0 / 9, 4),
+                    fecha_asignacion=fecha_asig,
+                    fecha_vencimiento=fecha_venc,
+                    activa=True,
+                )
+                db.session.add(actividad)
+                db.session.flush()
+                total_actividades += 1
+
+                for est in estudiantes:
+                    nota = round(uniform(2.5, 5.0) if uniform(0, 1) >= 0.4 else uniform(3.8, 5.0), 1)
+                    db.session.add(Calificacion(
+                        actividad_id=actividad.id,
+                        estudiante_id=est.id,
+                        valor_nota=nota,
+                        retroalimentacion=retroalimentaciones[randint(0, len(retroalimentaciones) - 1)],
+                        fecha_calificacion=fecha_venc + timedelta(days=randint(1, 3)),
+                    ))
+                    total_calificaciones += 1
+
+            cursos_procesados.append(curso.codigo)
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'actividades_creadas': total_actividades,
+            'calificaciones_creadas': total_calificaciones,
+            'cursos_procesados': cursos_procesados,
+            'cursos_saltados': cursos_saltados,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/instituciones/<int:inst_id>/eliminar', methods=['POST'])
 @admin_required
 def eliminar_institucion(inst_id):
