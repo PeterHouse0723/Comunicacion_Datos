@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(python -c \"from app import create_app; app = create_app\\(\\); print\\('OK'\\)\")",
-      "Bash(python -c \"from chatbot.engine import responder; print\\('OK'\\)\")"
+      "Bash(python -c \"from chatbot.engine import responder; print\\('OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -m pip install groq --quiet)",
+      "Bash(python -c \"import groq; print\\('groq OK', groq.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pip install groq --quiet)",
+      "Bash(.venv/Scripts/python.exe -c \"import groq; print\\('groq OK', groq.__version__\\)\")"
     ]
   }
 }

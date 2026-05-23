@@ -3,61 +3,39 @@ from math import floor
 from models import EstudianteCurso, Mensaje, Curso
 from extensions import db
 
-# ── Intent patterns ──────────────────────────────────────────────────────────
-INTENTS = [
-    ('ayuda',          r'\b(hola|ayuda|menu|menú|inicio|empezar|opciones|qu[eé]\s+puedes|start)\b'),
-    ('mis_cursos',     r'\b(cursos?|materias?|inscri[pt]|inscrip)\b'),
-    ('mis_faltas',     r'\b(faltas?|ausencias?|fallas?|asistencia|inasistencia)\b'),
-    ('estado_materia', r'\b(estado|pierdo|perder|riesgo|cu[aá]ntas?\s+faltas?|limite|l[ií]mite)\b'),
-    ('mensajes',       r'\b(mensajes?|sin\s+leer|nuevos?|notificaci[oó]n|unread)\b'),
-]
+# Solo se mantiene "ayuda/menu" como comando especial para mostrar el menú
+_PATRON_AYUDA = re.compile(
+    r'^\s*(ayuda|menu|menú|opciones|qu[eé]\s+puedes\s+hacer|start)\s*$',
+    re.IGNORECASE
+)
+_PATRON_MENSAJES = re.compile(
+    r'^\s*(mensajes?|cuantos?\s+mensajes?|tengo\s+mensajes?)\s*$',
+    re.IGNORECASE
+)
 
 _DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 
-def detectar_intent(texto):
-    t = texto.lower().strip()
-    for intent, pattern in INTENTS:
-        if re.search(pattern, t):
-            return intent
-    return 'desconocido'
-
-
-def responder(usuario_id, role, mensaje_usuario, estado_chat):
+def responder(usuario_id, role, mensaje_usuario, estado_chat, historial_ia=None):
     """
     Returns (respuesta_texto, nuevo_estado, opciones_list)
     opciones_list: [{'texto': str, 'valor': str}]
+    historial_ia: list of {'role': 'user'|'assistant', 'content': str}
     """
     estado_chat = estado_chat or {}
 
-    if estado_chat.get('esperando_opcion'):
-        return _manejar_opcion(usuario_id, role, mensaje_usuario, estado_chat)
-
-    intent = detectar_intent(mensaje_usuario)
-
-    if intent == 'ayuda':
+    # Comando exacto: ayuda/menú → muestra opciones estáticas
+    if _PATRON_AYUDA.match(mensaje_usuario):
         return _respuesta_ayuda(role)
 
-    if intent == 'mis_cursos':
-        return _respuesta_cursos(usuario_id, role)
-
-    if intent == 'mis_faltas':
-        if role == 'estudiante':
-            return _pedir_curso(usuario_id, 'mis_faltas')
-        return ('Esta consulta solo está disponible para estudiantes.', {}, [])
-
-    if intent == 'estado_materia':
-        if role == 'estudiante':
-            return _respuesta_estado_todos(usuario_id)
-        return ('Esta consulta solo está disponible para estudiantes.', {}, [])
-
-    if intent == 'mensajes':
+    # Comando exacto: mensajes sin leer
+    if _PATRON_MENSAJES.match(mensaje_usuario):
         return _respuesta_mensajes(usuario_id)
 
-    return (
-        'No entendí tu consulta. Escribe **ayuda** para ver qué puedo hacer por ti.',
-        {}, []
-    )
+    # Todo lo demás → IA conversacional con contexto académico completo
+    from chatbot.ia import responder_con_ia
+    respuesta = responder_con_ia(usuario_id, role, mensaje_usuario, historial_ia or [])
+    return (respuesta, {'modo_ia': True}, [])
 
 
 def _respuesta_ayuda(role):
