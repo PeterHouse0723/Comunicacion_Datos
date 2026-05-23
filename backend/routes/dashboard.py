@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje, Actividad, Calificacion, CursoDocente
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje, Actividad, Calificacion, CursoDocente, ActividadApoyo, AsignacionApoyo
 from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
@@ -885,6 +885,191 @@ def mis_solicitudes_docente():
     )
 
 # ============================================================================
+# RUTAS: Actividades de Apoyo Académico (Docente)
+# ============================================================================
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo')
+@login_required
+def curso_docente_apoyo(curso_id):
+    """Vista principal de actividades de apoyo del curso."""
+    if session.get('role') != 'docente':
+        return redirect(url_for('auth.login'))
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    curso = _obtener_curso_docente(curso_id, usuario.id)
+    if not curso:
+        return redirect(url_for('dashboard.cursos_docente'))
+
+    actividades = (
+        ActividadApoyo.query
+        .filter_by(curso_id=curso_id, activa=True)
+        .order_by(ActividadApoyo.fecha_creacion.desc())
+        .all()
+    )
+    estudiantes_rel = EstudianteCurso.query.filter_by(curso_id=curso_id).all()
+    estudiantes = [rel.estudiante for rel in estudiantes_rel]
+
+    return render_template(
+        'docente/curso_apoyo.html',
+        usuario=usuario,
+        curso=curso,
+        actividades=actividades,
+        estudiantes=estudiantes,
+        date=date,
+    )
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/crear', methods=['POST'])
+@login_required
+def crear_actividad_apoyo(curso_id):
+    """Crea una actividad de apoyo y la asigna a estudiantes seleccionados."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    curso = _obtener_curso_docente(curso_id, usuario.id)
+    if not curso:
+        return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+    data = request.get_json(silent=True) or {}
+    titulo = (data.get('titulo') or '').strip()
+    descripcion = (data.get('descripcion') or '').strip()
+    fecha_str = (data.get('fecha_vencimiento') or '').strip()
+    estudiante_ids = data.get('estudiante_ids') or []
+
+    if not titulo:
+        return jsonify({'success': False, 'error': 'El título es obligatorio'}), 400
+    if not estudiante_ids:
+        return jsonify({'success': False, 'error': 'Selecciona al menos un estudiante'}), 400
+
+    fecha_venc = None
+    if fecha_str:
+        try:
+            fecha_venc = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Fecha inválida'}), 400
+
+    try:
+        actividad = ActividadApoyo(
+            curso_id=curso_id,
+            docente_id=usuario.id,
+            titulo=titulo,
+            descripcion=descripcion or None,
+            fecha_vencimiento=fecha_venc,
+            activa=True,
+        )
+        db.session.add(actividad)
+        db.session.flush()
+
+        for est_id in estudiante_ids:
+            # Verificar que el estudiante pertenece al curso
+            if EstudianteCurso.query.filter_by(curso_id=curso_id, estudiante_id=est_id).first():
+                db.session.add(AsignacionApoyo(
+                    actividad_apoyo_id=actividad.id,
+                    estudiante_id=int(est_id),
+                ))
+
+        db.session.commit()
+        return jsonify({'success': True, 'actividad_id': actividad.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/completar', methods=['POST'])
+@login_required
+def marcar_apoyo_completado(curso_id, actividad_id):
+    """Marca la asignación de un estudiante como completada."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    if not _obtener_curso_docente(curso_id, usuario.id):
+        return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+    data = request.get_json(silent=True) or {}
+    estudiante_id = data.get('estudiante_id')
+    asig = AsignacionApoyo.query.filter_by(
+        actividad_apoyo_id=actividad_id, estudiante_id=estudiante_id
+    ).first()
+    if not asig:
+        return jsonify({'success': False, 'error': 'Asignación no encontrada'}), 404
+
+    asig.completada = True
+    asig.fecha_completado = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/notas-estudiante')
+@login_required
+def notas_estudiante_para_apoyo(curso_id):
+    """Devuelve las notas de un estudiante en el curso para el modal de reemplazo."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False}), 403
+
+    estudiante_id = request.args.get('estudiante_id', type=int)
+    notas = Nota.query.filter_by(curso_id=curso_id, estudiante_id=estudiante_id).order_by(Nota.numero_entrega).all()
+    return jsonify({'notas': [
+        {'id': n.id, 'tipo': n.tipo_evaluacion or 'Evaluación', 'numero': n.numero_entrega or '', 'valor': n.valor_nota, 'descripcion': n.descripcion}
+        for n in notas
+    ]})
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/reemplazar-nota', methods=['POST'])
+@login_required
+def reemplazar_nota_apoyo(curso_id, actividad_id):
+    """Reemplaza una nota baja del estudiante como reconocimiento por la actividad de apoyo."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    if not _obtener_curso_docente(curso_id, usuario.id):
+        return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+    data = request.get_json(silent=True) or {}
+    estudiante_id = data.get('estudiante_id')
+    nota_id = data.get('nota_id')
+    nueva_nota = data.get('nueva_nota')
+    motivo = (data.get('motivo') or '').strip()
+
+    if nueva_nota is None or not motivo:
+        return jsonify({'success': False, 'error': 'Nota y motivo son obligatorios'}), 400
+
+    try:
+        nueva_nota = float(nueva_nota)
+        if not (0.0 <= nueva_nota <= 5.0):
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Nota inválida (0.0–5.0)'}), 400
+
+    asig = AsignacionApoyo.query.filter_by(
+        actividad_apoyo_id=actividad_id, estudiante_id=estudiante_id
+    ).first()
+    if not asig:
+        return jsonify({'success': False, 'error': 'Asignación no encontrada'}), 404
+
+    nota = Nota.query.filter_by(id=nota_id, estudiante_id=estudiante_id, curso_id=curso_id).first()
+    if not nota:
+        return jsonify({'success': False, 'error': 'Nota no encontrada'}), 404
+
+    try:
+        nota.valor_nota = nueva_nota
+        nota.descripcion = f'{nota.descripcion or ""} [Reemplazada por apoyo: {motivo}]'.strip()
+        asig.completada = True
+        asig.nota_id_reemplazada = nota.id
+        asig.nota_nueva = nueva_nota
+        asig.motivo_reemplazo = motivo
+        if not asig.fecha_completado:
+            asig.fecha_completado = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
 # RUTA: Dashboard Estudiante
 # ============================================================================
 
@@ -975,7 +1160,27 @@ def curso_estudiante_detalle(curso_id):
 
     docente = curso.docente_principal
     curso.semestre = curso.periodo.nombre if getattr(curso, 'periodo', None) else None
-    return render_template('estudiante/curso_detalle.html', usuario=usuario, curso=curso, docente=docente)
+
+    actividades_apoyo = (
+        AsignacionApoyo.query
+        .join(ActividadApoyo)
+        .filter(
+            AsignacionApoyo.estudiante_id == usuario.id,
+            ActividadApoyo.curso_id == curso_id,
+            ActividadApoyo.activa == True,
+        )
+        .order_by(ActividadApoyo.fecha_vencimiento)
+        .all()
+    )
+
+    return render_template(
+        'estudiante/curso_detalle.html',
+        usuario=usuario,
+        curso=curso,
+        docente=docente,
+        actividades_apoyo=actividades_apoyo,
+        date=date,
+    )
 
 
 @dashboard_bp.route('/estudiante/cursos/<int:curso_id>/calificaciones')

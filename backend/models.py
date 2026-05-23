@@ -630,3 +630,57 @@ class Mensaje(db.Model):
         self.leido = True
         self.fecha_lectura = datetime.utcnow()
         return self
+
+# ============================================================================
+# TABLA: ACTIVIDAD_APOYO (Actividades de apoyo académico creadas por docentes)
+# ============================================================================
+
+class ActividadApoyo(db.Model):
+    """Actividades de refuerzo opcionales que el docente asigna a estudiantes específicos."""
+    __tablename__ = 'actividades_apoyo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    docente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    titulo = db.Column(db.String(255), nullable=False)
+    descripcion = db.Column(db.Text)
+    fecha_vencimiento = db.Column(db.Date)
+    activa = db.Column(db.Boolean, default=True)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+
+    curso = db.relationship('Curso', backref='actividades_apoyo')
+    docente = db.relationship('Usuario', foreign_keys=[docente_id])
+    asignaciones = db.relationship('AsignacionApoyo', backref='actividad_apoyo', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<ActividadApoyo {self.titulo}>'
+
+# ============================================================================
+# TABLA: ASIGNACION_APOYO (Relación estudiante ↔ actividad de apoyo)
+# ============================================================================
+
+class AsignacionApoyo(db.Model):
+    """Asignación de una actividad de apoyo a un estudiante específico.
+
+    Cuando el estudiante la resuelve satisfactoriamente, el docente puede
+    reemplazar una de sus notas bajas indicando el motivo.
+    """
+    __tablename__ = 'asignaciones_apoyo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    actividad_apoyo_id = db.Column(db.Integer, db.ForeignKey('actividades_apoyo.id'), nullable=False, index=True)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    completada = db.Column(db.Boolean, default=False)
+    fecha_completado = db.Column(db.DateTime, nullable=True)
+    # Reemplazo de nota (opcional, lo hace el docente si el estudiante respondió bien)
+    nota_id_reemplazada = db.Column(db.Integer, db.ForeignKey('notas.id'), nullable=True)
+    nota_nueva = db.Column(db.Float, nullable=True)
+    motivo_reemplazo = db.Column(db.Text, nullable=True)
+
+    estudiante = db.relationship('Usuario', foreign_keys=[estudiante_id])
+    nota_reemplazada = db.relationship('Nota', foreign_keys=[nota_id_reemplazada])
+
+    __table_args__ = (db.UniqueConstraint('actividad_apoyo_id', 'estudiante_id', name='uq_apoyo_estudiante'),)
+
+    def __repr__(self):
+        return f'<AsignacionApoyo Act:{self.actividad_apoyo_id}, Est:{self.estudiante_id}>'

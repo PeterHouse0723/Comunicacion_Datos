@@ -26,7 +26,8 @@ def apply_migrations(app):
         'create_mensajes.sql',
         'add_institucion_logo.sql',
         'create_actividades.sql',
-        'create_calificaciones.sql'
+        'create_calificaciones.sql',
+        'create_actividades_apoyo.sql'
     ]
     
     for migration_file in migration_files:

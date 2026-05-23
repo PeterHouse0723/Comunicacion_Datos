@@ -59,7 +59,7 @@ def _construir_contexto_estudiante(usuario_id):
     """Obtiene el contexto académico completo del estudiante para el asistente."""
     try:
         from datetime import date
-        from models import Usuario, EstudianteCurso, Nota, Calificacion, Actividad, Mensaje
+        from models import Usuario, EstudianteCurso, Nota, Calificacion, Actividad, Mensaje, AsignacionApoyo, ActividadApoyo
 
         usuario = Usuario.query.get(usuario_id)
         if not usuario:
@@ -178,6 +178,26 @@ def _construir_contexto_estudiante(usuario_id):
                     else:
                         tiempo = f"vence en {dias} días ({act.fecha_vencimiento})"
                     ctx += f"    • {act.nombre} ({act.tipo_evaluacion}): {tiempo}\n"
+
+        # ── Actividades de apoyo académico pendientes ──
+        apoyo_pendientes = (
+            AsignacionApoyo.query
+            .join(ActividadApoyo)
+            .filter(
+                AsignacionApoyo.estudiante_id == usuario_id,
+                AsignacionApoyo.completada == False,
+                ActividadApoyo.activa == True,
+            )
+            .all()
+        )
+        if apoyo_pendientes:
+            ctx += f"\nACTIVIDADES DE APOYO ACADÉMICO PENDIENTES ({len(apoyo_pendientes)}):\n"
+            for asig in apoyo_pendientes:
+                act = asig.actividad_apoyo
+                vence = f" — vence {act.fecha_vencimiento}" if act.fecha_vencimiento else ""
+                ctx += f"  • [{act.curso.codigo}] {act.titulo}{vence}\n"
+                if act.descripcion:
+                    ctx += f"    {act.descripcion}\n"
 
         return ctx
     except Exception:

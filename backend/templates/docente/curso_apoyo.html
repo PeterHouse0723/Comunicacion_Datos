@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apoyo Académico - {{ curso.nombre }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+    <style>
+        .apoyo-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+        .btn-nueva { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+        .btn-nueva:hover { opacity:.9; }
+
+        .actividad-card { background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.1); margin-bottom:20px; overflow:hidden; }
+        .actividad-card-header { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+        .actividad-card-header h3 { margin:0; font-size:15px; }
+        .badge-vence { background:rgba(255,255,255,.2); padding:3px 10px; border-radius:20px; font-size:12px; }
+        .badge-vencida { background:rgba(255,100,100,.4); }
+
+        .estudiantes-tabla { width:100%; border-collapse:collapse; font-size:13px; }
+        .estudiantes-tabla th { background:#f8f9fa; padding:10px 14px; text-align:left; font-weight:600; color:#555; border-bottom:2px solid #e9ecef; }
+        .estudiantes-tabla td { padding:10px 14px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+        .estudiantes-tabla tr:last-child td { border-bottom:none; }
+
+        .badge-estado { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+        .badge-pendiente { background:#fff3cd; color:#856404; }
+        .badge-completada { background:#d1e7dd; color:#0a3622; }
+        .badge-reemplazada { background:#cff4fc; color:#055160; }
+
+        .btn-accion { border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px; }
+        .btn-completar { background:#198754; color:#fff; }
+        .btn-reemplazar { background:#0d6efd; color:#fff; }
+        .btn-accion:disabled { opacity:.5; cursor:not-allowed; }
+
+        .empty-state { text-align:center; padding:40px; color:#888; }
+        .empty-state i { font-size:40px; margin-bottom:12px; color:#ccc; }
+
+        /* Modal */
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; justify-content:center; align-items:center; }
+        .modal-overlay.active { display:flex; }
+        .modal-box { background:#fff; border-radius:12px; padding:28px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; position:relative; }
+        .modal-box h2 { margin:0 0 20px; font-size:18px; color:#333; }
+        .modal-close { position:absolute; top:14px; right:18px; background:none; border:none; font-size:20px; cursor:pointer; color:#888; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:#444; }
+        .form-group input, .form-group textarea, .form-group select { width:100%; padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; box-sizing:border-box; }
+        .form-group textarea { resize:vertical; min-height:80px; }
+        .estudiantes-check { max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:6px; padding:8px; }
+        .estudiantes-check label { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; cursor:pointer; }
+        .btn-submit { width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; padding:12px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
+        .btn-submit:hover { opacity:.9; }
+        .seleccionar-todos { font-size:12px; color:#667eea; cursor:pointer; margin-bottom:6px; display:inline-block; }
+    </style>
+</head>
+<body class="courses-page">
+
+<div class="dashboard-header">
+    <div class="dashboard-title"><i class="fas fa-chalkboard-user"></i> Panel de Docente</div>
+    <div class="user-info">
+        <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+        <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso.id) }}"><i class="fas fa-arrow-left"></i> Volver al curso</a>
+    </div>
+</div>
+
+<div class="courses-wrapper">
+    <div class="course-header">
+        <div>
+            <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
+            <p>Actividades de Apoyo Académico</p>
+        </div>
+    </div>
+
+    <div class="apoyo-header">
+        <p style="margin:0;color:#666;font-size:14px;">
+            Crea actividades de refuerzo opcionales para estudiantes específicos.
+            Si el estudiante la resuelve bien, puedes reemplazar una de sus notas bajas.
+        </p>
+        <button class="btn-nueva" onclick="abrirModalNueva()">
+            <i class="fas fa-plus"></i> Nueva actividad de apoyo
+        </button>
+    </div>
+
+    {% if actividades %}
+        {% for act in actividades %}
+        <div class="actividad-card">
+            <div class="actividad-card-header">
+                <h3><i class="fas fa-hands-helping"></i> {{ act.titulo }}</h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    {% if act.fecha_vencimiento %}
+                        {% set hoy = namespace(d=none) %}
+                        <span class="badge-vence {% if act.fecha_vencimiento < date.today() %}badge-vencida{% endif %}">
+                            <i class="fas fa-calendar"></i>
+                            {% if act.fecha_vencimiento < date.today() %}
+                                Venció {{ act.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                Vence {{ act.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </span>
+                    {% endif %}
+                    <span style="font-size:12px;opacity:.8;">{{ act.asignaciones|length }} estudiante(s)</span>
+                </div>
+            </div>
+            {% if act.descripcion %}
+            <div style="padding:12px 20px;background:#fafafa;border-bottom:1px solid #eee;font-size:13px;color:#555;">
+                {{ act.descripcion }}
+            </div>
+            {% endif %}
+            <table class="estudiantes-tabla">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Estado</th>
+                        <th>Nota reemplazada</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asig in act.asignaciones %}
+                    <tr id="fila-{{ asig.id }}">
+                        <td>{{ asig.estudiante.nombre }} {{ asig.estudiante.apellido }}</td>
+                        <td>
+                            {% if asig.nota_id_reemplazada %}
+                                <span class="badge-estado badge-reemplazada"><i class="fas fa-exchange-alt"></i> Nota reemplazada</span>
+                            {% elif asig.completada %}
+                                <span class="badge-estado badge-completada"><i class="fas fa-check"></i> Completada</span>
+                            {% else %}
+                                <span class="badge-estado badge-pendiente"><i class="fas fa-clock"></i> Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12px;color:#555;">
+                            {% if asig.nota_nueva %}
+                                {{ asig.nota_nueva }}/5.0
+                                {% if asig.motivo_reemplazo %}
+                                    <br><span style="color:#888;">{{ asig.motivo_reemplazo }}</span>
+                                {% endif %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if not asig.completada %}
+                            <button class="btn-accion btn-completar"
+                                onclick="marcarCompletado({{ act.id }}, {{ asig.estudiante_id }}, {{ asig.id }})">
+                                <i class="fas fa-check"></i> Completada
+                            </button>
+                            {% endif %}
+                            {% if not asig.nota_id_reemplazada %}
+                            <button class="btn-accion btn-reemplazar"
+                                onclick="abrirModalReemplazar({{ act.id }}, {{ asig.estudiante_id }}, '{{ asig.estudiante.nombre }} {{ asig.estudiante.apellido }}', {{ asig.id }})">
+                                <i class="fas fa-exchange-alt"></i> Reemplazar nota
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="actividad-card">
+            <div class="empty-state">
+                <i class="fas fa-hands-helping"></i>
+                <p>No hay actividades de apoyo creadas aún.</p>
+                <p style="font-size:13px;">Crea una para asignarla a estudiantes que necesiten refuerzo.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Nueva actividad -->
+<div class="modal-overlay" id="modalNueva">
+    <div class="modal-box">
+        <button class="modal-close" onclick="cerrarModalNueva()">&times;</button>
+        <h2><i class="fas fa-plus-circle"></i> Nueva actividad de apoyo</h2>
+        <div class="form-group">
+            <label>Título *</label>
+            <input type="text" id="inputTitulo" placeholder="Ej: Taller de recuperación álgebra">
+        </div>
+        <div class="form-group">
+            <label>Descripción / instrucciones</label>
+            <textarea id="inputDescripcion" placeholder="Describe qué debe hacer el estudiante..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Fecha límite (opcional)</label>
+            <input type="date" id="inputFecha">
+        </div>
+        <div class="form-group">
+            <label>Estudiantes *</label>
+            <span class="seleccionar-todos" onclick="seleccionarTodos()">Seleccionar todos</span>
+            <div class="estudiantes-check" id="listaEstudiantes">
+                {% for est in estudiantes %}
+                <label>
+                    <input type="checkbox" class="check-est" value="{{ est.id }}">
+                    {{ est.nombre }} {{ est.apellido }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="errorNueva" style="color:red;font-size:13px;margin-bottom:8px;display:none;"></div>
+        <button class="btn-submit" onclick="crearActividad()">Crear actividad</button>
+    </div>
+</div>
+
+<!-- Modal: Reemplazar nota -->
+<div class="modal-overlay" id="modalReemplazar">
+    <div class="modal-box">
+        <button class="modal-close" onclick="cerrarModalReemplazar()">&times;</button>
+        <h2><i class="fas fa-exchange-alt"></i> Reemplazar nota</h2>
+        <p id="textoEstudianteReemplazar" style="font-size:14px;color:#555;margin-bottom:16px;"></p>
+        <div class="form-group">
+            <label>Seleccionar nota a reemplazar *</label>
+            <select id="selectNota">
+                <option value="">Cargando notas...</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Nueva nota (0.0 – 5.0) *</label>
+            <input type="number" id="inputNuevaNota" min="0" max="5" step="0.1" placeholder="Ej: 4.0">
+        </div>
+        <div class="form-group">
+            <label>Motivo del reemplazo *</label>
+            <textarea id="inputMotivo" placeholder="Ej: Completó satisfactoriamente el taller de apoyo..."></textarea>
+        </div>
+        <div id="errorReemplazar" style="color:red;font-size:13px;margin-bottom:8px;display:none;"></div>
+        <button class="btn-submit" onclick="confirmarReemplazo()">Confirmar reemplazo</button>
+    </div>
+</div>
+
+<script>
+const CURSO_ID = {{ curso.id }};
+let _actividadId = null, _estudianteId = null, _asignacionId = null;
+
+function abrirModalNueva() {
+    document.getElementById('inputTitulo').value = '';
+    document.getElementById('inputDescripcion').value = '';
+    document.getElementById('inputFecha').value = '';
+    document.querySelectorAll('.check-est').forEach(c => c.checked = false);
+    document.getElementById('errorNueva').style.display = 'none';
+    document.getElementById('modalNueva').classList.add('active');
+}
+function cerrarModalNueva() { document.getElementById('modalNueva').classList.remove('active'); }
+
+function seleccionarTodos() {
+    const checks = document.querySelectorAll('.check-est');
+    const allChecked = Array.from(checks).every(c => c.checked);
+    checks.forEach(c => c.checked = !allChecked);
+}
+
+function crearActividad() {
+    const titulo = document.getElementById('inputTitulo').value.trim();
+    const descripcion = document.getElementById('inputDescripcion').value.trim();
+    const fecha = document.getElementById('inputFecha').value;
+    const ids = Array.from(document.querySelectorAll('.check-est:checked')).map(c => parseInt(c.value));
+    const errEl = document.getElementById('errorNueva');
+
+    if (!titulo) { errEl.textContent = 'El título es obligatorio.'; errEl.style.display = 'block'; return; }
+    if (!ids.length) { errEl.textContent = 'Selecciona al menos un estudiante.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/crear`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ titulo, descripcion, fecha_vencimiento: fecha, estudiante_ids: ids })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { errEl.textContent = d.error; errEl.style.display = 'block'; }
+    });
+}
+
+function marcarCompletado(actividadId, estudianteId, asignacionId) {
+    if (!confirm('¿Marcar esta actividad como completada por el estudiante?')) return;
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/${actividadId}/completar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ estudiante_id: estudianteId })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert(d.error); });
+}
+
+function abrirModalReemplazar(actividadId, estudianteId, nombreEst, asignacionId) {
+    _actividadId = actividadId;
+    _estudianteId = estudianteId;
+    _asignacionId = asignacionId;
+    document.getElementById('textoEstudianteReemplazar').textContent = `Estudiante: ${nombreEst}`;
+    document.getElementById('inputNuevaNota').value = '';
+    document.getElementById('inputMotivo').value = '';
+    document.getElementById('errorReemplazar').style.display = 'none';
+
+    const sel = document.getElementById('selectNota');
+    sel.innerHTML = '<option value="">Cargando...</option>';
+
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/notas-estudiante?estudiante_id=${estudianteId}`)
+    .then(r => r.json())
+    .then(d => {
+        if (d.notas && d.notas.length) {
+            sel.innerHTML = d.notas.map(n =>
+                `<option value="${n.id}">${n.tipo} #${n.numero}: ${n.valor}/5.0${n.descripcion ? ' — '+n.descripcion : ''}</option>`
+            ).join('');
+        } else {
+            sel.innerHTML = '<option value="">Sin notas registradas</option>';
+        }
+    });
+
+    document.getElementById('modalReemplazar').classList.add('active');
+}
+function cerrarModalReemplazar() { document.getElementById('modalReemplazar').classList.remove('active'); }
+
+function confirmarReemplazo() {
+    const notaId = document.getElementById('selectNota').value;
+    const nuevaNota = document.getElementById('inputNuevaNota').value;
+    const motivo = document.getElementById('inputMotivo').value.trim();
+    const errEl = document.getElementById('errorReemplazar');
+
+    if (!notaId) { errEl.textContent = 'Selecciona una nota.'; errEl.style.display = 'block'; return; }
+    if (!nuevaNota || nuevaNota < 0 || nuevaNota > 5) { errEl.textContent = 'Ingresa una nota válida (0.0–5.0).'; errEl.style.display = 'block'; return; }
+    if (!motivo) { errEl.textContent = 'El motivo es obligatorio.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/${_actividadId}/reemplazar-nota`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ estudiante_id: _estudianteId, nota_id: parseInt(notaId), nueva_nota: parseFloat(nuevaNota), motivo })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else { errEl.textContent = d.error; errEl.style.display = 'block'; } });
+}
+</script>
+{% include 'components/chatbot.html' %}
+</body>
+</html>

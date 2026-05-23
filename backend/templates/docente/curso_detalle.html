@@ -47,6 +47,11 @@
                 <h3>Solicitar estudiante</h3>
                 <p>Solicitar agregar un nuevo estudiante al curso</p>
             </button>
+            <a class="course-action-card" href="{{ url_for('dashboard.curso_docente_apoyo', curso_id=curso.id) }}">
+                <i class="fas fa-hands-helping"></i>
+                <h3>Apoyo académico</h3>
+                <p>Crear actividades de refuerzo para estudiantes específicos</p>
+            </a>
         </div>
 
         <!-- MODAL: Solicitar Nuevo Estudiante -->
