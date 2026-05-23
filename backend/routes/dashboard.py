@@ -1097,18 +1097,40 @@ def notas_estudiante_para_apoyo(curso_id):
         return jsonify({'success': False}), 403
 
     estudiante_id = request.args.get('estudiante_id', type=int)
+    resultados = []
+
     notas = Nota.query.filter_by(curso_id=curso_id, estudiante_id=estudiante_id).order_by(Nota.valor_nota.asc()).all()
-    return jsonify({'notas': [
-        {
+    for n in notas:
+        resultados.append({
             'id': n.id,
+            'tipo_registro': 'nota',
             'tipo': n.tipo_evaluacion or 'Evaluación',
             'numero': n.numero_entrega or '',
             'valor': n.valor_nota,
-            'descripcion': n.descripcion,
+            'descripcion': n.descripcion or '',
             'es_baja': n.valor_nota < 3.2,
-        }
-        for n in notas
-    ]})
+        })
+
+    calificaciones = (
+        Calificacion.query
+        .join(Actividad, Calificacion.actividad_id == Actividad.id)
+        .filter(Calificacion.estudiante_id == estudiante_id, Actividad.curso_id == curso_id)
+        .order_by(Calificacion.valor_nota.asc())
+        .all()
+    )
+    for c in calificaciones:
+        resultados.append({
+            'id': c.id,
+            'tipo_registro': 'calificacion',
+            'tipo': c.actividad.tipo_evaluacion or 'Actividad',
+            'numero': '',
+            'valor': c.valor_nota,
+            'descripcion': c.actividad.nombre,
+            'es_baja': c.valor_nota < 3.2,
+        })
+
+    resultados.sort(key=lambda x: x['valor'])
+    return jsonify({'notas': resultados})
 
 
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/reemplazar-nota', methods=['POST'])
@@ -1144,15 +1166,27 @@ def reemplazar_nota_apoyo(curso_id, actividad_id):
     if not asig:
         return jsonify({'success': False, 'error': 'Asignación no encontrada'}), 404
 
-    nota = Nota.query.filter_by(id=nota_id, estudiante_id=estudiante_id, curso_id=curso_id).first()
-    if not nota:
-        return jsonify({'success': False, 'error': 'Nota no encontrada'}), 404
+    tipo_registro = data.get('tipo_registro', 'nota')
 
     try:
-        nota.valor_nota = nueva_nota
-        nota.descripcion = f'{nota.descripcion or ""} [Reemplazada por apoyo: {motivo}]'.strip()
+        if tipo_registro == 'calificacion':
+            registro = Calificacion.query.filter_by(id=nota_id, estudiante_id=estudiante_id).first()
+            if not registro:
+                return jsonify({'success': False, 'error': 'Calificación no encontrada'}), 404
+            if registro.actividad.curso_id != curso_id:
+                return jsonify({'success': False, 'error': 'Calificación no pertenece a este curso'}), 404
+            registro.valor_nota = nueva_nota
+            registro.retroalimentacion = f'{registro.retroalimentacion or ""} [Reemplazada por apoyo: {motivo}]'.strip()
+            asig.calificacion_id_reemplazada = registro.id
+        else:
+            registro = Nota.query.filter_by(id=nota_id, estudiante_id=estudiante_id, curso_id=curso_id).first()
+            if not registro:
+                return jsonify({'success': False, 'error': 'Nota no encontrada'}), 404
+            registro.valor_nota = nueva_nota
+            registro.descripcion = f'{registro.descripcion or ""} [Reemplazada por apoyo: {motivo}]'.strip()
+            asig.nota_id_reemplazada = registro.id
+
         asig.completada = True
-        asig.nota_id_reemplazada = nota.id
         asig.nota_nueva = nueva_nota
         asig.motivo_reemplazo = motivo
         if not asig.fecha_completado:
@@ -1273,6 +1307,7 @@ def curso_estudiante_detalle(curso_id):
         asig._puede_entregar = (
             not asig.completada and
             not asig.nota_id_reemplazada and
+            not asig.calificacion_id_reemplazada and
             not asig.actividad_apoyo.esta_vencida()
         )
         actividades_apoyo.append(asig)

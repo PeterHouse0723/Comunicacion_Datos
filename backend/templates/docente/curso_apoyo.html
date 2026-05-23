@@ -116,7 +116,7 @@
                     <tr id="fila-{{ asig.id }}">
                         <td>{{ asig.estudiante.nombre }} {{ asig.estudiante.apellido }}</td>
                         <td>
-                            {% if asig.nota_id_reemplazada %}
+                            {% if asig.nota_id_reemplazada or asig.calificacion_id_reemplazada %}
                                 <span class="badge-estado badge-reemplazada"><i class="fas fa-exchange-alt"></i> Nota reemplazada</span>
                             {% elif asig.completada %}
                                 <span class="badge-estado badge-completada"><i class="fas fa-check"></i> Completada</span>
@@ -152,7 +152,7 @@
                                 <i class="fas fa-check"></i> Completada
                             </button>
                             {% endif %}
-                            {% if not asig.nota_id_reemplazada %}
+                            {% if not asig.nota_id_reemplazada and not asig.calificacion_id_reemplazada %}
                             <button class="btn-accion btn-reemplazar"
                                 onclick="abrirModalReemplazar({{ act.id }}, {{ asig.estudiante_id }}, '{{ asig.estudiante.nombre }} {{ asig.estudiante.apellido }}', {{ asig.id }})">
                                 <i class="fas fa-exchange-alt"></i> Reemplazar nota
@@ -329,7 +329,7 @@ function abrirModalReemplazar(actividadId, estudianteId, nombreEst, asignacionId
                 const baja = n.es_baja ? '⚠️ ' : '';
                 const desc = n.descripcion ? ` — ${n.descripcion}` : '';
                 const label = `${baja}${n.tipo}${n.numero ? ' #'+n.numero : ''}: ${n.valor}/5.0${desc}`;
-                return `<option value="${n.id}" ${n.es_baja ? 'style="color:#b91c1c;font-weight:600"' : ''}>${label}</option>`;
+                return `<option value="${n.id}" data-tipo="${n.tipo_registro}" ${n.es_baja ? 'style="color:#b91c1c;font-weight:600"' : ''}>${label}</option>`;
             }).join('');
             // Pre-seleccionar la nota más baja automáticamente
             const primera = d.notas[0];
@@ -354,10 +354,13 @@ function confirmarReemplazo() {
     if (!motivo) { errEl.textContent = 'El motivo es obligatorio.'; errEl.style.display = 'block'; return; }
     errEl.style.display = 'none';
 
+    const selectedOpt = document.getElementById('selectNota').selectedOptions[0];
+    const tipoRegistro = selectedOpt ? (selectedOpt.dataset.tipo || 'nota') : 'nota';
+
     fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/${_actividadId}/reemplazar-nota`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ estudiante_id: _estudianteId, nota_id: parseInt(notaId), nueva_nota: parseFloat(nuevaNota), motivo })
+        body: JSON.stringify({ estudiante_id: _estudianteId, nota_id: parseInt(notaId), nueva_nota: parseFloat(nuevaNota), motivo, tipo_registro: tipoRegistro })
     })
     .then(r => r.json())
     .then(d => { if (d.success) location.reload(); else { errEl.textContent = d.error; errEl.style.display = 'block'; } });

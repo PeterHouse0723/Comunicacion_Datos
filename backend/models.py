@@ -692,11 +692,13 @@ class AsignacionApoyo(db.Model):
     fecha_entrega = db.Column(db.DateTime, nullable=True)
     # Reemplazo de nota (opcional, lo hace el docente si el estudiante respondió bien)
     nota_id_reemplazada = db.Column(db.Integer, db.ForeignKey('notas.id'), nullable=True)
+    calificacion_id_reemplazada = db.Column(db.Integer, db.ForeignKey('calificaciones.id'), nullable=True)
     nota_nueva = db.Column(db.Float, nullable=True)
     motivo_reemplazo = db.Column(db.Text, nullable=True)
 
     estudiante = db.relationship('Usuario', foreign_keys=[estudiante_id])
     nota_reemplazada = db.relationship('Nota', foreign_keys=[nota_id_reemplazada])
+    calificacion_reemplazada = db.relationship('Calificacion', foreign_keys=[calificacion_id_reemplazada])
 
     __table_args__ = (db.UniqueConstraint('actividad_apoyo_id', 'estudiante_id', name='uq_apoyo_estudiante'),)
 
