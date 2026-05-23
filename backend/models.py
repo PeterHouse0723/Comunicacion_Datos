@@ -645,12 +645,25 @@ class ActividadApoyo(db.Model):
     titulo = db.Column(db.String(255), nullable=False)
     descripcion = db.Column(db.Text)
     fecha_vencimiento = db.Column(db.Date)
+    hora_cierre = db.Column(db.Time, nullable=True)
     activa = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
 
     curso = db.relationship('Curso', backref='actividades_apoyo')
     docente = db.relationship('Usuario', foreign_keys=[docente_id])
     asignaciones = db.relationship('AsignacionApoyo', backref='actividad_apoyo', cascade='all, delete-orphan')
+
+    def deadline_dt(self):
+        """Retorna el datetime límite combinando fecha_vencimiento + hora_cierre."""
+        if not self.fecha_vencimiento:
+            return None
+        from datetime import time as _time
+        hora = self.hora_cierre or _time(23, 59, 59)
+        return datetime.combine(self.fecha_vencimiento, hora)
+
+    def esta_vencida(self):
+        dt = self.deadline_dt()
+        return dt is not None and datetime.utcnow() > dt
 
     def __repr__(self):
         return f'<ActividadApoyo {self.titulo}>'

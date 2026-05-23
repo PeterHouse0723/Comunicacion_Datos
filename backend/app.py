@@ -28,7 +28,8 @@ def apply_migrations(app):
         'create_actividades.sql',
         'create_calificaciones.sql',
         'create_actividades_apoyo.sql',
-        'add_archivo_apoyo.sql'
+        'add_archivo_apoyo.sql',
+        'add_hora_cierre_apoyo.sql'
     ]
     
     for migration_file in migration_files:

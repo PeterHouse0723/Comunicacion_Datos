@@ -314,19 +314,25 @@
 
                             {% if asig.actividad_apoyo.fecha_vencimiento %}
                             <div style="font-size: 11px; color: #888;">
-                                {% if asig.actividad_apoyo.fecha_vencimiento < date.today() %}
-                                    <span style="color: #dc2626;"><i class="fas fa-calendar-times"></i> Venció {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}</span>
+                                {% if asig.actividad_apoyo.esta_vencida() %}
+                                    <span style="color: #dc2626;"><i class="fas fa-calendar-times"></i> Venció {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if asig.actividad_apoyo.hora_cierre %} {{ asig.actividad_apoyo.hora_cierre.strftime('%H:%M') }}{% endif %}</span>
                                 {% else %}
-                                    <i class="fas fa-calendar"></i> Vence {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                                    <i class="fas fa-calendar"></i> Vence {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if asig.actividad_apoyo.hora_cierre %} {{ asig.actividad_apoyo.hora_cierre.strftime('%H:%M') }}{% endif %}
                                 {% endif %}
                             </div>
                             {% endif %}
 
-                            {% if not asig.nota_nueva %}
+                            {% if asig._puede_entregar %}
                             <button onclick="abrirEntrega({{ asig.actividad_apoyo_id }}, {{ curso.id }}, '{{ asig.archivo_nombre or '' }}')"
                                 style="background: #667eea; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                 <i class="fas fa-upload"></i> {% if asig.archivo_nombre %}Reemplazar archivo{% else %}Entregar actividad{% endif %}
                             </button>
+                            {% elif not asig.nota_nueva %}
+                                {% if asig.completada %}
+                                <span style="font-size:11px;color:#6b7280;font-style:italic;"><i class="fas fa-lock"></i> Cerrada por el docente</span>
+                                {% elif asig.actividad_apoyo.esta_vencida() %}
+                                <span style="font-size:11px;color:#dc2626;font-style:italic;"><i class="fas fa-calendar-times"></i> Plazo vencido</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>

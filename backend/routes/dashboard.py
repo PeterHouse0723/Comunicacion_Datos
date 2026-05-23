@@ -935,6 +935,7 @@ def crear_actividad_apoyo(curso_id):
     titulo = (data.get('titulo') or '').strip()
     descripcion = (data.get('descripcion') or '').strip()
     fecha_str = (data.get('fecha_vencimiento') or '').strip()
+    hora_str = (data.get('hora_cierre') or '').strip()
     estudiante_ids = data.get('estudiante_ids') or []
 
     if not titulo:
@@ -949,6 +950,13 @@ def crear_actividad_apoyo(curso_id):
         except ValueError:
             return jsonify({'success': False, 'error': 'Fecha inválida'}), 400
 
+    hora_cierre = None
+    if hora_str:
+        try:
+            hora_cierre = datetime.strptime(hora_str, '%H:%M').time()
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Hora inválida'}), 400
+
     try:
         actividad = ActividadApoyo(
             curso_id=curso_id,
@@ -956,6 +964,7 @@ def crear_actividad_apoyo(curso_id):
             titulo=titulo,
             descripcion=descripcion or None,
             fecha_vencimiento=fecha_venc,
+            hora_cierre=hora_cierre,
             activa=True,
         )
         db.session.add(actividad)
@@ -1017,6 +1026,12 @@ def entregar_archivo_apoyo(curso_id, actividad_id):
     ).first()
     if not asig:
         return jsonify({'success': False, 'error': 'Actividad no asignada'}), 404
+
+    if asig.completada:
+        return jsonify({'success': False, 'error': 'El docente ya marcó esta actividad como completada.'}), 400
+
+    if asig.actividad_apoyo.esta_vencida():
+        return jsonify({'success': False, 'error': 'El plazo de entrega ya venció.'}), 400
 
     archivo = request.files.get('archivo')
     if not archivo or archivo.filename == '':
@@ -1082,9 +1097,16 @@ def notas_estudiante_para_apoyo(curso_id):
         return jsonify({'success': False}), 403
 
     estudiante_id = request.args.get('estudiante_id', type=int)
-    notas = Nota.query.filter_by(curso_id=curso_id, estudiante_id=estudiante_id).order_by(Nota.numero_entrega).all()
+    notas = Nota.query.filter_by(curso_id=curso_id, estudiante_id=estudiante_id).order_by(Nota.valor_nota.asc()).all()
     return jsonify({'notas': [
-        {'id': n.id, 'tipo': n.tipo_evaluacion or 'Evaluación', 'numero': n.numero_entrega or '', 'valor': n.valor_nota, 'descripcion': n.descripcion}
+        {
+            'id': n.id,
+            'tipo': n.tipo_evaluacion or 'Evaluación',
+            'numero': n.numero_entrega or '',
+            'valor': n.valor_nota,
+            'descripcion': n.descripcion,
+            'es_baja': n.valor_nota < 3.2,
+        }
         for n in notas
     ]})
 
@@ -1234,7 +1256,7 @@ def curso_estudiante_detalle(curso_id):
     docente = curso.docente_principal
     curso.semestre = curso.periodo.nombre if getattr(curso, 'periodo', None) else None
 
-    actividades_apoyo = (
+    actividades_apoyo_raw = (
         AsignacionApoyo.query
         .join(ActividadApoyo)
         .filter(
@@ -1245,6 +1267,15 @@ def curso_estudiante_detalle(curso_id):
         .order_by(ActividadApoyo.fecha_vencimiento)
         .all()
     )
+    # Anotar si el estudiante puede aún entregar
+    actividades_apoyo = []
+    for asig in actividades_apoyo_raw:
+        asig._puede_entregar = (
+            not asig.completada and
+            not asig.nota_id_reemplazada and
+            not asig.actividad_apoyo.esta_vencida()
+        )
+        actividades_apoyo.append(asig)
 
     return render_template(
         'estudiante/curso_detalle.html',

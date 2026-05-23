@@ -87,14 +87,10 @@
                 <h3><i class="fas fa-hands-helping"></i> {{ act.titulo }}</h3>
                 <div style="display:flex;gap:8px;align-items:center;">
                     {% if act.fecha_vencimiento %}
-                        {% set hoy = namespace(d=none) %}
-                        <span class="badge-vence {% if act.fecha_vencimiento < date.today() %}badge-vencida{% endif %}">
+                        <span class="badge-vence {% if act.esta_vencida() %}badge-vencida{% endif %}">
                             <i class="fas fa-calendar"></i>
-                            {% if act.fecha_vencimiento < date.today() %}
-                                Venció {{ act.fecha_vencimiento.strftime('%d/%m/%Y') }}
-                            {% else %}
-                                Vence {{ act.fecha_vencimiento.strftime('%d/%m/%Y') }}
-                            {% endif %}
+                            {% if act.esta_vencida() %}Venció{% else %}Vence{% endif %}
+                            {{ act.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if act.hora_cierre %} {{ act.hora_cierre.strftime('%H:%M') }}{% endif %}
                         </span>
                     {% endif %}
                     <span style="font-size:12px;opacity:.8;">{{ act.asignaciones|length }} estudiante(s)</span>
@@ -193,9 +189,15 @@
             <label>Descripción / instrucciones</label>
             <textarea id="inputDescripcion" placeholder="Describe qué debe hacer el estudiante..."></textarea>
         </div>
-        <div class="form-group">
-            <label>Fecha límite (opcional)</label>
-            <input type="date" id="inputFecha">
+        <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+                <label>Fecha límite</label>
+                <input type="date" id="inputFecha">
+            </div>
+            <div>
+                <label>Hora de cierre</label>
+                <input type="time" id="inputHora" placeholder="23:59">
+            </div>
         </div>
         <div class="form-group">
             <label>Estudiantes *</label>
@@ -276,6 +278,7 @@ function crearActividad() {
     const titulo = document.getElementById('inputTitulo').value.trim();
     const descripcion = document.getElementById('inputDescripcion').value.trim();
     const fecha = document.getElementById('inputFecha').value;
+    const hora = document.getElementById('inputHora').value;
     const ids = Array.from(document.querySelectorAll('.check-est:checked')).map(c => parseInt(c.value));
     const errEl = document.getElementById('errorNueva');
 
@@ -286,7 +289,7 @@ function crearActividad() {
     fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/crear`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ titulo, descripcion, fecha_vencimiento: fecha, estudiante_ids: ids })
+        body: JSON.stringify({ titulo, descripcion, fecha_vencimiento: fecha, hora_cierre: hora, estudiante_ids: ids })
     })
     .then(r => r.json())
     .then(d => {
@@ -322,9 +325,15 @@ function abrirModalReemplazar(actividadId, estudianteId, nombreEst, asignacionId
     .then(r => r.json())
     .then(d => {
         if (d.notas && d.notas.length) {
-            sel.innerHTML = d.notas.map(n =>
-                `<option value="${n.id}">${n.tipo} #${n.numero}: ${n.valor}/5.0${n.descripcion ? ' — '+n.descripcion : ''}</option>`
-            ).join('');
+            sel.innerHTML = d.notas.map(n => {
+                const baja = n.es_baja ? '⚠️ ' : '';
+                const desc = n.descripcion ? ` — ${n.descripcion}` : '';
+                const label = `${baja}${n.tipo}${n.numero ? ' #'+n.numero : ''}: ${n.valor}/5.0${desc}`;
+                return `<option value="${n.id}" ${n.es_baja ? 'style="color:#b91c1c;font-weight:600"' : ''}>${label}</option>`;
+            }).join('');
+            // Pre-seleccionar la nota más baja automáticamente
+            const primera = d.notas[0];
+            if (primera) sel.value = primera.id;
         } else {
             sel.innerHTML = '<option value="">Sin notas registradas</option>';
         }
