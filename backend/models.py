@@ -672,6 +672,11 @@ class AsignacionApoyo(db.Model):
     estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
     completada = db.Column(db.Boolean, default=False)
     fecha_completado = db.Column(db.DateTime, nullable=True)
+    # Archivo entregado por el estudiante
+    archivo_nombre = db.Column(db.String(255), nullable=True)
+    archivo_data = db.Column(db.LargeBinary, nullable=True)
+    archivo_tipo = db.Column(db.String(100), nullable=True)
+    fecha_entrega = db.Column(db.DateTime, nullable=True)
     # Reemplazo de nota (opcional, lo hace el docente si el estudiante respondió bien)
     nota_id_reemplazada = db.Column(db.Integer, db.ForeignKey('notas.id'), nullable=True)
     nota_nueva = db.Column(db.Float, nullable=True)

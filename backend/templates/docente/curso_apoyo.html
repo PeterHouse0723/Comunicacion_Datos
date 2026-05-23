@@ -110,6 +110,7 @@
                     <tr>
                         <th>Estudiante</th>
                         <th>Estado</th>
+                        <th>Entrega</th>
                         <th>Nota reemplazada</th>
                         <th>Acciones</th>
                     </tr>
@@ -128,8 +129,21 @@
                             {% endif %}
                         </td>
                         <td style="font-size:12px;color:#555;">
+                            {% if asig.archivo_nombre %}
+                            <a href="{{ url_for('dashboard.descargar_archivo_apoyo', curso_id=curso.id, actividad_id=act.id, estudiante_id=asig.estudiante_id) }}"
+                               style="display:inline-flex;align-items:center;gap:5px;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-decoration:none;">
+                                <i class="fas fa-download"></i> {{ asig.archivo_nombre }}
+                            </a>
+                            {% if asig.fecha_entrega %}
+                            <div style="color:#aaa;font-size:11px;margin-top:3px;">{{ asig.fecha_entrega.strftime('%d/%m/%Y %H:%M') }}</div>
+                            {% endif %}
+                            {% else %}
+                            <span style="color:#ccc;font-size:11px;">Sin entrega</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12px;color:#555;">
                             {% if asig.nota_nueva %}
-                                {{ asig.nota_nueva }}/5.0
+                                <strong>{{ asig.nota_nueva }}/5.0</strong>
                                 {% if asig.motivo_reemplazo %}
                                     <br><span style="color:#888;">{{ asig.motivo_reemplazo }}</span>
                                 {% endif %}
@@ -185,12 +199,16 @@
         </div>
         <div class="form-group">
             <label>Estudiantes *</label>
-            <span class="seleccionar-todos" onclick="seleccionarTodos()">Seleccionar todos</span>
+            <input type="text" id="buscarEstudiante" placeholder="Buscar por nombre, apellido o correo..." oninput="filtrarEstudiantes()" style="margin-bottom:6px;">
+            <span class="seleccionar-todos" onclick="seleccionarTodos()">Seleccionar todos los visibles</span>
             <div class="estudiantes-check" id="listaEstudiantes">
                 {% for est in estudiantes %}
-                <label>
+                <label class="est-item"
+                       data-nombre="{{ est.nombre | lower }} {{ est.apellido | lower }}"
+                       data-correo="{{ est.email | lower }}">
                     <input type="checkbox" class="check-est" value="{{ est.id }}">
                     {{ est.nombre }} {{ est.apellido }}
+                    <span style="color:#aaa;font-size:11px;margin-left:4px;">{{ est.email }}</span>
                 </label>
                 {% endfor %}
             </div>
@@ -239,9 +257,18 @@ function abrirModalNueva() {
 }
 function cerrarModalNueva() { document.getElementById('modalNueva').classList.remove('active'); }
 
+function filtrarEstudiantes() {
+    const q = document.getElementById('buscarEstudiante').value.toLowerCase().trim();
+    document.querySelectorAll('.est-item').forEach(item => {
+        const match = !q || item.dataset.nombre.includes(q) || item.dataset.correo.includes(q);
+        item.style.display = match ? '' : 'none';
+    });
+}
+
 function seleccionarTodos() {
-    const checks = document.querySelectorAll('.check-est');
-    const allChecked = Array.from(checks).every(c => c.checked);
+    const visibles = Array.from(document.querySelectorAll('.est-item')).filter(i => i.style.display !== 'none');
+    const checks = visibles.map(i => i.querySelector('.check-est'));
+    const allChecked = checks.every(c => c.checked);
     checks.forEach(c => c.checked = !allChecked);
 }
 

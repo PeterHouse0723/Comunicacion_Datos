@@ -269,25 +269,40 @@
                     <span style="background: #667eea; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px;">{{ actividades_apoyo | length }}</span>
                 </h3>
                 {% for asig in actividades_apoyo %}
-                <div style="background: {% if asig.completada %}#f0fdf4{% else %}#fffbeb{% endif %}; border: 1px solid {% if asig.completada %}#bbf7d0{% else %}#fde68a{% endif %}; border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;">
+                <div style="background: {% if asig.nota_nueva %}#eff6ff{% elif asig.completada %}#f0fdf4{% else %}#fffbeb{% endif %}; border: 1px solid {% if asig.nota_nueva %}#bfdbfe{% elif asig.completada %}#bbf7d0{% else %}#fde68a{% endif %}; border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap;">
-                        <div>
+                        <div style="flex: 1; min-width: 0;">
                             <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
-                                <i class="fas fa-{% if asig.completada %}check-circle" style="color: #16a34a{% else %}exclamation-circle" style="color: #d97706{% endif %};"></i>
+                                <i class="fas fa-{% if asig.nota_nueva %}exchange-alt" style="color:#2563eb{% elif asig.completada %}check-circle" style="color: #16a34a{% else %}exclamation-circle" style="color: #d97706{% endif %};"></i>
                                 {{ asig.actividad_apoyo.titulo }}
                             </div>
                             {% if asig.actividad_apoyo.descripcion %}
                             <div style="font-size: 13px; color: #555; margin-top: 4px;">{{ asig.actividad_apoyo.descripcion }}</div>
                             {% endif %}
+
+                            <!-- Entrega del archivo -->
+                            {% if asig.archivo_nombre %}
+                            <div style="margin-top: 8px; font-size: 12px; color: #059669; background: #d1fae5; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-paperclip"></i> Entregado: {{ asig.archivo_nombre }}
+                                {% if asig.fecha_entrega %}<span style="color:#888;margin-left:4px;">{{ asig.fecha_entrega.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Nota reemplazada -->
                             {% if asig.nota_nueva %}
-                            <div style="font-size: 12px; color: #0369a1; margin-top: 6px; background: #e0f2fe; padding: 3px 10px; border-radius: 20px; display: inline-block;">
-                                <i class="fas fa-exchange-alt"></i> Nota actualizada a {{ asig.nota_nueva }}/5.0
+                            <div style="font-size: 12px; color: #1d4ed8; margin-top: 6px; background: #dbeafe; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-star"></i> Nota actualizada a <strong>{{ asig.nota_nueva }}/5.0</strong>
                                 {% if asig.motivo_reemplazo %} — {{ asig.motivo_reemplazo }}{% endif %}
                             </div>
                             {% endif %}
                         </div>
-                        <div style="text-align: right; flex-shrink: 0;">
-                            {% if asig.completada %}
+
+                        <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                            {% if asig.nota_nueva %}
+                                <span style="background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                    <i class="fas fa-check-double"></i> Nota cambiada
+                                </span>
+                            {% elif asig.completada %}
                                 <span style="background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">
                                     <i class="fas fa-check"></i> Completada
                                 </span>
@@ -296,8 +311,9 @@
                                     <i class="fas fa-clock"></i> Pendiente
                                 </span>
                             {% endif %}
+
                             {% if asig.actividad_apoyo.fecha_vencimiento %}
-                            <div style="font-size: 11px; color: #888; margin-top: 4px;">
+                            <div style="font-size: 11px; color: #888;">
                                 {% if asig.actividad_apoyo.fecha_vencimiento < date.today() %}
                                     <span style="color: #dc2626;"><i class="fas fa-calendar-times"></i> Venció {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}</span>
                                 {% else %}
@@ -305,11 +321,61 @@
                                 {% endif %}
                             </div>
                             {% endif %}
+
+                            {% if not asig.nota_nueva %}
+                            <button onclick="abrirEntrega({{ asig.actividad_apoyo_id }}, {{ curso.id }}, '{{ asig.archivo_nombre or '' }}')"
+                                style="background: #667eea; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <i class="fas fa-upload"></i> {% if asig.archivo_nombre %}Reemplazar archivo{% else %}Entregar actividad{% endif %}
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+
+            <!-- Modal entrega de archivo -->
+            <div id="modalEntrega" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:2000; justify-content:center; align-items:center;">
+                <div style="background:#fff; border-radius:12px; padding:28px; width:100%; max-width:420px; position:relative;">
+                    <button onclick="cerrarEntrega()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;">&times;</button>
+                    <h3 style="margin:0 0 16px; font-size:17px;"><i class="fas fa-upload" style="color:#667eea;"></i> Entregar actividad</h3>
+                    <p style="font-size:13px;color:#666;margin-bottom:16px;">Sube un PDF o imagen con tu trabajo. El docente lo revisará y podrá reconocer tu esfuerzo.</p>
+                    <div id="archivoActual" style="display:none;font-size:12px;color:#059669;background:#d1fae5;padding:6px 12px;border-radius:8px;margin-bottom:12px;">
+                        <i class="fas fa-paperclip"></i> <span id="nombreArchivoActual"></span>
+                    </div>
+                    <input type="file" id="inputArchivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="width:100%;padding:8px;border:1px dashed #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;cursor:pointer;">
+                    <div style="font-size:11px;color:#aaa;margin-top:4px;">PDF o imagen — máximo 10 MB</div>
+                    <div id="errorEntrega" style="color:red;font-size:13px;margin-top:8px;display:none;"></div>
+                    <button onclick="subirArchivo()" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-paper-plane"></i> Enviar entrega
+                    </button>
+                </div>
+            </div>
+            <script>
+            let _actividadEntregaId = null, _cursoEntregaId = null;
+            function abrirEntrega(actividadId, cursoId, archivoActual) {
+                _actividadEntregaId = actividadId; _cursoEntregaId = cursoId;
+                document.getElementById('inputArchivo').value = '';
+                document.getElementById('errorEntrega').style.display = 'none';
+                const divActual = document.getElementById('archivoActual');
+                if (archivoActual) { document.getElementById('nombreArchivoActual').textContent = archivoActual; divActual.style.display = 'block'; }
+                else { divActual.style.display = 'none'; }
+                document.getElementById('modalEntrega').style.display = 'flex';
+            }
+            function cerrarEntrega() { document.getElementById('modalEntrega').style.display = 'none'; }
+            function subirArchivo() {
+                const file = document.getElementById('inputArchivo').files[0];
+                const errEl = document.getElementById('errorEntrega');
+                if (!file) { errEl.textContent = 'Selecciona un archivo.'; errEl.style.display = 'block'; return; }
+                if (file.size > 10 * 1024 * 1024) { errEl.textContent = 'El archivo supera 10 MB.'; errEl.style.display = 'block'; return; }
+                errEl.style.display = 'none';
+                const fd = new FormData();
+                fd.append('archivo', file);
+                fetch(`/dashboard/estudiante/cursos/${_cursoEntregaId}/apoyo/${_actividadEntregaId}/entregar`, { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(d => { if (d.success) location.reload(); else { errEl.textContent = d.error; errEl.style.display = 'block'; } });
+            }
+            </script>
             {% endif %}
         </div>
     </div>

@@ -1001,6 +1001,79 @@ def marcar_apoyo_completado(curso_id, actividad_id):
     return jsonify({'success': True})
 
 
+@dashboard_bp.route('/estudiante/cursos/<int:curso_id>/apoyo/<int:actividad_id>/entregar', methods=['POST'])
+@login_required
+def entregar_archivo_apoyo(curso_id, actividad_id):
+    """El estudiante sube su archivo de entrega para una actividad de apoyo."""
+    if session.get('role') != 'estudiante':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = _obtener_usuario_estudiante()
+    if not usuario:
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+
+    asig = AsignacionApoyo.query.filter_by(
+        actividad_apoyo_id=actividad_id, estudiante_id=usuario.id
+    ).first()
+    if not asig:
+        return jsonify({'success': False, 'error': 'Actividad no asignada'}), 404
+
+    archivo = request.files.get('archivo')
+    if not archivo or archivo.filename == '':
+        return jsonify({'success': False, 'error': 'Selecciona un archivo'}), 400
+
+    TIPOS_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+    EXTENSIONES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp'}
+
+    import os as _os
+    ext = _os.path.splitext(archivo.filename)[1].lower()
+    if ext not in EXTENSIONES_PERMITIDAS:
+        return jsonify({'success': False, 'error': 'Solo se permiten PDF e imágenes (jpg, png, gif, webp)'}), 400
+
+    data = archivo.read()
+    if len(data) > 10 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'El archivo no puede superar 10 MB'}), 400
+
+    try:
+        asig.archivo_nombre = archivo.filename
+        asig.archivo_data = data
+        asig.archivo_tipo = archivo.content_type or 'application/octet-stream'
+        asig.fecha_entrega = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/descargar/<int:estudiante_id>')
+@login_required
+def descargar_archivo_apoyo(curso_id, actividad_id, estudiante_id):
+    """El docente descarga el archivo entregado por el estudiante."""
+    from flask import send_file
+    import io
+
+    if session.get('role') != 'docente':
+        return jsonify({'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    if not _obtener_curso_docente(curso_id, usuario.id):
+        return jsonify({'error': 'Curso no encontrado'}), 404
+
+    asig = AsignacionApoyo.query.filter_by(
+        actividad_apoyo_id=actividad_id, estudiante_id=estudiante_id
+    ).first()
+    if not asig or not asig.archivo_data:
+        return jsonify({'error': 'Sin archivo'}), 404
+
+    return send_file(
+        io.BytesIO(asig.archivo_data),
+        mimetype=asig.archivo_tipo,
+        as_attachment=True,
+        download_name=asig.archivo_nombre,
+    )
+
+
 @dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/notas-estudiante')
 @login_required
 def notas_estudiante_para_apoyo(curso_id):
