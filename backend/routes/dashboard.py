@@ -1198,6 +1198,102 @@ def reemplazar_nota_apoyo(curso_id, actividad_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/editar', methods=['POST'])
+@login_required
+def editar_actividad_apoyo(curso_id, actividad_id):
+    """Edita una actividad de apoyo (solo si aún está vigente)."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    curso = _obtener_curso_docente(curso_id, usuario.id)
+    if not curso:
+        return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+    actividad = ActividadApoyo.query.filter_by(id=actividad_id, curso_id=curso_id, docente_id=usuario.id).first()
+    if not actividad:
+        return jsonify({'success': False, 'error': 'Actividad no encontrada'}), 404
+
+    # Verificar que no esté vencida
+    if actividad.esta_vencida():
+        return jsonify({'success': False, 'error': 'No puedes editar actividades vencidas'}), 400
+
+    data = request.get_json(silent=True) or {}
+    titulo = (data.get('titulo') or '').strip()
+    descripcion = (data.get('descripcion') or '').strip()
+    fecha_str = (data.get('fecha_vencimiento') or '').strip()
+    hora_str = (data.get('hora_cierre') or '').strip()
+    estudiante_ids = data.get('estudiante_ids') or []
+
+    if not titulo:
+        return jsonify({'success': False, 'error': 'El título es obligatorio'}), 400
+
+    try:
+        actividad.titulo = titulo
+        actividad.descripcion = descripcion or None
+
+        if fecha_str:
+            actividad.fecha_vencimiento = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        
+        if hora_str:
+            actividad.hora_cierre = datetime.strptime(hora_str, '%H:%M').time()
+
+        # Actualizar asignaciones
+        if estudiante_ids:
+            # Primero eliminar las asignaciones no incluidas
+            AsignacionApoyo.query.filter(
+                AsignacionApoyo.actividad_apoyo_id == actividad_id,
+                ~AsignacionApoyo.estudiante_id.in_(estudiante_ids)
+            ).delete()
+
+            # Luego agregar/mantener las nuevas
+            estudiantes_actuales = {a.estudiante_id for a in actividad.asignaciones}
+            for est_id in estudiante_ids:
+                est_id = int(est_id)
+                # Verificar que el estudiante pertenece al curso
+                if EstudianteCurso.query.filter_by(curso_id=curso_id, estudiante_id=est_id).first():
+                    if est_id not in estudiantes_actuales:
+                        db.session.add(AsignacionApoyo(
+                            actividad_apoyo_id=actividad_id,
+                            estudiante_id=est_id,
+                        ))
+
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dashboard_bp.route('/docente/cursos/<int:curso_id>/apoyo/<int:actividad_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_actividad_apoyo(curso_id, actividad_id):
+    """Elimina una actividad de apoyo (solo si aún está vigente)."""
+    if session.get('role') != 'docente':
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+    usuario = Usuario.query.get(session.get('usuario_id'))
+    curso = _obtener_curso_docente(curso_id, usuario.id)
+    if not curso:
+        return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+    actividad = ActividadApoyo.query.filter_by(id=actividad_id, curso_id=curso_id, docente_id=usuario.id).first()
+    if not actividad:
+        return jsonify({'success': False, 'error': 'Actividad no encontrada'}), 404
+
+    # Verificar que no esté vencida
+    if actividad.esta_vencida():
+        return jsonify({'success': False, 'error': 'No puedes eliminar actividades vencidas'}), 400
+
+    try:
+        actividad.activa = False
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================================
 # RUTA: Dashboard Estudiante
 # ============================================================================
