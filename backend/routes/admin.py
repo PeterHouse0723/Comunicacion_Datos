@@ -1650,3 +1650,80 @@ def seed_actividades_operativa():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# RUTA: SEED NOTAS OPERATIVA
+# ============================================================================
+
+@admin_bp.route('/operativa/seed-notas', methods=['POST'])
+@admin_required
+def seed_notas_operativa():
+    """Genera notas aleatorias realistas para todos los estudiantes del curso Operativa"""
+    from random import uniform, random
+    from datetime import datetime as dt
+    from models import Calificacion
+
+    curso = Curso.query.filter(Curso.nombre.ilike('%operativa%')).first()
+    if not curso:
+        return jsonify({'success': False, 'error': 'No se encontró el curso Operativa'}), 404
+
+    actividades = Actividad.query.filter_by(curso_id=curso.id, activa=True).all()
+    if not actividades:
+        return jsonify({'success': False, 'error': 'El curso no tiene actividades. Carga las actividades primero.'}), 400
+
+    estudiantes = (
+        Usuario.query
+        .join(EstudianteCurso, EstudianteCurso.estudiante_id == Usuario.id)
+        .filter(EstudianteCurso.curso_id == curso.id)
+        .all()
+    )
+    if not estudiantes:
+        return jsonify({'success': False, 'error': 'El curso no tiene estudiantes matriculados'}), 400
+
+    ya_hay = (
+        Calificacion.query
+        .join(Actividad)
+        .filter(Actividad.curso_id == curso.id)
+        .count()
+    )
+    if ya_hay > 0:
+        return jsonify({
+            'success': False,
+            'error': f'Ya existen {ya_hay} notas. Elimínalas primero si deseas recargar.'
+        }), 400
+
+    def nota_aleatoria():
+        r = random()
+        if r < 0.60:
+            return round(uniform(3.5, 5.0), 1)   # 60% buenos
+        elif r < 0.85:
+            return round(uniform(3.0, 3.5), 1)   # 25% aprobados justos
+        else:
+            return round(uniform(1.5, 2.9), 1)   # 15% reprobados
+
+    try:
+        creadas = 0
+        for actividad in actividades:
+            f_calif = actividad.fecha_vencimiento
+            for est in estudiantes:
+                db.session.add(Calificacion(
+                    actividad_id=actividad.id,
+                    estudiante_id=est.id,
+                    valor_nota=nota_aleatoria(),
+                    retroalimentacion=None,
+                    fecha_calificacion=dt.combine(f_calif, dt.min.time()),
+                ))
+                creadas += 1
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'notas_creadas': creadas,
+            'estudiantes': len(estudiantes),
+            'actividades': len(actividades),
+            'curso': curso.nombre,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
