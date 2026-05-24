@@ -1141,3 +1141,45 @@ def solver():
         iteraciones_vertices=iteraciones_vertices,
         iteraciones_evaluacion=iteraciones_evaluacion,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RECURSOS ACADÉMICOS
+# ─────────────────────────────────────────────────────────────────────────────
+RECURSOS_ACADEMICOS = [
+    {
+        'id': 'solver-pl',
+        'nombre': 'Solver de Programación Lineal',
+        'descripcion': 'Resuelve problemas de optimización con Simplex, Dos Fases, Método Gráfico y Dualidad.',
+        'categoria': 'Optimización',
+        'icono': 'fa-calculator',
+        'banner': 'purple',
+        'url_name': 'pro_lineal.solver',
+    },
+]
+
+
+@pro_lineal_bp.route('/recursos')
+@login_required
+def recursos():
+    curso_id = request.args.get('curso_id', type=int)
+    buscar = request.args.get('buscar', '').strip().lower()
+    categoria = request.args.get('categoria', '').strip()
+
+    categorias = sorted({r['categoria'] for r in RECURSOS_ACADEMICOS})
+
+    recursos_filtrados = RECURSOS_ACADEMICOS
+    if buscar:
+        recursos_filtrados = [r for r in recursos_filtrados if buscar in r['nombre'].lower() or buscar in r['descripcion'].lower()]
+    if categoria:
+        recursos_filtrados = [r for r in recursos_filtrados if r['categoria'] == categoria]
+
+    return render_template(
+        'pro_lineal/recursos.html',
+        recursos=recursos_filtrados,
+        categorias=categorias,
+        buscar=buscar,
+        categoria_sel=categoria,
+        curso_id=curso_id,
+    )
+

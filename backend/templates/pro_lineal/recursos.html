@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recursos Académicos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiante.css') }}">
+    <style>
+        .solver-nav {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 24px; background: white;
+            border-bottom: 1px solid #e8ecf0;
+            font-size: 13px; color: #888;
+        }
+        .solver-nav a {
+            color: #4a6cf7; text-decoration: none; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+            transition: color 0.2s;
+        }
+        .solver-nav a:hover { color: #2d4fd6; }
+        .solver-nav .sep { color: #ccc; }
+        .solver-nav .current { color: #333; font-weight: 600; }
+
+        .recursos-toolbar {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+            margin-bottom: 24px;
+        }
+        .recursos-search {
+            display: flex; align-items: center; gap: 0;
+            background: white; border: 1px solid #dde3ec; border-radius: 8px;
+            overflow: hidden; flex: 1; min-width: 200px;
+        }
+        .recursos-search input {
+            flex: 1; border: none; outline: none; padding: 9px 14px;
+            font-size: 14px; color: #333; background: transparent;
+        }
+        .recursos-search button {
+            padding: 9px 16px; background: #4a6cf7; color: white;
+            border: none; cursor: pointer; font-size: 13px; font-weight: 500;
+            transition: background 0.2s;
+        }
+        .recursos-search button:hover { background: #2d4fd6; }
+
+        .recursos-select {
+            padding: 9px 14px; border: 1px solid #dde3ec; border-radius: 8px;
+            background: white; font-size: 14px; color: #333;
+            outline: none; cursor: pointer;
+        }
+
+        .recursos-empty {
+            text-align: center; padding: 60px 20px; color: #aaa;
+        }
+        .recursos-empty i { font-size: 48px; margin-bottom: 16px; display: block; }
+
+        /* Resource card extras */
+        .resource-desc {
+            font-size: 12px; color: #718096; margin-top: 6px; line-height: 1.4;
+        }
+        .resource-badge-cat {
+            display: inline-block; font-size: 11px; font-weight: 600;
+            padding: 2px 8px; border-radius: 20px;
+            background: #ede9fe; color: #6d28d9;
+            margin-top: 4px;
+        }
+        .course-card { height: auto; }
+        .course-banner i { font-size: 28px; }
+    </style>
+</head>
+<body class="courses-page">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <i class="fas fa-book"></i> Panel de Estudiante
+        </div>
+        <div class="user-info">
+            <span>Hola, <strong>{{ session.get('nombre', '') }}</strong></span>
+            {% if curso_id %}
+            <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso_id) }}">
+                <i class="fas fa-arrow-left"></i> Volver al curso
+            </a>
+            {% else %}
+            <a href="{{ url_for('dashboard.estudiante') }}">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <nav class="solver-nav">
+        {% if curso_id %}
+        <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso_id) }}">
+            <i class="fas fa-arrow-left"></i> Volver al curso
+        </a>
+        {% else %}
+        <a href="{{ url_for('dashboard.estudiante') }}">
+            <i class="fas fa-arrow-left"></i> Dashboard
+        </a>
+        {% endif %}
+        <span class="sep">›</span>
+        <span class="current">Recursos Académicos</span>
+    </nav>
+
+    <div class="courses-wrapper">
+        <div class="course-header">
+            <div>
+                <h2>Recursos Académicos</h2>
+                <p>Herramientas y materiales de apoyo para tu aprendizaje</p>
+            </div>
+        </div>
+
+        <form class="recursos-toolbar" method="get" action="{{ url_for('pro_lineal.recursos') }}">
+            {% if curso_id %}
+            <input type="hidden" name="curso_id" value="{{ curso_id }}">
+            {% endif %}
+
+            <div class="recursos-search">
+                <input type="text" name="buscar" placeholder="Buscar recurso..." value="{{ buscar }}">
+                <button type="submit"><i class="fas fa-search"></i> Buscar</button>
+            </div>
+
+            <select name="categoria" class="recursos-select" onchange="this.form.submit()">
+                <option value="">Todas las categorías</option>
+                {% for cat in categorias %}
+                <option value="{{ cat }}" {% if cat == categoria_sel %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        {% if recursos %}
+        <div class="courses-grid">
+            {% for recurso in recursos %}
+            {% set banners = ['purple', 'violet', 'teal'] %}
+            <a href="{{ url_for(recurso.url_name) }}" class="course-card-link">
+                <div class="course-card">
+                    <div class="course-banner course-banner--{{ banners[loop.index0 % 3] }}"
+                         style="display:flex; align-items:center; justify-content:center;">
+                        <i class="fas {{ recurso.icono }}" style="font-size:30px; color:rgba(255,255,255,0.9);"></i>
+                    </div>
+                    <div class="course-body">
+                        <div class="course-title">{{ recurso.nombre }}</div>
+                        <div class="resource-desc">{{ recurso.descripcion }}</div>
+                        <span class="resource-badge-cat">{{ recurso.categoria }}</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="recursos-empty">
+            <i class="fas fa-search"></i>
+            <p>No se encontraron recursos{% if buscar %} para "<strong>{{ buscar }}</strong>"{% endif %}.</p>
+            {% if buscar or categoria_sel %}
+            <a href="{{ url_for('pro_lineal.recursos', curso_id=curso_id) }}"
+               style="color:#4a6cf7; font-size:13px;">Ver todos los recursos</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
