@@ -663,7 +663,11 @@ class ActividadApoyo(db.Model):
 
     def esta_vencida(self):
         dt = self.deadline_dt()
-        return dt is not None and datetime.now() > dt
+        if dt is None:
+            return False
+        # Obtener hora actual en UTC y convertir a Colombia (UTC-5)
+        ahora_colombia = datetime.utcnow() - timedelta(hours=5)
+        return ahora_colombia > dt
 
     def __repr__(self):
         return f'<ActividadApoyo {self.titulo}>'
