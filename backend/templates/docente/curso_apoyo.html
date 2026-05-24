@@ -130,6 +130,8 @@
                                 <span class="badge-estado badge-reemplazada"><i class="fas fa-exchange-alt"></i> Nota reemplazada</span>
                             {% elif asig.completada %}
                                 <span class="badge-estado badge-completada"><i class="fas fa-check"></i> Completada</span>
+                            {% elif not asig.archivo_nombre and act.esta_vencida() %}
+                                <span class="badge-estado" style="background:#fee2e2;color:#991b1b;"><i class="fas fa-times-circle"></i> No entregado</span>
                             {% else %}
                                 <span class="badge-estado badge-pendiente"><i class="fas fa-clock"></i> Pendiente</span>
                             {% endif %}
@@ -156,13 +158,13 @@
                             {% else %}—{% endif %}
                         </td>
                         <td>
-                            {% if not asig.completada %}
+                            {% if not asig.completada and not (not asig.archivo_nombre and act.esta_vencida()) %}
                             <button class="btn-accion btn-completar"
                                 onclick="marcarCompletado({{ act.id }}, {{ asig.estudiante_id }}, {{ asig.id }})">
                                 <i class="fas fa-check"></i> Completada
                             </button>
                             {% endif %}
-                            {% if not asig.nota_id_reemplazada and not asig.calificacion_id_reemplazada %}
+                            {% if not asig.nota_id_reemplazada and not asig.calificacion_id_reemplazada and not (not asig.archivo_nombre and act.esta_vencida()) %}
                             <button class="btn-accion btn-reemplazar"
                                 onclick="abrirModalReemplazar({{ act.id }}, {{ asig.estudiante_id }}, '{{ asig.estudiante.nombre }} {{ asig.estudiante.apellido }}', {{ asig.id }})">
                                 <i class="fas fa-exchange-alt"></i> Reemplazar nota
