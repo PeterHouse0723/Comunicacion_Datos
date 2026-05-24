@@ -43,6 +43,9 @@ def apply_migrations(app):
                 # Dividir por ; y ejecutar cada comando por separado
                 commands = content.split(';')
                 
+                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                is_sqlite = 'sqlite' in db_url
+
                 for command in commands:
                     # Limpiar comentarios y espacios en blanco
                     lines = []
@@ -52,16 +55,28 @@ def apply_migrations(app):
                         line = line.strip()
                         if line:
                             lines.append(line)
-                    
+
                     sql_command = ' '.join(lines)
-                    
+
+                    # SQLite no soporta "ADD COLUMN IF NOT EXISTS" — eliminar la cláusula
+                    if is_sqlite:
+                        import re
+                        sql_command = re.sub(
+                            r'ADD COLUMN IF NOT EXISTS',
+                            'ADD COLUMN',
+                            sql_command,
+                            flags=re.IGNORECASE
+                        )
+
                     # Ignorar comandos vacíos y COMMIT
                     if sql_command and sql_command.upper() != 'COMMIT':
                         try:
                             db.session.execute(text(sql_command))
                         except Exception as e:
                             # Algunos comandos pueden fallar si ya existen (esperado)
-                            if 'already exists' in str(e) or 'does not exist' in str(e):
+                            err = str(e).lower()
+                            if ('already exists' in err or 'does not exist' in err
+                                    or 'already has column' in err or 'duplicate column' in err):
                                 logger.debug(f"Migration note: {str(e)}")
                             else:
                                 raise
@@ -93,10 +108,12 @@ def create_app(config_name=None):
     from routes.dashboard import dashboard_bp
     from routes.admin import admin_bp
     from chatbot.routes import chatbot_bp
+    from routes.pro_lineal import pro_lineal_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(chatbot_bp)
+    app.register_blueprint(pro_lineal_bp)
     
     # Inicializar base de datos y aplicar migraciones
     with app.app_context():

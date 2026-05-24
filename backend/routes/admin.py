@@ -1,7 +1,7 @@
 """Rutas administrativas - Admin Global"""
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from extensions import db
-from models import Usuario, Institucion, Curso, Periodo, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante
+from models import Usuario, Institucion, Curso, Periodo, CursoDocente, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Actividad
 from utils import validar_email, validar_contraseña, encriptar_contraseña, verificar_contraseña, crear_usuario_con_contraseña_temporal, generar_contraseña_temporal
 from functools import wraps
 from datetime import datetime
@@ -1588,4 +1588,65 @@ def eliminar_institucion(inst_id):
     except Exception as e:
         db.session.rollback()
         print(f"[ERROR] Error al eliminar institución: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# RUTA: SEED ACTIVIDADES OPERATIVA
+# ============================================================================
+
+@admin_bp.route('/operativa/seed-actividades', methods=['POST'])
+@admin_required
+def seed_actividades_operativa():
+    """Carga las 8 actividades predefinidas del curso Operativa"""
+    from datetime import date, timedelta
+
+    ACTIVIDADES = [
+        {'nombre': 'R1-A1-S3 Ruta Óptima en Dos Variables',              'semana': 3},
+        {'nombre': 'R1-A2-S6 Óptimo con Evidencias',                     'semana': 6},
+        {'nombre': 'R2-A3-S9 De gráfico a álgebra: simplex en acción',   'semana': 9},
+        {'nombre': 'R2-A4-S12 Decidir con dualidad: sensibilidad que convence', 'semana': 12},
+        {'nombre': 'R3-A5-S12 Mapa de Urgencias Viales',                 'semana': 12},
+        {'nombre': 'R3-A6-S13 Ruta Crítica del Territorio',              'semana': 13},
+        {'nombre': 'R3-A7-S15 Redes que Reconectan',                     'semana': 15},
+        {'nombre': 'R3-A8-S16 Calendario que Sostiene',                  'semana': 16},
+    ]
+    INICIO = date(2026, 1, 12)
+
+    curso = Curso.query.filter(Curso.nombre.ilike('%operativa%')).first()
+    if not curso:
+        return jsonify({'success': False, 'error': 'No se encontró ningún curso con nombre "Operativa"'}), 404
+
+    existentes = Actividad.query.filter_by(curso_id=curso.id).count()
+    if existentes > 0:
+        return jsonify({
+            'success': False,
+            'error': f'El curso ya tiene {existentes} actividades. Elimínalas primero si deseas recargar.'
+        }), 400
+
+    try:
+        for act in ACTIVIDADES:
+            s = act['semana']
+            f_asig = INICIO + timedelta(weeks=(s - 1))
+            f_venc = f_asig + timedelta(days=7)
+            db.session.add(Actividad(
+                curso_id=curso.id,
+                nombre=act['nombre'],
+                tipo_evaluacion='tarea',
+                semana=s,
+                ponderacion=round(1 / 8, 4),
+                fecha_asignacion=f_asig,
+                fecha_vencimiento=f_venc,
+                activa=True,
+            ))
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'actividades_creadas': len(ACTIVIDADES),
+            'curso': curso.nombre,
+            'curso_id': curso.id,
+        })
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -224,6 +224,19 @@
                 <h2>{{ curso.codigo }} / {{ curso.nombre }}</h2>
                 <p>Detalles del curso</p>
             </div>
+            {% if 'operativa' in curso.nombre | lower %}
+            <div class="course-header-actions">
+                <a href="{{ url_for('pro_lineal.solver') }}"
+                   style="padding: 8px 16px; background: #1e3a8a; color: white; border-radius: 20px;
+                          text-decoration: none; font-size: 14px; font-weight: 500;
+                          display: flex; align-items: center; gap: 6px;
+                          box-shadow: 0 2px 8px rgba(30,58,138,0.35); transition: background 0.2s;"
+                   onmouseover="this.style.background='#1e40af'"
+                   onmouseout="this.style.background='#1e3a8a'">
+                    <i class="fas fa-calculator"></i> Solver P. Lineal
+                </a>
+            </div>
+            {% endif %}
         </div>
 
         <div class="course-tabs">

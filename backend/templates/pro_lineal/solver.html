@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solver Programación Lineal — Operativa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+        :root {
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --surface2: #eef3f8;
+            --border: #d3dce7;
+            --accent: #2563eb;
+            --accent2: #b7791f;
+            --green: #22c55e;
+            --red: #dc2626;
+            --purple: #8b5cf6;
+            --text: #102030;
+            --muted: #5f6b7a;
+            --pivot-bg: #d9fbe6;
+            --pivot-border: #86efac;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: radial-gradient(circle at top, #ffffff 0%, #f4f7fb 45%, #eaf1f7 100%);
+        }
+
+        /* ── Nav Bar ── */
+        .solver-nav {
+            background: #1e3a8a;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .solver-nav a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: color 0.2s;
+        }
+        .solver-nav a:hover { color: #fff; }
+        .solver-nav .sep { color: rgba(255,255,255,0.35); }
+        .solver-nav .current { color: #fff; font-weight: 700; font-size: 0.85rem; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.25rem;
+            color: #0f3d91;
+            background-color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #d8e1ea;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+
+        input[type="text"], textarea, select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            padding: 0.65rem 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+        textarea { resize: vertical; min-height: 110px; }
+
+        .hint {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 0.2rem;
+        }
+
+        button[type="submit"] {
+            margin-top: 1.25rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        button[type="submit"]:hover { opacity: 0.88; transform: translateY(-1px); }
+
+        .result-banner {
+            background: var(--surface);
+            border: 1px solid var(--green);
+            border-left: 4px solid var(--green);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--green);
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+        }
+        .result-banner.error { border-color: var(--red); color: var(--red); }
+        .result-banner.warn { border-color: var(--accent2); color: var(--accent2); }
+
+        .fase-separator {
+            margin: 2rem 0 1rem;
+            padding: 0.6rem 1rem;
+            border-radius: 0 8px 8px 0;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+        .sep-f1 { background: #f7654f18; border-left: 4px solid #f7654f; color: #f7654f; }
+        .sep-f2 { background: #4fcf8e18; border-left: 4px solid #4fcf8e; color: #4fcf8e; }
+        .sep-simplex { background: #4f8ef718; border-left: 4px solid #4f8ef7; color: #4f8ef7; }
+        .sep-primal { background: #4f8ef718; border-left: 4px solid #4f8ef7; color: #4f8ef7; }
+        .sep-dual { background: #f7c84f18; border-left: 4px solid #f7c84f; color: #f7c84f; }
+        .sep-form { background: #c084fc18; border-left: 4px solid #c084fc; color: #c084fc; }
+        .sep-verif { background: #4fcf8e18; border-left: 4px solid #4fcf8e; color: #4fcf8e; }
+        .sep-vert { background: #4f8ef718; border-left: 4px solid #4f8ef7; color: #4f8ef7; }
+        .sep-eval { background: #f7c84f18; border-left: 4px solid #f7c84f; color: #f7c84f; }
+        .sep-directo { background: #4f8ef718; border-left: 4px solid #4f8ef7; color: #4f8ef7; }
+
+        .iteration {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .iter-header {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 1rem; flex-wrap: wrap;
+        }
+
+        .iter-badge {
+            color: #fff; font-size: 0.72rem; font-weight: 700;
+            padding: 0.25rem 0.65rem; border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; background: var(--accent);
+        }
+        .badge-f1 { background: #f7654f; }
+        .badge-f2 { background: #6ee7a2; color: #10331c; }
+        .badge-simplex { background: #4f8ef7; }
+        .badge-primal { background: #4f8ef7; }
+        .badge-dual { background: #f7c84f; color: #0f1117; }
+        .badge-form { background: #c084fc; }
+        .badge-verif { background: #86efac; color: #10331c; }
+        .badge-directo { background: #4f8ef7; }
+
+        .iter-title { font-size: 1rem; font-weight: 700; }
+
+        .z-badge {
+            background: var(--surface2); border: 1px solid var(--accent2);
+            border-radius: 6px; padding: 0.35rem 0.75rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+            color: #9a5b00; font-weight: 700; margin-left: auto;
+        }
+        .z-badge.w-badge { border-color: var(--red); color: var(--red); }
+
+        .pivot-info { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+
+        .chip {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 0.35rem 0.75rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+        }
+        .chip span { color: var(--muted); margin-right: 0.3rem; }
+        .chip.entering { border-color: #86efac; color: #166534; background: #ecfdf3; }
+        .chip.leaving { border-color: var(--red); color: #b91c1c; background: #fff1f2; }
+        .chip.pivot-chip { border-color: #86efac; color: #14532d; background: #dcfce7; }
+
+        .ops-block {
+            background: var(--surface2); border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; margin-bottom: 1rem;
+        }
+        .ops-block p {
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.4rem;
+        }
+        .ops-block ul { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
+        .ops-block li { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+
+        .table-wrapper { overflow-x: auto; margin-bottom: 1rem; }
+
+        table { border-collapse: collapse; width: 100%; font-size: 0.83rem; font-family: 'JetBrains Mono', monospace; }
+        th {
+            background: var(--surface2); color: var(--muted); font-size: 0.72rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 0.5rem 0.75rem; border: 1px solid var(--border); white-space: nowrap;
+        }
+        td {
+            padding: 0.45rem 0.75rem; border: 1px solid var(--border);
+            text-align: center; white-space: nowrap; color: var(--text); background: #ffffff;
+        }
+        tr:last-child td { background: #eff6ff; font-weight: 700; }
+        .col-base { color: var(--accent2); font-weight: 700; text-align: left; min-width: 70px; }
+        .col-rhs { color: var(--green); font-weight: 700; }
+        .col-ratio { color: var(--accent2); }
+        .col-art { color: var(--red); }
+        td.pivot-cell { background: var(--pivot-bg); border: 2px solid var(--pivot-border); color: #0f3d1e; font-weight: 700; }
+        td.pivot-row { background: #eefdf4; }
+        td.pivot-col { background: #f2fbf5; }
+
+        .tabla-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.4rem; font-family: 'JetBrains Mono', monospace; }
+        .tabla-label.after { margin-top: 1rem; }
+        .no-acotado { color: var(--red); font-weight: 700; font-size: 0.9rem; margin-top: 0.5rem; }
+
+        .solution-card {
+            background: var(--surface); border: 1px solid var(--green); border-radius: 12px;
+            padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+        .solution-card h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; color: var(--green); }
+        .sol-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+        .sol-var {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.5rem 1rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+        }
+        .sol-z { font-size: 1.2rem; font-weight: 800; color: var(--accent2); font-family: 'JetBrains Mono', monospace; }
+
+        .grafica-section { margin-top: 1.5rem; text-align: center; }
+        .grafica-section img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+
+        .graph-iter {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+            padding: 0.65rem 1rem; margin-bottom: 0.4rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            display: flex; gap: 1rem; align-items: center;
+        }
+        .graph-iter.factible { border-left: 3px solid var(--green); }
+        .graph-iter.no-factible { border-left: 3px solid var(--red); opacity: 0.6; }
+        .graph-iter.mejor { border-left: 3px solid var(--accent2); background: #f7c84f11; }
+        .graph-iter-label { color: var(--muted); min-width: 200px; font-size: 0.75rem; }
+        .graph-iter-content { flex: 1; }
+        .graph-iter-content .star { color: var(--accent2); font-weight: 700; }
+
+        .row-optimo td { background: #fefce8 !important; }
+        .optimo-star { color: var(--accent2); font-weight: 700; }
+
+        .dual-section { margin-top: 2rem; }
+        .dual-results-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .dual-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.5rem; margin-bottom: 1.25rem;
+        }
+        .dual-card.full-width { grid-column: 1 / -1; }
+        .dual-card h3 { font-size: 0.95rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+        .badge-z { color: var(--green); font-weight: 800; }
+        .badge-w { color: var(--accent2); font-weight: 800; }
+        .holgura-ok { color: var(--green); }
+        .holgura-fail { color: var(--red); }
+
+        .teorema-badge {
+            display: inline-block; padding: 0.4rem 1rem; border-radius: 20px;
+            font-weight: 700; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; margin-top: 0.5rem;
+        }
+        .teorema-ok { background: #4fcf8e22; color: var(--green); border: 1px solid var(--green); }
+        .teorema-fail { background: #f7654f22; color: var(--red); border: 1px solid var(--red); }
+
+        .formul-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+        .formul-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+        .formul-card h5 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.5rem; }
+        .formul-card.primal-card { border-color: var(--accent); }
+        .formul-card.dual-card { border-color: var(--accent2); }
+        .formul-fo { font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .formul-fo.primal { color: var(--green); }
+        .formul-fo.dual { color: var(--accent2); }
+        .formul-restr { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text); margin-bottom: 0.2rem; }
+
+        .section-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; }
+
+        @media (max-width: 700px) {
+            .form-grid, .formul-grid, .dual-results-container { grid-template-columns: 1fr; }
+            .pivot-info { gap: 0.4rem; }
+            .chip { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="solver-nav">
+    <a href="{{ url_for('dashboard.estudiante') if session.get('role') == 'estudiante' else url_for('dashboard.docente') if session.get('role') == 'docente' else url_for('admin.dashboard') }}">
+        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+    </a>
+    <span class="sep">›</span>
+    <span class="current">Solver — Programación Lineal</span>
+</nav>
+
+<div class="container">
+    <h1>Solver de Programación Lineal</h1>
+    <p class="subtitle">simplex &nbsp;·&nbsp; dos fases &nbsp;·&nbsp; dualidad &nbsp;·&nbsp; método gráfico</p>
+
+    <div class="form-card">
+        <form method="POST" action="{{ url_for('pro_lineal.solver') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Función objetivo</label>
+                    <input type="text" name="objetivo" placeholder="Ej: 3 2" required value="{{ request.form.get('objetivo', '') }}">
+                    <span class="hint">Coeficientes separados por espacio</span>
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select name="tipo">
+                        <option value="max" {% if request.form.get('tipo','max')=='max' %}selected{% endif %}>Maximizar</option>
+                        <option value="min" {% if request.form.get('tipo')=='min' %}selected{% endif %}>Minimizar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Método</label>
+                    <select name="metodo">
+                        <option value="simplex" {% if request.form.get('metodo','simplex')=='simplex' %}selected{% endif %}>Simplex</option>
+                        <option value="dos_fases" {% if request.form.get('metodo')=='dos_fases' %}selected{% endif %}>Dos fases</option>
+                        <option value="dualidad" {% if request.form.get('metodo')=='dualidad' %}selected{% endif %}>Dualidad</option>
+                        <option value="grafico" {% if request.form.get('metodo')=='grafico' %}selected{% endif %}>Método gráfico</option>
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label>Restricciones (una por línea)</label>
+                    <textarea name="restricciones" required placeholder="Ej:&#10;1 1 <= 4&#10;2 1 <= 10">{{ request.form.get('restricciones', '') }}</textarea>
+                    <span class="hint">Operadores: &lt;= &nbsp;·&nbsp; &gt;= &nbsp;·&nbsp; =</span>
+                </div>
+            </div>
+            <button type="submit">Resolver →</button>
+        </form>
+    </div>
+
+    {% if resultado %}
+        {% if resultado.startswith('!') %}
+            <div class="result-banner error">{{ resultado[1:] }}</div>
+        {% elif resultado.startswith('ℹ') %}
+            <div class="result-banner warn">{{ resultado }}</div>
+        {% else %}
+            <div class="result-banner">{{ resultado }}</div>
+        {% endif %}
+    {% endif %}
+
+    {% if grafica %}
+        <div class="grafica-section">
+            <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1rem;">Método Gráfico — Resultado</h2>
+            <img src="data:image/png;base64,{{ grafica }}" alt="Gráfica">
+
+            {% if vertices_grafico %}
+            <div style="margin-top:1.5rem;text-align:left;">
+                <p style="font-size:0.78rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:0.5rem;">
+                    ▶ Vértices de la región factible evaluados:
+                </p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Vértice</th><th>x₁</th><th>x₂</th><th>Z</th><th>¿Óptimo?</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for v in vertices_grafico %}
+                            <tr {% if v.optimo %}class="row-optimo"{% endif %}>
+                                <td class="col-base">P{{ loop.index }}</td>
+                                <td>{{ "%.4f"|format(v.x1) }}</td>
+                                <td>{{ "%.4f"|format(v.x2) }}</td>
+                                <td {% if v.optimo %}class="col-rhs"{% endif %}>{{ "%.4f"|format(v.z) }}</td>
+                                <td>{% if v.optimo %}<span class="optimo-star">★ Sí</span>{% else %}—{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if iteraciones_vertices %}
+        <div class="fase-separator sep-vert">◆ Búsqueda de Vértices — Intersección de restricciones</div>
+        {% for it in iteraciones_vertices %}
+        {% if it.punto == none %}
+            <div class="graph-iter no-factible">
+        {% elif 'factible' in it.razon %}
+            <div class="graph-iter factible">
+        {% else %}
+            <div class="graph-iter no-factible">
+        {% endif %}
+                <div class="graph-iter-label">R{{ it.restricciones[0] }} ∩ R{{ it.restricciones[1] }}</div>
+                <div class="graph-iter-content">
+                    {% if it.punto %}
+                        Punto: ({{ it.punto[0] }}, {{ it.punto[1] }}) — {{ it.razon }}
+                    {% else %}
+                        {{ it.razon }}
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if iteraciones_evaluacion %}
+        <div class="fase-separator sep-eval">◆ Evaluación de la Función Objetivo en Vértices</div>
+        {% for it in iteraciones_evaluacion %}
+        {% if it.es_mejor %}
+            <div class="graph-iter mejor">
+        {% else %}
+            <div class="graph-iter">
+        {% endif %}
+                <div class="graph-iter-label">Iteración {{ it.iteracion }}</div>
+                <div class="graph-iter-content">
+                    ({{ it.punto[0] }}, {{ it.punto[1] }}) → Z = {{ it.z }}
+                    {% if it.es_mejor %} <span class="star">★ Nuevo mejor: Z = {{ it.mejor_z_hasta_ahora }}</span>{% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if pasos %}
+        {% set ns = namespace(fase_anterior="") %}
+        <h2 style="margin:1.5rem 0 1rem; font-size:1.2rem; font-weight:800;">Iteraciones del Método</h2>
+
+        {% for paso in pasos %}
+            {% set fase_actual = paso.fase | default("") %}
+
+            {% if fase_actual != ns.fase_anterior %}
+                {% if "Fase 1" in fase_actual %}
+                    <div class="fase-separator sep-f1">◆ {{ fase_actual }} — Buscar solución básica factible</div>
+                {% elif "Fase 2" in fase_actual %}
+                    <div class="fase-separator sep-f2">◆ {{ fase_actual }} — Optimizar función objetivo original</div>
+                {% elif "Simplex" in fase_actual %}
+                    <div class="fase-separator sep-simplex">◆ {{ fase_actual }}</div>
+                {% elif "directo" in fase_actual %}
+                    <div class="fase-separator sep-directo">◆ {{ fase_actual }} — Sin artificiales necesarias</div>
+                {% elif "Primal" in fase_actual %}
+                    <div class="fase-separator sep-primal">◆ {{ fase_actual }}</div>
+                {% elif "Dual" in fase_actual %}
+                    <div class="fase-separator sep-dual">◆ {{ fase_actual }}</div>
+                {% elif "Formulación" in fase_actual %}
+                    <div class="fase-separator sep-form">◆ {{ fase_actual }}</div>
+                {% elif "Verificación" in fase_actual %}
+                    <div class="fase-separator sep-verif">◆ {{ fase_actual }}</div>
+                {% endif %}
+                {% set ns.fase_anterior = fase_actual %}
+            {% endif %}
+
+            {% if paso.tabla is none %}
+                <div class="iteration">
+                    <div class="iter-header">
+                        {% if "Fase 1" in fase_actual %}
+                            <span class="iter-badge badge-f1">{{ fase_actual }}</span>
+                        {% elif "Fase 2" in fase_actual %}
+                            <span class="iter-badge badge-f2">{{ fase_actual }}</span>
+                        {% elif "Primal" in fase_actual %}
+                            <span class="iter-badge badge-primal">{{ fase_actual }}</span>
+                        {% elif "Dual" in fase_actual %}
+                            <span class="iter-badge badge-dual">{{ fase_actual }}</span>
+                        {% elif "Formulación" in fase_actual %}
+                            <span class="iter-badge badge-form">{{ fase_actual }}</span>
+                        {% elif "Verificación" in fase_actual %}
+                            <span class="iter-badge badge-verif">{{ fase_actual }}</span>
+                        {% else %}
+                            <span class="iter-badge badge-simplex">{{ fase_actual }}</span>
+                        {% endif %}
+                        <span class="iter-title">Paso {{ paso.paso }}</span>
+                    </div>
+
+                    {% if paso.primal_fo is defined %}
+                        <div class="formul-grid">
+                            <div class="formul-card primal-card">
+                                <h5>📌 Primal ({{ paso.tipo_primal | upper }})</h5>
+                                <div class="formul-fo primal">{{ paso.primal_fo }}</div>
+                                {% for r in paso.primal_restricciones %}
+                                    <div class="formul-restr">{{ r }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="formul-card dual-card">
+                                <h5>🔄 Dual ({{ paso.tipo_dual | upper }})</h5>
+                                <div class="formul-fo dual">{{ paso.dual_fo }}</div>
+                                {% for r in paso.dual_restricciones %}
+                                    <div class="formul-restr">{{ r }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if paso.holguras is defined and paso.holguras %}
+                        <div class="table-wrapper" style="margin-top:1rem;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Restricción</th><th>A·x*</th><th>b</th>
+                                        <th>Holgura</th><th>y* (dual)</th><th>Producto</th><th>¿OK?</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for h in paso.holguras %}
+                                    <tr>
+                                        <td class="col-base">R{{ h.restriccion }}</td>
+                                        <td>{{ "%.4f"|format(h.actividad) }}</td>
+                                        <td>{{ "%.4f"|format(h.rhs) }}</td>
+                                        <td>{{ "%.4f"|format(h.holgura_p) }}</td>
+                                        <td class="badge-w">{{ "%.4f"|format(h.y_dual) }}</td>
+                                        <td>{{ "%.6f"|format(h.complementaria) }}</td>
+                                        <td class="{{ 'holgura-ok' if h.ok else 'holgura-fail' }}">{{ '✓' if h.ok else '✗' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top:0.75rem;">
+                            <span class="teorema-badge {{ 'teorema-ok' if paso.complementaria_ok else 'teorema-fail' }}">
+                                {{ '✓ Holgura complementaria satisfecha' if paso.complementaria_ok else '✗ Holgura complementaria NO satisfecha' }}
+                            </span>
+                            <span class="teorema-badge {{ 'teorema-ok' if paso.z_igual_w else 'teorema-fail' }}" style="margin-left:0.5rem;">
+                                {{ '✓ Z* = W*' if paso.z_igual_w else '✗ Z* ≠ W*' }}
+                            </span>
+                        </div>
+                    {% endif %}
+
+                    {% if paso.operaciones %}
+                        <div class="ops-block" style="margin-top:1rem;">
+                            <p>Detalle</p>
+                            <ul>{% for op in paso.operaciones %}<li>{{ op }}</li>{% endfor %}</ul>
+                        </div>
+                    {% endif %}
+                </div>
+
+            {% else %}
+                {% set tiene_headers = paso.headers is defined and paso.headers %}
+                <div class="iteration">
+                    <div class="iter-header">
+                        {% if "Fase 1" in fase_actual %}
+                            <span class="iter-badge badge-f1">{{ fase_actual }} — Iter {{ paso.paso }}</span>
+                        {% elif "Fase 2" in fase_actual %}
+                            <span class="iter-badge badge-f2">{{ fase_actual }} — Iter {{ paso.paso }}</span>
+                        {% elif "Primal" in fase_actual %}
+                            <span class="iter-badge badge-primal">{{ fase_actual }} — Iter {{ paso.paso }}</span>
+                        {% elif "Dual" in fase_actual %}
+                            <span class="iter-badge badge-dual">{{ fase_actual }} — Iter {{ paso.paso }}</span>
+                        {% else %}
+                            <span class="iter-badge badge-simplex">{{ fase_actual }} — Iter {{ paso.paso }}</span>
+                        {% endif %}
+
+                        {% if paso.es_inicial %}
+                            <span class="iter-title">Tabla Inicial</span>
+                        {% elif paso.es_no_acotado is defined and paso.es_no_acotado %}
+                            <span class="iter-title">No Acotado</span>
+                        {% else %}
+                            <span class="iter-title">Pivoteo</span>
+                        {% endif %}
+
+                        {% if paso.valor_z is defined and paso.valor_z is not none %}
+                            {% if "Fase 1" in fase_actual %}
+                                <span class="z-badge w-badge">W = {{ "%.4f"|format(paso.valor_z) }}</span>
+                            {% else %}
+                                <span class="z-badge">Z = {{ "%.4f"|format(paso.valor_z) }}</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    {% if not paso.es_inicial and paso.var_entrante is defined and paso.var_entrante and paso.elemento_pivote is defined and paso.elemento_pivote is not none and paso.fila_pivote is defined and paso.fila_pivote is not none %}
+                        <div class="pivot-info">
+                            <div class="chip entering"><span>Entra:</span>{{ paso.var_entrante }}</div>
+                            <div class="chip leaving"><span>Sale:</span>{{ paso.var_saliente }}</div>
+                            <div class="chip pivot-chip"><span>Pivote:</span>{{ "%.4f"|format(paso.elemento_pivote) }}</div>
+                            <div class="chip"><span>Fila:</span>F{{ paso.fila_pivote + 1 }}<span style="margin-left:0.5rem;">|</span><span style="margin-left:0.5rem;">Col:</span>{{ paso.var_entrante }}</div>
+                        </div>
+                    {% endif %}
+
+                    {% if paso.var_basicas is defined %}
+                        <p class="tabla-label">Base: [{% for vb in paso.var_basicas %}{{ vb }}{% if not loop.last %}, {% endif %}{% endfor %}]</p>
+                    {% endif %}
+
+                    {% if paso.operaciones %}
+                        <div class="ops-block">
+                            <p>{{ 'Descripción' if paso.es_inicial else 'Operaciones de fila' }}</p>
+                            <ul>{% for op in paso.operaciones %}<li>{{ op }}</li>{% endfor %}</ul>
+                        </div>
+                    {% endif %}
+
+                    {% if not paso.es_inicial and paso.estado_anterior is defined and paso.estado_anterior %}
+                        <p class="tabla-label">▶ Tabla antes del pivoteo:</p>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Base</th>
+                                        {% if tiene_headers %}
+                                            {% for h in paso.headers %}
+                                                <th {% if h is string and h.startswith('a') %}class="col-art"{% endif %}>{{ h }}</th>
+                                            {% endfor %}
+                                        {% else %}
+                                            {% for j in range(paso.num_vars) %}<th>x{{ j+1 }}</th>{% endfor %}
+                                            {% for j in range(paso.num_slack) %}<th>s{{ j+1 }}</th>{% endfor %}
+                                            {% if paso.num_art is defined and paso.num_art > 0 %}
+                                                {% for j in range(paso.num_art) %}<th class="col-art">a{{ j+1 }}</th>{% endfor %}
+                                            {% endif %}
+                                            <th>RHS</th>
+                                        {% endif %}
+                                        <th>Cociente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for i in range(paso.estado_anterior | length) %}
+                                    {% set fila = paso.estado_anterior[i] %}
+                                    <tr>
+                                        {% if i < paso.estado_anterior | length - 1 %}
+                                            <td class="col-base">
+                                                {% if paso.fila_pivote is defined and i == paso.fila_pivote %}
+                                                    {{ paso.var_saliente }} → {{ paso.var_entrante }}
+                                                {% else %}
+                                                    {{ paso.var_basicas[i] }}
+                                                {% endif %}
+                                            </td>
+                                        {% else %}
+                                            <td class="col-base">{{ 'W' if 'Fase 1' in fase_actual else 'Z' }}</td>
+                                        {% endif %}
+                                        {% for j in range(fila | length - 1) %}
+                                            {% if paso.fila_pivote is defined and paso.col_pivote is defined and i == paso.fila_pivote and j == paso.col_pivote %}
+                                                <td class="pivot-cell">{{ "%.4f"|format(fila[j]) }}</td>
+                                            {% elif paso.fila_pivote is defined and i == paso.fila_pivote %}
+                                                <td class="pivot-row">{{ "%.4f"|format(fila[j]) }}</td>
+                                            {% elif paso.col_pivote is defined and j == paso.col_pivote %}
+                                                <td class="pivot-col">{{ "%.4f"|format(fila[j]) }}</td>
+                                            {% else %}
+                                                <td>{{ "%.4f"|format(fila[j]) }}</td>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <td class="col-rhs">{{ "%.4f"|format(fila[-1]) }}</td>
+                                        {% if i < paso.estado_anterior | length - 1 %}
+                                            <td class="col-ratio">{{ paso.cocientes[i] if paso.cocientes is defined and paso.cocientes else '—' }}</td>
+                                        {% else %}
+                                            <td>—</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+
+                    {% if paso.es_inicial %}
+                        <p class="tabla-label">▶ Tabla inicial:</p>
+                    {% elif paso.es_no_acotado is defined and paso.es_no_acotado %}
+                        <p class="tabla-label">▶ Estado actual:</p>
+                    {% else %}
+                        <p class="tabla-label after">✔ Tabla resultante:</p>
+                    {% endif %}
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Base</th>
+                                    {% if tiene_headers %}
+                                        {% for h in paso.headers %}
+                                            <th {% if h is string and h.startswith('a') %}class="col-art"{% endif %}>{{ h }}</th>
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for j in range(paso.num_vars) %}<th>x{{ j+1 }}</th>{% endfor %}
+                                        {% for j in range(paso.num_slack) %}<th>s{{ j+1 }}</th>{% endfor %}
+                                        {% if paso.num_art is defined and paso.num_art > 0 %}
+                                            {% for j in range(paso.num_art) %}<th class="col-art">a{{ j+1 }}</th>{% endfor %}
+                                        {% endif %}
+                                        <th>RHS</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in range(paso.tabla | length) %}
+                                {% set fila = paso.tabla[i] %}
+                                <tr>
+                                    {% if i < paso.tabla | length - 1 %}
+                                        <td class="col-base">{{ paso.var_basicas[i] }}</td>
+                                    {% else %}
+                                        <td class="col-base">{{ 'W' if 'Fase 1' in fase_actual else 'Z' }}</td>
+                                    {% endif %}
+                                    {% for val in fila %}
+                                        {% if loop.last %}
+                                            <td class="col-rhs">{{ "%.4f"|format(val) }}</td>
+                                        {% else %}
+                                            <td>{{ "%.4f"|format(val) }}</td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if paso.es_no_acotado is defined and paso.es_no_acotado %}
+                        <div class="no-acotado">⚠ Solución no acotada: todos los cocientes son ∞ en la columna pivote.</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {% if dual_info %}
+    <div class="dual-section">
+        <h2 class="section-title">📊 Resumen de Dualidad</h2>
+        <div class="dual-results-container">
+            <div class="dual-card">
+                <h3>🔹 Resultados Primal</h3>
+                {% if dual_info.primal_sol is not none %}
+                    <div class="sol-grid">
+                        {% for i in range(dual_info.primal_sol | length) %}
+                            <div class="sol-var">x{{ i+1 }} = {{ dual_info.primal_sol[i] | round(4) }}</div>
+                        {% endfor %}
+                    </div>
+                    <span class="badge-z">Z* = {{ dual_info.primal_z | round(4) }}</span>
+                {% else %}
+                    <p style="color:var(--muted);">No se encontró solución óptima para el Primal.</p>
+                {% endif %}
+            </div>
+            <div class="dual-card">
+                <h3>🔸 Resultados Dual</h3>
+                {% if dual_info.dual_sol is not none %}
+                    <div class="sol-grid">
+                        {% for i in range(dual_info.dual_sol | length) %}
+                            <div class="sol-var">y{{ i+1 }} = {{ dual_info.dual_sol[i] | round(4) }}</div>
+                        {% endfor %}
+                    </div>
+                    <span class="badge-z">W* = {{ dual_info.dual_z | round(4) }}</span>
+                {% else %}
+                    <p style="color:var(--muted);">No se encontró solución óptima para el Dual.</p>
+                {% endif %}
+            </div>
+            <div class="dual-card full-width">
+                <h3>⚖ Teorema de Dualidad Fuerte</h3>
+                {% if dual_info.primal_z is not none and dual_info.dual_z is not none %}
+                    <span class="teorema-badge {{ 'teorema-ok' if dual_info.z_igual_w else 'teorema-fail' }}">
+                        {{ '✓ Z* = W* = ' ~ (dual_info.primal_z | round(4)) if dual_info.z_igual_w else '✗ Z* (' ~ (dual_info.primal_z | round(4)) ~ ') ≠ W* (' ~ (dual_info.dual_z | round(4)) ~ ')' }}
+                    </span>
+                {% else %}
+                    <span class="teorema-badge teorema-fail">✗ No se pueden comparar resultados</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if solucion is not none and valor_optimo is not none %}
+        <div class="solution-card">
+            <h2>✓ Solución Óptima</h2>
+            <div class="sol-grid">
+                {% for i in range(solucion | length) %}
+                    <div class="sol-var">
+                        x{{ i+1 }} = {{ "%.4f"|format(solucion[i]) }}
+                        {% if solucion[i] == 0 %}<span style="color:var(--muted);font-size:0.8rem;"> (no básica)</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="sol-z">Z* = {{ "%.4f"|format(valor_optimo) }}</div>
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>
