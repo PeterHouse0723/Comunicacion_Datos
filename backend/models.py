@@ -663,7 +663,7 @@ class ActividadApoyo(db.Model):
 
     def esta_vencida(self):
         dt = self.deadline_dt()
-        return dt is not None and datetime.utcnow() > dt
+        return dt is not None and datetime.now() > dt
 
     def __repr__(self):
         return f'<ActividadApoyo {self.titulo}>'

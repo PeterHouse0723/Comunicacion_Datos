@@ -85,7 +85,7 @@
         <div class="actividad-card">
             <div class="actividad-card-header">
                 <h3><i class="fas fa-hands-helping"></i> {{ act.titulo }}</h3>
-                <div style="display:flex;gap:8px;align-items:center;">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     {% if act.fecha_vencimiento %}
                         <span class="badge-vence {% if act.esta_vencida() %}badge-vencida{% endif %}">
                             <i class="fas fa-calendar"></i>
@@ -94,6 +94,16 @@
                         </span>
                     {% endif %}
                     <span style="font-size:12px;opacity:.8;">{{ act.asignaciones|length }} estudiante(s)</span>
+                    {% if not act.esta_vencida() %}
+                    <div style="display:flex;gap:4px;margin-left:auto;">
+                        <button class="btn-accion" style="background:#0d6efd;color:#fff;font-size:11px;" onclick="abrirModalEditar({{ act.id }}, '{{ act.titulo }}', '{{ act.descripcion or '' }}', '{{ act.fecha_vencimiento.strftime('%Y-%m-%d') if act.fecha_vencimiento else '' }}', '{{ act.hora_cierre.strftime('%H:%M') if act.hora_cierre else '' }}', {{ act.asignaciones|length }})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-accion" style="background:#dc2626;color:#fff;font-size:11px;" onclick="eliminarActividad({{ act.id }})">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% if act.descripcion %}
@@ -245,9 +255,54 @@
     </div>
 </div>
 
+<!-- Modal: Editar actividad -->
+<div class="modal-overlay" id="modalEditar">
+    <div class="modal-box">
+        <button class="modal-close" onclick="cerrarModalEditar()">&times;</button>
+        <h2><i class="fas fa-edit"></i> Editar actividad de apoyo</h2>
+        <div class="form-group">
+            <label>Título *</label>
+            <input type="text" id="inputEditarTitulo" placeholder="Ej: Taller de recuperación álgebra">
+        </div>
+        <div class="form-group">
+            <label>Descripción / instrucciones</label>
+            <textarea id="inputEditarDescripcion" placeholder="Describe qué debe hacer el estudiante..."></textarea>
+        </div>
+        <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+                <label>Fecha límite</label>
+                <input type="date" id="inputEditarFecha">
+            </div>
+            <div>
+                <label>Hora de cierre</label>
+                <input type="time" id="inputEditarHora" placeholder="23:59">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Estudiantes *</label>
+            <input type="text" id="buscarEstudianteEditar" placeholder="Buscar por nombre, apellido o correo..." oninput="filtrarEstudiantesEditar()" style="margin-bottom:6px;">
+            <span class="seleccionar-todos" onclick="seleccionarTodosEditar()">Seleccionar todos los visibles</span>
+            <div class="estudiantes-check" id="listaEstudiantesEditar">
+                {% for est in estudiantes %}
+                <label class="est-item-editar"
+                       data-nombre="{{ est.nombre | lower }} {{ est.apellido | lower }}"
+                       data-correo="{{ est.email | lower }}"
+                       data-id="{{ est.id }}">
+                    <input type="checkbox" class="check-est-editar" value="{{ est.id }}">
+                    {{ est.nombre }} {{ est.apellido }}
+                    <span style="color:#aaa;font-size:11px;margin-left:4px;">{{ est.email }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="errorEditar" style="color:red;font-size:13px;margin-bottom:8px;display:none;"></div>
+        <button class="btn-submit" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
+</div>
+
 <script>
 const CURSO_ID = {{ curso.id }};
-let _actividadId = null, _estudianteId = null, _asignacionId = null;
+let _actividadId = null, _estudianteId = null, _asignacionId = null, _actividadEditId = null;
 
 function abrirModalNueva() {
     document.getElementById('inputTitulo').value = '';
@@ -364,6 +419,79 @@ function confirmarReemplazo() {
     })
     .then(r => r.json())
     .then(d => { if (d.success) location.reload(); else { errEl.textContent = d.error; errEl.style.display = 'block'; } });
+}
+
+function abrirModalEditar(actividadId, titulo, descripcion, fecha, hora, cantEstudiantes) {
+    _actividadEditId = actividadId;
+    document.getElementById('inputEditarTitulo').value = titulo;
+    document.getElementById('inputEditarDescripcion').value = descripcion;
+    document.getElementById('inputEditarFecha').value = fecha;
+    document.getElementById('inputEditarHora').value = hora;
+    document.querySelectorAll('.check-est-editar').forEach(c => c.checked = false);
+    
+    // Marcar los estudiantes actuales como seleccionados (basado en lo que se pueda detectar)
+    // Por ahora, dejamos vacío y el usuario puede seleccionar nuevamente
+    
+    document.getElementById('errorEditar').style.display = 'none';
+    document.getElementById('modalEditar').classList.add('active');
+}
+
+function cerrarModalEditar() { 
+    document.getElementById('modalEditar').classList.remove('active'); 
+}
+
+function filtrarEstudiantesEditar() {
+    const q = document.getElementById('buscarEstudianteEditar').value.toLowerCase().trim();
+    document.querySelectorAll('.est-item-editar').forEach(item => {
+        const match = !q || item.dataset.nombre.includes(q) || item.dataset.correo.includes(q);
+        item.style.display = match ? '' : 'none';
+    });
+}
+
+function seleccionarTodosEditar() {
+    const visibles = Array.from(document.querySelectorAll('.est-item-editar')).filter(i => i.style.display !== 'none');
+    const checks = visibles.map(i => i.querySelector('.check-est-editar'));
+    const allChecked = checks.every(c => c.checked);
+    checks.forEach(c => c.checked = !allChecked);
+}
+
+function guardarEdicion() {
+    const titulo = document.getElementById('inputEditarTitulo').value.trim();
+    const descripcion = document.getElementById('inputEditarDescripcion').value.trim();
+    const fecha = document.getElementById('inputEditarFecha').value;
+    const hora = document.getElementById('inputEditarHora').value;
+    const ids = Array.from(document.querySelectorAll('.check-est-editar:checked')).map(c => parseInt(c.value));
+    const errEl = document.getElementById('errorEditar');
+
+    if (!titulo) { errEl.textContent = 'El título es obligatorio.'; errEl.style.display = 'block'; return; }
+    if (!ids.length) { errEl.textContent = 'Selecciona al menos un estudiante.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/${_actividadEditId}/editar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ titulo, descripcion, fecha_vencimiento: fecha, hora_cierre: hora, estudiante_ids: ids })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { errEl.textContent = d.error; errEl.style.display = 'block'; }
+    });
+}
+
+function eliminarActividad(actividadId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta actividad de apoyo? Esta acción no se puede deshacer.')) return;
+    
+    fetch(`/dashboard/docente/cursos/${CURSO_ID}/apoyo/${actividadId}/eliminar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { alert('Error: ' + d.error); }
+    });
 }
 </script>
 {% include 'components/chatbot.html' %}
