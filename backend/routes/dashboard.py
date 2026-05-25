@@ -110,6 +110,53 @@ def alertas_docente():
     )
 
 
+@dashboard_bp.route('/api/diagnostico-bienestar')
+@login_required
+def diagnostico_bienestar_docente():
+    """Diagnóstico del sistema de alertas de bienestar (accesible a cualquier rol autenticado)."""
+    usuario_id = session.get('usuario_id')
+    role = session.get('role', '')
+    info = {'sesion': {'usuario_id': usuario_id, 'role': role}, 'pasos': []}
+
+    # Columnas de la tabla
+    try:
+        from sqlalchemy import inspect as sa_inspect
+        cols = [c['name'] for c in sa_inspect(db.engine).get_columns('alertas_bienestar')]
+        info['pasos'].append({'paso': 'columnas', 'columnas': cols, 'tiene_extracto': 'extracto' in cols})
+    except Exception as e:
+        info['pasos'].append({'paso': 'columnas', 'error': str(e)})
+
+    # Total de alertas en BD
+    try:
+        from models import AlertaBienestar as AB
+        total = AB.query.count()
+        ultimas = AB.query.order_by(AB.fecha.desc()).limit(10).all()
+        info['pasos'].append({
+            'paso': 'alertas_bd',
+            'total': total,
+            'ultimas': [{'id': a.id, 'est': a.estudiante_id, 'curso': a.curso_id,
+                         'nivel': a.nivel_urgencia, 'tipo': a.tipo,
+                         'revisada': a.revisada, 'fecha': str(a.fecha)} for a in ultimas],
+        })
+    except Exception as e:
+        info['pasos'].append({'paso': 'alertas_bd', 'error': str(e)})
+
+    # Cursos del docente (si es docente)
+    if role == 'docente':
+        usuario = Usuario.query.get(usuario_id)
+        materias = _obtener_cursos_docente(usuario)
+        curso_ids = [m.id for m in materias]
+        info['pasos'].append({'paso': 'cursos_docente', 'curso_ids': curso_ids})
+        try:
+            from models import AlertaBienestar as AB
+            alertas_visibles = AB.query.filter(AB.curso_id.in_(curso_ids)).count() if curso_ids else 0
+            info['pasos'].append({'paso': 'alertas_visibles_docente', 'count': alertas_visibles})
+        except Exception as e:
+            info['pasos'].append({'paso': 'alertas_visibles_docente', 'error': str(e)})
+
+    return jsonify(info)
+
+
 @dashboard_bp.route('/api/alertas-bienestar-count')
 @login_required
 def alertas_bienestar_count():

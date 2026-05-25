@@ -129,7 +129,7 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str,
     from datetime import timedelta
 
     extracto = _formatear_extracto(historial or [])
-    reciente = datetime.utcnow() - timedelta(hours=6)
+    reciente = datetime.utcnow() - timedelta(hours=1)
     inscripciones = EstudianteCurso.query.filter_by(estudiante_id=estudiante_id).all()
     cursos_activos = [i for i in inscripciones if i.curso and i.curso.activo]
 
@@ -154,7 +154,19 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str,
             nuevas.append(alerta)
 
     if nuevas:
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as commit_err:
+            # Si falla por columna extracto faltante, reintenta sin extracto
+            db.session.rollback()
+            err_str = str(commit_err).lower()
+            if 'extracto' in err_str or 'column' in err_str:
+                for alerta in nuevas:
+                    alerta.extracto = None
+                    db.session.add(alerta)
+                db.session.commit()
+            else:
+                raise
 
     return len(nuevas)
 
