@@ -1165,6 +1165,15 @@ RECURSOS_ACADEMICOS = [
         'banner': 'teal',
         'url_name': 'pro_lineal.cpm',
     },
+    {
+        'id': 'glosario-io',
+        'nombre': 'Glosario de Investigación de Operaciones',
+        'descripcion': 'Definiciones y ejemplos de 24 términos clave: Programación Lineal, Método Simplex, Dualidad y CPM. Búsqueda y filtro por categoría.',
+        'categoria': 'Referencia',
+        'icono': 'fa-book-open',
+        'banner': 'violet',
+        'url_name': 'pro_lineal.glosario',
+    },
 ]
 
 
@@ -1198,4 +1207,11 @@ def recursos():
 def cpm():
     curso_id = request.args.get('curso_id', type=int)
     return render_template('pro_lineal/cpm.html', curso_id=curso_id)
+
+
+@pro_lineal_bp.route('/glosario')
+@login_required
+def glosario():
+    curso_id = request.args.get('curso_id', type=int)
+    return render_template('pro_lineal/glosario.html', curso_id=curso_id)
 

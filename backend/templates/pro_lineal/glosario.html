@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glosario de Investigación de Operaciones | Operativa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: #f4f7fb;
+            color: #102030;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at top, #ffffff 0%, #f4f7fb 45%, #eaf1f7 100%);
+        }
+
+        .solver-nav {
+            background: #1e3a8a;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .solver-nav a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: color 0.2s;
+        }
+        .solver-nav a:hover { color: #fff; }
+        .solver-nav .sep { color: rgba(255,255,255,0.35); }
+        .solver-nav .current { color: #fff; font-weight: 700; font-size: 0.85rem; }
+
+        .page-container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.25rem;
+            color: #0f3d91;
+            background-color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #d8e1ea;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+        .subtitle {
+            color: #5f6b7a;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        /* ── Toolbar ── */
+        .glos-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        .glos-search-wrap {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1.5px solid #d3dce7;
+            border-radius: 10px;
+            overflow: hidden;
+            flex: 1;
+            min-width: 220px;
+        }
+        .glos-search-wrap i { padding: 0 0.75rem; color: #8fa1b3; font-size: 0.9rem; }
+        .glos-search-wrap input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
+            padding: 0.6rem 0.5rem 0.6rem 0;
+            color: #102030;
+            background: transparent;
+        }
+        .glos-count {
+            font-size: 0.82rem;
+            color: #8fa1b3;
+            white-space: nowrap;
+            padding: 0 0.75rem;
+        }
+
+        /* ── Category tabs ── */
+        .cat-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .cat-tab {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            border: 1.5px solid #d3dce7;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #f4f7fb;
+            color: #5f6b7a;
+            transition: all 0.18s;
+            user-select: none;
+        }
+        .cat-tab.active, .cat-tab:hover {
+            background: #1e3a8a;
+            border-color: #1e3a8a;
+            color: #fff;
+        }
+
+        /* ── Grid ── */
+        .glos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* ── Term card ── */
+        .term-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.05);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .term-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(15,23,42,0.09);
+        }
+
+        .term-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1rem 0.75rem;
+            cursor: pointer;
+            gap: 0.75rem;
+        }
+        .term-header-left { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+        .term-icon {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .term-name {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0f2744;
+            line-height: 1.3;
+        }
+        .term-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 20px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .term-arrow {
+            font-size: 0.7rem;
+            color: #b0bec5;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+        .term-card.open .term-arrow { transform: rotate(180deg); }
+
+        .term-body {
+            display: none;
+            padding: 0 1rem 1rem;
+            border-top: 1px solid #f0f4f8;
+        }
+        .term-card.open .term-body { display: block; }
+
+        .term-def {
+            font-size: 0.85rem;
+            color: #334155;
+            line-height: 1.65;
+            margin-bottom: 0.75rem;
+            padding-top: 0.75rem;
+        }
+        .term-example {
+            background: #f8fafc;
+            border-left: 3px solid #4a6cf7;
+            border-radius: 0 8px 8px 0;
+            padding: 0.65rem 0.85rem;
+        }
+        .term-example-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #4a6cf7;
+            margin-bottom: 0.3rem;
+        }
+        .term-example-body {
+            font-size: 0.82rem;
+            color: #475569;
+            line-height: 1.55;
+        }
+        .term-example-body code {
+            background: #eff2ff;
+            color: #3730a3;
+            border-radius: 4px;
+            padding: 0.05em 0.35em;
+            font-size: 0.85em;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ── Category color themes ── */
+        .cat-pl   .term-icon { background: #eff2ff; color: #4338ca; }
+        .cat-pl   .term-badge { background: #eff2ff; color: #4338ca; }
+        .cat-pl   .term-header { border-left: 3px solid #4338ca; }
+
+        .cat-simplex .term-icon { background: #ecfdf5; color: #059669; }
+        .cat-simplex .term-badge { background: #ecfdf5; color: #059669; }
+        .cat-simplex .term-header { border-left: 3px solid #059669; }
+
+        .cat-dual .term-icon { background: #fff7ed; color: #d97706; }
+        .cat-dual .term-badge { background: #fff7ed; color: #d97706; }
+        .cat-dual .term-header { border-left: 3px solid #d97706; }
+
+        .cat-cpm  .term-icon { background: #fef2f2; color: #dc2626; }
+        .cat-cpm  .term-badge { background: #fef2f2; color: #dc2626; }
+        .cat-cpm  .term-header { border-left: 3px solid #dc2626; }
+
+        /* ── Empty state ── */
+        .glos-empty {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: #94a3b8;
+            display: none;
+        }
+        .glos-empty i { font-size: 3rem; margin-bottom: 1rem; display: block; }
+        .glos-empty p { font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+
+    <nav class="solver-nav">
+        {% if curso_id %}
+        <a href="{{ url_for('pro_lineal.recursos', curso_id=curso_id) }}">
+            <i class="fas fa-arrow-left"></i> Recursos
+        </a>
+        {% else %}
+        <a href="{{ url_for('pro_lineal.recursos') }}">
+            <i class="fas fa-arrow-left"></i> Recursos
+        </a>
+        {% endif %}
+        <span class="sep">›</span>
+        <span class="current">Glosario de Investigación de Operaciones</span>
+    </nav>
+
+    <div class="page-container">
+        <h1><i class="fas fa-book-open" style="margin-right:0.5rem;"></i>Glosario de Investigación de Operaciones</h1>
+        <p class="subtitle">Definiciones y ejemplos de los conceptos clave del curso · haz clic en un término para expandirlo</p>
+
+        <div class="glos-toolbar">
+            <div class="glos-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar término..." oninput="filtrar()">
+                <span class="glos-count" id="countLabel">24 términos</span>
+            </div>
+        </div>
+
+        <div class="cat-tabs">
+            <div class="cat-tab active" onclick="setCategoria('all', this)">Todos</div>
+            <div class="cat-tab" onclick="setCategoria('pl', this)">Prog. Lineal</div>
+            <div class="cat-tab" onclick="setCategoria('simplex', this)">Método Simplex</div>
+            <div class="cat-tab" onclick="setCategoria('dual', this)">Dualidad</div>
+            <div class="cat-tab" onclick="setCategoria('cpm', this)">CPM / Redes</div>
+        </div>
+
+        <div class="glos-grid" id="glosGrid">
+
+            <!-- ══ PROGRAMACIÓN LINEAL ══ -->
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="función objetivo">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-bullseye"></i></div>
+                        <div class="term-name">Función objetivo</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Expresión matemática lineal que se desea maximizar o minimizar. Representa la meta del problema
+                        (ganancia, costo, tiempo, etc.) en función de las variables de decisión.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Maximizar la ganancia de una fábrica que produce dos productos A y B:<br>
+                            <code>Z = 3x₁ + 5x₂</code><br>
+                            donde x₁ = unidades de A y x₂ = unidades de B.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="variable de decisión">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-sliders-h"></i></div>
+                        <div class="term-name">Variable de decisión</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Incógnita cuyo valor óptimo buscamos determinar. Representa la cantidad de cada recurso
+                        o producto que debemos elegir para alcanzar el objetivo.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            <code>x₁</code> = horas asignadas al producto A<br>
+                            <code>x₂</code> = horas asignadas al producto B<br>
+                            Ambas deben ser ≥ 0 (no negatividad).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="restricción">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-lock"></i></div>
+                        <div class="term-name">Restricción</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Desigualdad o igualdad lineal que limita los valores posibles de las variables de decisión.
+                        Puede representar límites de recursos, demanda, capacidad, etc.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Capacidad de la máquina: <code>2x₁ + x₂ ≤ 10</code><br>
+                            Demanda mínima: <code>x₂ ≥ 2</code><br>
+                            En la calculadora se escribe: <code>2 1 &lt;= 10</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="región factible">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-draw-polygon"></i></div>
+                        <div class="term-name">Región factible</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Conjunto de todos los puntos (combinaciones de variables) que satisfacen simultáneamente
+                        todas las restricciones y condiciones de no negatividad. La solución óptima siempre
+                        se encuentra en un vértice (punto extremo) de esta región.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si las restricciones forman un polígono convexo, la región factible es el interior
+                            de ese polígono. El método gráfico la dibuja visualmente para problemas con 2 variables.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="solución óptima">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-star"></i></div>
+                        <div class="term-name">Solución óptima</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Punto de la región factible que maximiza o minimiza la función objetivo. En un problema
+                        lineal, la solución óptima siempre ocurre en un vértice del polígono factible
+                        (Teorema Fundamental de PL).
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Para <code>Max Z = 3x₁ + 5x₂</code> con región factible de 4 vértices,
+                            se evalúa Z en cada vértice y se elige el que da el mayor valor: <code>Z* = 36</code> en <code>(2, 6)</code>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-pl" data-cat="pl" data-term="no negatividad">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-greater-than-equal"></i></div>
+                        <div class="term-name">Condición de no negatividad</div>
+                    </div>
+                    <span class="term-badge">Prog. Lineal</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Restricción implícita que exige que todas las variables de decisión sean mayores o iguales
+                        a cero. Refleja que no tiene sentido producir cantidades negativas de un bien.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            En todo modelo de PL se añade: <code>x₁ ≥ 0, x₂ ≥ 0</code>.
+                            La calculadora las aplica automáticamente al trazar la región factible.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ MÉTODO SIMPLEX ══ -->
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="variable de holgura slack">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-plus-circle"></i></div>
+                        <div class="term-name">Variable de holgura (slack)</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Variable no negativa que se agrega para convertir una restricción ≤ en igualdad.
+                        Representa el "sobrante" del recurso disponible que no se usa en la solución actual.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            <code>2x₁ + x₂ ≤ 10</code> se convierte en <code>2x₁ + x₂ + s₁ = 10</code>.<br>
+                            Si <code>x₁=2, x₂=4</code> → <code>s₁ = 10 - 8 = 2</code> (quedan 2 horas libres).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="variable artificial">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-robot"></i></div>
+                        <div class="term-name">Variable artificial</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Variable auxiliar que se agrega en restricciones ≥ o = para obtener una solución básica
+                        inicial. No tiene significado físico; el método las fuerza a cero (usando Big-M o Dos Fases).
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            <code>x₁ + x₂ ≥ 4</code> → <code>x₁ + x₂ - e₁ + a₁ = 4</code>.<br>
+                            <code>a₁</code> es artificial. En Dos Fases se minimiza la suma de artificiales para hallar una solución factible.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="pivote elemento pivote">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-crosshairs"></i></div>
+                        <div class="term-name">Pivote (elemento pivote)</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Elemento de la tabla simplex seleccionado para realizar el cambio de base. La columna
+                        pivote indica la variable que entra a la base; la fila pivote indica la variable que sale.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Se elige la columna con el coeficiente más negativo en la fila Z (criterio de entrada).
+                            Se elige la fila con la menor razón positiva b/aᵢⱼ (criterio de salida / razón mínima).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="solución básica factible degenerada">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="term-name">Solución degenerada</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Solución básica factible donde al menos una variable básica tiene valor cero. Puede
+                        causar ciclado (repetición sin avance) en el simplex, aunque en la práctica es infrecuente.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Ocurre cuando la razón mínima es un empate entre dos filas: ambas candidatas tienen
+                            b/aᵢⱼ = 0. La variable que entra a la base toma valor 0.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="método dos fases fase 1 fase 2">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-layer-group"></i></div>
+                        <div class="term-name">Método Dos Fases</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Variante del simplex para problemas sin solución básica factible evidente.
+                        Fase 1: minimizar la suma de variables artificiales para encontrar un punto de partida.
+                        Fase 2: optimizar la función objetivo original desde ese punto.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si todas las restricciones son ≥, no hay variables de holgura para iniciar.
+                            Se añaden artificiales, se resuelve Fase 1 (Min Σaᵢ = 0), y si se logra,
+                            se continúa con Fase 2 usando la función objetivo real.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-simplex" data-cat="simplex" data-term="variable de exceso">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-minus-circle"></i></div>
+                        <div class="term-name">Variable de exceso</div>
+                    </div>
+                    <span class="term-badge">Simplex</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Variable no negativa que se resta para convertir una restricción ≥ en igualdad.
+                        Representa el excedente por encima del mínimo requerido.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            <code>x₁ + x₂ ≥ 4</code> → <code>x₁ + x₂ - e₁ = 4</code>.<br>
+                            Si <code>x₁=3, x₂=3</code> → <code>e₁ = 6 - 4 = 2</code> (se produce 2 unidades extra).
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ DUALIDAD ══ -->
+
+            <div class="term-card cat-dual" data-cat="dual" data-term="problema primal dual">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-exchange-alt"></i></div>
+                        <div class="term-name">Problema primal y dual</div>
+                    </div>
+                    <span class="term-badge">Dualidad</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Todo problema de PL (primal) tiene asociado un problema simétrico (dual). Si el primal
+                        maximiza, el dual minimiza, y viceversa. Sus soluciones óptimas tienen el mismo valor
+                        de función objetivo (Teorema de Dualidad Fuerte).
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Primal Max: <code>Z = 3x₁+5x₂</code> s.a. <code>x₁+2x₂≤12, 2x₁+x₂≤10</code><br>
+                            Dual Min: <code>W = 12y₁+10y₂</code> s.a. <code>y₁+2y₂≥3, 2y₁+y₂≥5</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-dual" data-cat="dual" data-term="precio sombra precio dual">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-tag"></i></div>
+                        <div class="term-name">Precio sombra (precio dual)</div>
+                    </div>
+                    <span class="term-badge">Dualidad</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Valor de la variable dual óptima yᵢ*. Indica cuánto mejoraría la función objetivo
+                        si se incrementara en una unidad el lado derecho de la restricción i. Es la "tasa de cambio"
+                        del óptimo respecto al recurso.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si <code>y₁* = 1</code> para la restricción de horas de máquina, agregar 1 hora extra
+                            aumenta la ganancia óptima en $1. Si el precio sombra es 0, el recurso no es cuello de botella.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-dual" data-cat="dual" data-term="holgura complementaria">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-handshake"></i></div>
+                        <div class="term-name">Holgura complementaria</div>
+                    </div>
+                    <span class="term-badge">Dualidad</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Condición de optimalidad: si una restricción del primal tiene holgura positiva (no está activa),
+                        la variable dual correspondiente es cero, y viceversa. Permite verificar si una solución es óptima.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si <code>s₁ = 2 > 0</code> (recurso sobrante), entonces <code>y₁* = 0</code> (ese recurso no tiene valor adicional).
+                            Si la restricción está activa (<code>s₁=0</code>), el precio sombra puede ser positivo.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-dual" data-cat="dual" data-term="análisis sensibilidad">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="term-name">Análisis de sensibilidad</div>
+                    </div>
+                    <span class="term-badge">Dualidad</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Estudio de cómo cambia la solución óptima cuando varían los coeficientes de la función
+                        objetivo o los lados derechos de las restricciones. Determina rangos dentro de los cuales
+                        la base óptima permanece sin cambiar.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si el precio del producto A varía entre $2 y $6, la misma solución sigue siendo óptima.
+                            Fuera de ese rango, la base óptima cambia y hay que resolver nuevamente.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ CPM / REDES ══ -->
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="ruta crítica camino crítico">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-route"></i></div>
+                        <div class="term-name">Ruta crítica</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Secuencia de actividades de inicio a fin con holgura total igual a cero. Es la trayectoria
+                        más larga del proyecto y determina su duración mínima. Cualquier retraso en una actividad
+                        crítica retrasa la fecha de terminación del proyecto.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            En un proyecto de 38 días: A→B→D→F→G→I (5+8+6+7+9+3=38d) es crítica.
+                            La actividad H (5d) tiene holgura 4d y no es crítica.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="ES early start inicio temprano">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-play-circle"></i></div>
+                        <div class="term-name">ES — Early Start (Inicio más temprano)</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Tiempo más temprano en que puede iniciar una actividad, dado que todos sus predecesores
+                        han terminado lo antes posible. Se calcula en el paso hacia adelante (forward pass).
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si B depende de A y C: <code>ES(B) = max(EF(A), EF(C)) = max(5, 8) = 8</code>.<br>
+                            B no puede iniciar hasta que ambos predecesores terminen.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="EF early finish fin temprano">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-stop-circle"></i></div>
+                        <div class="term-name">EF — Early Finish (Fin más temprano)</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Tiempo más temprano en que puede terminar una actividad si inicia en su ES.
+                        Se calcula sumando la duración al inicio más temprano.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Actividad D con duración 6, ES=8: <code>EF(D) = ES + dur = 8 + 6 = 14</code>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="LS late start inicio tardío">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-history"></i></div>
+                        <div class="term-name">LS — Late Start (Inicio más tardío)</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Tiempo más tardío en que puede iniciar una actividad sin retrasar la fecha de terminación
+                        del proyecto. Se calcula en el paso hacia atrás (backward pass).
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            <code>LS = LF − Duración</code>.<br>
+                            Si LF(D) = 19 y dur = 6: <code>LS(D) = 19 - 6 = 13</code>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="LF late finish fin tardío">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-clock"></i></div>
+                        <div class="term-name">LF — Late Finish (Fin más tardío)</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Tiempo más tardío en que puede terminar una actividad sin afectar el proyecto.
+                        Se calcula como el mínimo de los LS de sus sucesores.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Si F tiene dos sucesores G y H: <code>LF(F) = min(LS(G), LS(H)) = min(26, 30) = 26</code>.
+                            Se escoge el sucesor más urgente.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="holgura total slack float">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="term-name">Holgura total (float)</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Tiempo que puede retrasarse el inicio de una actividad sin demorar la fecha de finalización
+                        del proyecto. Holgura = LS − ES = LF − EF. Si es 0, la actividad es crítica.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            Actividad H: ES=26, LS=30 → <code>Holgura = 30−26 = 4 días</code>.<br>
+                            H puede iniciar hasta 4 días después sin afectar la entrega.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="term-card cat-cpm" data-cat="cpm" data-term="diagrama gantt">
+                <div class="term-header" onclick="toggleCard(this)">
+                    <div class="term-header-left">
+                        <div class="term-icon"><i class="fas fa-bars"></i></div>
+                        <div class="term-name">Diagrama de Gantt</div>
+                    </div>
+                    <span class="term-badge">CPM</span>
+                    <i class="fas fa-chevron-down term-arrow"></i>
+                </div>
+                <div class="term-body">
+                    <div class="term-def">
+                        Representación gráfica de barras horizontales que muestra el calendario de actividades
+                        de un proyecto a lo largo del tiempo. Las barras rojas indican actividades críticas;
+                        las verdes muestran actividades con holgura y su margen disponible.
+                    </div>
+                    <div class="term-example">
+                        <div class="term-example-label">Ejemplo</div>
+                        <div class="term-example-body">
+                            En el Gantt del Solucionador CPM, la barra de H muestra su duración real (verde)
+                            más una línea punteada que indica los 4 días de margen disponible.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end glos-grid -->
+
+        <div class="glos-empty" id="glosEmpty">
+            <i class="fas fa-search"></i>
+            <p>No se encontraron términos para tu búsqueda.</p>
+        </div>
+
+    </div><!-- end page-container -->
+
+<script>
+let catActiva = 'all';
+
+const TOTAL = document.querySelectorAll('.term-card').length;
+document.getElementById('countLabel').textContent = TOTAL + ' términos';
+
+function toggleCard(header) {
+    const card = header.closest('.term-card');
+    card.classList.toggle('open');
+}
+
+function filtrar() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('.term-card').forEach(card => {
+        const term = card.dataset.term || '';
+        const cat  = card.dataset.cat  || '';
+        const matchCat  = catActiva === 'all' || cat === catActiva;
+        const matchText = !q || term.includes(q) ||
+                          card.querySelector('.term-name').textContent.toLowerCase().includes(q) ||
+                          card.querySelector('.term-def').textContent.toLowerCase().includes(q);
+        const show = matchCat && matchText;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('countLabel').textContent = visible + ' término' + (visible !== 1 ? 's' : '');
+    document.getElementById('glosEmpty').style.display = visible === 0 ? 'block' : 'none';
+}
+
+function setCategoria(cat, btn) {
+    catActiva = cat;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    filtrar();
+}
+</script>
+
+</body>
+</html>

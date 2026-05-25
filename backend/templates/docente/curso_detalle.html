@@ -52,6 +52,13 @@
                 <h3>Apoyo académico</h3>
                 <p>Crear actividades de refuerzo para estudiantes específicos</p>
             </a>
+            {% if 'operativa' in curso.nombre | lower %}
+            <a class="course-action-card" href="{{ url_for('pro_lineal.recursos', curso_id=curso.id) }}">
+                <i class="fas fa-book-open"></i>
+                <h3>Recursos académicos</h3>
+                <p>Calculadora PL, Solucionador CPM y Glosario de Investigación de Operaciones</p>
+            </a>
+            {% endif %}
         </div>
 
         <!-- MODAL: Solicitar Nuevo Estudiante -->

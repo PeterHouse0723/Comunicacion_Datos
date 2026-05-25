@@ -70,10 +70,50 @@
 <body class="courses-page">
     <div class="dashboard-header">
         <div class="dashboard-title">
+            {% if session.get('role') == 'docente' %}
+            <i class="fas fa-chalkboard-user"></i> Panel de Docente
+            {% else %}
             <i class="fas fa-book"></i> Panel de Estudiante
+            {% endif %}
         </div>
         <div class="user-info">
             <span>Hola, <strong>{{ session.get('nombre', '') }}</strong></span>
+            {% if session.get('role') == 'docente' %}
+                {% if curso_id %}
+                <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso_id) }}">
+                    <i class="fas fa-arrow-left"></i> Volver al curso
+                </a>
+                {% else %}
+                <a href="{{ url_for('dashboard.docente') }}">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                {% endif %}
+            {% else %}
+                {% if curso_id %}
+                <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso_id) }}">
+                    <i class="fas fa-arrow-left"></i> Volver al curso
+                </a>
+                {% else %}
+                <a href="{{ url_for('dashboard.estudiante') }}">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <nav class="solver-nav">
+        {% if session.get('role') == 'docente' %}
+            {% if curso_id %}
+            <a href="{{ url_for('dashboard.curso_docente_detalle', curso_id=curso_id) }}">
+                <i class="fas fa-arrow-left"></i> Volver al curso
+            </a>
+            {% else %}
+            <a href="{{ url_for('dashboard.docente') }}">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            {% endif %}
+        {% else %}
             {% if curso_id %}
             <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso_id) }}">
                 <i class="fas fa-arrow-left"></i> Volver al curso
@@ -83,18 +123,6 @@
                 <i class="fas fa-arrow-left"></i> Dashboard
             </a>
             {% endif %}
-        </div>
-    </div>
-
-    <nav class="solver-nav">
-        {% if curso_id %}
-        <a href="{{ url_for('dashboard.curso_estudiante_detalle', curso_id=curso_id) }}">
-            <i class="fas fa-arrow-left"></i> Volver al curso
-        </a>
-        {% else %}
-        <a href="{{ url_for('dashboard.estudiante') }}">
-            <i class="fas fa-arrow-left"></i> Dashboard
-        </a>
         {% endif %}
         <span class="sep">›</span>
         <span class="current">Recursos Académicos</span>
