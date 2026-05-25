@@ -309,9 +309,10 @@
             </a>
 
             <a class="dashboard-card" href="{{ url_for('dashboard.alertas_docente') }}">
-                {% if alertas_bienestar_count > 0 %}
-                <span class="card-alert-badge">{{ alertas_bienestar_count }}</span>
-                {% endif %}
+                <span class="card-alert-badge" id="badgeBienestar"
+                      style="display:{{ 'flex' if alertas_bienestar_count > 0 else 'none' }}">
+                    {{ alertas_bienestar_count }}
+                </span>
                 <i class="fas fa-exclamation-triangle"></i>
                 <h3>Alertas de Riesgo</h3>
                 <p>Consulta qué estudiantes presentan bajo rendimiento o inasistencias.</p>
@@ -519,6 +520,23 @@
 
         setInterval(actualizarBadgeMensajesDocente, 30000);
         window.addEventListener('load', actualizarBadgeMensajesDocente);
+
+        // ── Badge alertas bienestar (polling cada 20 s) ──
+        function actualizarBadgeBienestar() {
+            fetch('/dashboard/api/alertas-bienestar-count')
+                .then(r => r.json())
+                .then(data => {
+                    const count = data.count || 0;
+                    const badge = document.getElementById('badgeBienestar');
+                    if (badge) {
+                        badge.textContent = count;
+                        badge.style.display = count > 0 ? 'flex' : 'none';
+                    }
+                })
+                .catch(() => {});
+        }
+        setInterval(actualizarBadgeBienestar, 20000);
+        window.addEventListener('load', actualizarBadgeBienestar);
     </script>
     {% include 'components/chatbot.html' %}
 </body>

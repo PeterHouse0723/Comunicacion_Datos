@@ -108,8 +108,7 @@
             <a class="course-tab is-active">Alertas</a>
         </div>
 
-        <!-- ══ ALERTAS DE BIENESTAR EMOCIONAL ══ -->
-        {% if alertas_bienestar %}
+        <!-- ══ ALERTAS DE BIENESTAR EMOCIONAL (dinámico, polling cada 15 s) ══ -->
         <div class="bienestar-section">
             <div class="bienestar-section-title">
                 <i class="fas fa-heart-pulse"></i>
@@ -117,77 +116,23 @@
                 <span style="font-size:0.8rem; font-weight:500; color:#64748b;">
                     — detectadas por el asistente virtual
                 </span>
+                <span id="bsBadgeNuevas" style="display:none; margin-left:auto;
+                    background:#e11d48; color:white; font-size:0.72rem; font-weight:700;
+                    padding:3px 10px; border-radius:20px; cursor:pointer;"
+                    onclick="cargarAlertas(true)">
+                    ● Nuevas alertas — clic para actualizar
+                </span>
+                <span id="bsActualizando" style="display:none; font-size:0.75rem; color:#94a3b8; margin-left:auto;">
+                    <i class="fas fa-circle-notch fa-spin"></i> Actualizando...
+                </span>
             </div>
-            {% for alerta in alertas_bienestar %}
-            {% set nivel_class = 'nivel-' + alerta.nivel_urgencia %}
-            {% set badge_class = 'badge-' + alerta.nivel_urgencia %}
-            {% set nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'} %}
-            {% set tipo_labels = {
-                'suicida':   'Riesgo de autolesión',
-                'depresion': 'Síntomas de depresión',
-                'ansiedad':  'Ansiedad severa',
-                'estres':    'Estrés extremo'
-            } %}
-            {% set nivel_icons = {'critico': 'fa-triangle-exclamation', 'alto': 'fa-circle-exclamation', 'medio': 'fa-circle-info'} %}
-            <div class="bienestar-card {{ nivel_class }}">
-                <div class="bienestar-icon">
-                    <i class="fas {{ nivel_icons.get(alerta.nivel_urgencia, 'fa-circle-info') }}"></i>
-                </div>
-                <div class="bienestar-body">
-                    <div class="bienestar-header">
-                        <span class="bienestar-nombre">
-                            {{ alerta.estudiante.nombre }} {{ alerta.estudiante.apellido }}
-                        </span>
-                        <span class="bienestar-badge {{ badge_class }}">
-                            {{ nivel_labels.get(alerta.nivel_urgencia, alerta.nivel_urgencia) }}
-                        </span>
-                        <span class="bienestar-tipo">
-                            {{ tipo_labels.get(alerta.tipo, alerta.tipo) }}
-                        </span>
-                    </div>
-                    <div class="bienestar-resumen">{{ alerta.resumen }}</div>
-                    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-                        <span class="bienestar-curso">
-                            <i class="fas fa-book"></i> {{ alerta.curso.nombre }}
-                        </span>
-                        <span class="bienestar-meta">
-                            <i class="fas fa-clock"></i>
-                            {{ alerta.fecha.strftime('%d/%m/%Y %H:%M') }}
-                        </span>
-                    </div>
-                    {% if alerta.extracto %}
-                    <button class="extracto-toggle" onclick="toggleExtracto(this)">
-                        <i class="fas fa-comments"></i> Ver conversación con el chatbot
-                        <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
-                    </button>
-                    <div class="extracto-box">
-                        {% for linea in alerta.extracto.split('\n') %}
-                        {% if linea.startswith('Estudiante:') %}
-                        <div class="extracto-line"><span class="who-est">{{ linea[:11] }}</span>{{ linea[11:] }}</div>
-                        {% elif linea.startswith('Sofia:') %}
-                        <div class="extracto-line"><span class="who-bot">{{ linea[:6] }}</span>{{ linea[6:] }}</div>
-                        {% elif linea %}
-                        <div class="extracto-line">{{ linea }}</div>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                    {% endif %}
+            <div id="bsContenedor">
+                <div class="bienestar-empty">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size:1.2rem; display:block; margin-bottom:8px; color:#94a3b8;"></i>
+                    Cargando alertas...
                 </div>
             </div>
-            {% endfor %}
         </div>
-        {% else %}
-        <div class="bienestar-section">
-            <div class="bienestar-section-title">
-                <i class="fas fa-heart-pulse"></i>
-                Alertas de Bienestar Emocional
-            </div>
-            <div class="bienestar-empty">
-                <i class="fas fa-check-circle" style="color:#22c55e; font-size:1.5rem; display:block; margin-bottom:8px;"></i>
-                No hay alertas de bienestar emocional recientes. ¡Todo tranquilo!
-            </div>
-        </div>
-        {% endif %}
 
         <div class="alerts-summary">
             <div class="summary-card danger">
@@ -248,20 +193,112 @@
     </div>
 
 <script>
+    const NIVEL_ICONS  = {critico:'fa-triangle-exclamation', alto:'fa-circle-exclamation', medio:'fa-circle-info'};
+    const NIVEL_LABELS = {critico:'CRÍTICO', alto:'ALTO', medio:'MEDIO'};
+
+    let _alertasActuales = [];
+    let _nuevasDisponibles = false;
+
+    function escHtml(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderExtracto(extracto) {
+        if (!extracto) return '';
+        const lineas = extracto.split('\n').map(l => {
+            if (l.startsWith('Estudiante:'))
+                return `<div class="extracto-line"><span class="who-est">Estudiante:</span>${escHtml(l.slice(11))}</div>`;
+            if (l.startsWith('Sofia:'))
+                return `<div class="extracto-line"><span class="who-bot">Sofia:</span>${escHtml(l.slice(6))}</div>`;
+            return l ? `<div class="extracto-line">${escHtml(l)}</div>` : '';
+        }).join('');
+        return `<button class="extracto-toggle" onclick="toggleExtracto(this)">
+                    <i class="fas fa-comments"></i> Ver conversación con el chatbot
+                    <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
+                </button>
+                <div class="extracto-box">${lineas}</div>`;
+    }
+
+    function renderAlertas(alertas) {
+        if (!alertas.length) {
+            return `<div class="bienestar-empty">
+                <i class="fas fa-check-circle" style="color:#22c55e;font-size:1.5rem;display:block;margin-bottom:8px;"></i>
+                No hay alertas de bienestar emocional recientes. ¡Todo tranquilo!
+            </div>`;
+        }
+        return alertas.map(a => `
+            <div class="bienestar-card nivel-${escHtml(a.nivel)}${a.revisada ? ' revisada' : ''}">
+                <div class="bienestar-icon">
+                    <i class="fas ${NIVEL_ICONS[a.nivel] || 'fa-circle-info'}"></i>
+                </div>
+                <div class="bienestar-body">
+                    <div class="bienestar-header">
+                        <span class="bienestar-nombre">${escHtml(a.estudiante)}</span>
+                        <span class="bienestar-badge badge-${escHtml(a.nivel)}">${escHtml(a.nivel_label)}</span>
+                        <span class="bienestar-tipo">${escHtml(a.tipo)}</span>
+                        ${a.revisada ? '<span style="font-size:0.72rem;color:#22c55e;font-weight:600;"><i class="fas fa-eye"></i> Revisada</span>' : ''}
+                    </div>
+                    <div class="bienestar-resumen">${escHtml(a.resumen)}</div>
+                    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                        <span class="bienestar-curso"><i class="fas fa-book"></i> ${escHtml(a.curso)}</span>
+                        <span class="bienestar-meta"><i class="fas fa-clock"></i> ${escHtml(a.fecha)}</span>
+                    </div>
+                    ${renderExtracto(a.extracto)}
+                </div>
+            </div>`).join('');
+    }
+
+    function cargarAlertas(forzar) {
+        document.getElementById('bsBadgeNuevas').style.display = 'none';
+        document.getElementById('bsActualizando').style.display = 'inline';
+        _nuevasDisponibles = false;
+
+        fetch('/dashboard/api/alertas-bienestar-recientes')
+            .then(r => r.json())
+            .then(data => {
+                const alertas = data.alertas || [];
+                _alertasActuales = alertas;
+                document.getElementById('bsContenedor').innerHTML = renderAlertas(alertas);
+                document.getElementById('bsActualizando').style.display = 'none';
+                // Marcar como revisadas tras ver
+                if (alertas.some(a => !a.revisada)) {
+                    fetch('/dashboard/api/alertas-bienestar-revisar', {method:'POST'});
+                }
+            })
+            .catch(() => {
+                document.getElementById('bsActualizando').style.display = 'none';
+            });
+    }
+
+    function pollAlertas() {
+        fetch('/dashboard/api/alertas-bienestar-count')
+            .then(r => r.json())
+            .then(data => {
+                const count = data.count || 0;
+                // Si hay nuevas no revisadas y no se está mostrando ya el aviso
+                if (count > 0 && !_nuevasDisponibles) {
+                    _nuevasDisponibles = true;
+                    document.getElementById('bsBadgeNuevas').style.display = 'inline-block';
+                    // Auto-recargar también
+                    cargarAlertas(true);
+                }
+            })
+            .catch(() => {});
+    }
+
     function toggleExtracto(btn) {
         const box = btn.nextElementSibling;
-        const icon = btn.querySelector('.fa-chevron-down, .fa-chevron-up');
         box.classList.toggle('visible');
-        if (box.classList.contains('visible')) {
-            btn.innerHTML = btn.innerHTML
-                .replace('Ver conversación con el chatbot', 'Ocultar conversación')
-                .replace('fa-chevron-down', 'fa-chevron-up');
-        } else {
-            btn.innerHTML = btn.innerHTML
-                .replace('Ocultar conversación', 'Ver conversación con el chatbot')
-                .replace('fa-chevron-up', 'fa-chevron-down');
-        }
+        const abriendo = box.classList.contains('visible');
+        btn.innerHTML = `<i class="fas fa-comments"></i> ${abriendo ? 'Ocultar conversación' : 'Ver conversación con el chatbot'}
+            <i class="fas fa-chevron-${abriendo ? 'up' : 'down'}" style="font-size:0.65rem;"></i>`;
     }
+
+    // Carga inicial inmediata, luego polling cada 15 s
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarAlertas(true);
+        setInterval(pollAlertas, 15000);
+    });
 </script>
 {% include 'components/chatbot.html' %}
 </body>
