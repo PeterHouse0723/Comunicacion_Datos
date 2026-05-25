@@ -99,14 +99,27 @@ def detectar(mensaje: str):
     return (None, None, None)
 
 
-def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str):
+def _formatear_extracto(historial: list) -> str:
+    """Convierte el historial de mensajes en un texto legible para el docente."""
+    if not historial:
+        return ''
+    lineas = []
+    for msg in historial[-10:]:  # últimos 10 turnos máximo
+        rol = 'Estudiante' if msg.get('role') == 'user' else 'Sofia'
+        lineas.append(f"{rol}: {msg.get('content', '').strip()}")
+    return '\n'.join(lineas)
+
+
+def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str,
+                 historial=None):
     """
-    Crea una AlertaBienestar para todos los cursos activos del estudiante
-    y notifica a cada docente. Idempotente: no crea duplicados en <6 horas.
+    Crea una AlertaBienestar para todos los cursos activos del estudiante.
+    Idempotente: no crea duplicados en <6 horas por el mismo tipo.
     """
     from models import AlertaBienestar, EstudianteCurso, db
     from datetime import timedelta
 
+    extracto = _formatear_extracto(historial or [])
     reciente = datetime.utcnow() - timedelta(hours=6)
     inscripciones = EstudianteCurso.query.filter_by(estudiante_id=estudiante_id).all()
     cursos_activos = [i for i in inscripciones if i.curso and i.curso.activo]
@@ -126,6 +139,7 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str):
                 tipo=tipo,
                 nivel_urgencia=nivel,
                 resumen=resumen,
+                extracto=extracto,
             )
             db.session.add(alerta)
             nuevas.append(alerta)

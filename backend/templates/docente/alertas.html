@@ -58,6 +58,30 @@
         .bienestar-resumen { font-size: 0.85rem; color: #475569; margin: 6px 0 4px; line-height: 1.5; }
         .bienestar-meta { font-size: 0.75rem; color: #94a3b8; }
         .bienestar-curso { font-size: 0.78rem; color: #4a6cf7; font-weight: 600; }
+
+        /* extracto de conversación */
+        .extracto-toggle {
+            background: none; border: none; cursor: pointer;
+            font-size: 0.75rem; color: #4a6cf7; font-weight: 600;
+            padding: 4px 0; display: flex; align-items: center; gap: 5px;
+            margin-top: 8px;
+        }
+        .extracto-toggle:hover { color: #2d4fd6; }
+        .extracto-box {
+            display: none;
+            margin-top: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.8rem;
+            line-height: 1.7;
+            color: #334155;
+        }
+        .extracto-box.visible { display: block; }
+        .extracto-line { margin-bottom: 4px; }
+        .extracto-line .who-est  { font-weight: 700; color: #4a6cf7; }
+        .extracto-line .who-bot  { font-weight: 700; color: #64748b; }
     </style>
 </head>
 <body class="courses-page">
@@ -131,6 +155,23 @@
                             {{ alerta.fecha.strftime('%d/%m/%Y %H:%M') }}
                         </span>
                     </div>
+                    {% if alerta.extracto %}
+                    <button class="extracto-toggle" onclick="toggleExtracto(this)">
+                        <i class="fas fa-comments"></i> Ver conversación con el chatbot
+                        <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
+                    </button>
+                    <div class="extracto-box">
+                        {% for linea in alerta.extracto.split('\n') %}
+                        {% if linea.startswith('Estudiante:') %}
+                        <div class="extracto-line"><span class="who-est">{{ linea[:11] }}</span>{{ linea[11:] }}</div>
+                        {% elif linea.startswith('Sofia:') %}
+                        <div class="extracto-line"><span class="who-bot">{{ linea[:6] }}</span>{{ linea[6:] }}</div>
+                        {% elif linea %}
+                        <div class="extracto-line">{{ linea }}</div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -206,6 +247,22 @@
         </div>
     </div>
 
+<script>
+    function toggleExtracto(btn) {
+        const box = btn.nextElementSibling;
+        const icon = btn.querySelector('.fa-chevron-down, .fa-chevron-up');
+        box.classList.toggle('visible');
+        if (box.classList.contains('visible')) {
+            btn.innerHTML = btn.innerHTML
+                .replace('Ver conversación con el chatbot', 'Ocultar conversación')
+                .replace('fa-chevron-down', 'fa-chevron-up');
+        } else {
+            btn.innerHTML = btn.innerHTML
+                .replace('Ocultar conversación', 'Ver conversación con el chatbot')
+                .replace('fa-chevron-up', 'fa-chevron-down');
+        }
+    }
+</script>
 {% include 'components/chatbot.html' %}
 </body>
 </html>

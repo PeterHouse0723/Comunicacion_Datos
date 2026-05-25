@@ -588,6 +588,7 @@ class AlertaBienestar(db.Model):
     tipo = db.Column(db.String(50), nullable=False)          # suicida, depresion, ansiedad, estres
     nivel_urgencia = db.Column(db.String(20), nullable=False) # critico, alto, medio
     resumen = db.Column(db.Text, nullable=False)
+    extracto = db.Column(db.Text)                             # últimos mensajes de la conversación
     revisada = db.Column(db.Boolean, default=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 

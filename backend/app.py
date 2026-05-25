@@ -32,6 +32,7 @@ def apply_migrations(app):
         'add_hora_cierre_apoyo.sql',
         'add_calificacion_reemplazo_apoyo.sql',
         'create_alertas_bienestar.sql',
+        'add_extracto_bienestar.sql',
     ]
     
     for migration_file in migration_files:
@@ -125,12 +126,11 @@ def create_app(config_name=None):
             logger.error(f"Error al aplicar migraciones: {e}")
             # No fallar si las migraciones no se pueden aplicar, solo loguear
         
-        # Crear tablas si no existen (solo en desarrollo)
-        if config_name != 'production':
-            try:
-                db.create_all()
-            except Exception as e:
-                logger.warning(f"Error al crear tablas: {e}")
+        # Crear tablas si no existen (siempre, como red de seguridad ante migraciones fallidas)
+        try:
+            db.create_all()
+        except Exception as e:
+            logger.warning(f"Error al crear tablas: {e}")
 
             db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
             is_postgresql = 'postgresql' in db_url

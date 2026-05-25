@@ -29,11 +29,22 @@ def mensaje():
     if texto and role == 'estudiante':
         nivel, tipo, resumen = bienestar.detectar(texto)
         if nivel:
+            # Construir historial con el mensaje actual incluido para el extracto
+            historial_con_mensaje = historial_ia + [{'role': 'user', 'content': texto}]
             try:
-                bienestar.crear_alerta(usuario_id, nivel, tipo, resumen)
+                bienestar.crear_alerta(usuario_id, nivel, tipo, resumen,
+                                       historial=historial_con_mensaje)
             except Exception:
                 traceback.print_exc()
             respuesta_bio = bienestar.respuesta_empatetica(nivel, tipo)
+            # Guardar turno en historial de sesión
+            historial_actualizado = historial_con_mensaje + [
+                {'role': 'assistant', 'content': respuesta_bio}
+            ]
+            if len(historial_actualizado) > _MAX_HISTORIAL:
+                historial_actualizado = historial_actualizado[-_MAX_HISTORIAL:]
+            session['chatbot_historial'] = historial_actualizado
+            session.modified = True
             return jsonify({
                 'respuesta': respuesta_bio,
                 'estado': estado_chat,
