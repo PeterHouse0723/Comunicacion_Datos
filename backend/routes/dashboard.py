@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from functools import wraps
 from types import SimpleNamespace
-from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje, Actividad, Calificacion, CursoDocente, ActividadApoyo, AsignacionApoyo
+from models import Usuario, Curso, EstudianteCurso, SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Nota, Asistencia, Clase, AlertaRiesgoAcademico, Mensaje, Actividad, Calificacion, CursoDocente, ActividadApoyo, AsignacionApoyo, AlertaBienestar
 from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
@@ -56,7 +56,7 @@ def docente():
 @dashboard_bp.route('/docente/alertas')
 @login_required
 def alertas_docente():
-    """Listado de materias del docente con alertas de asistencia."""
+    """Listado de materias del docente con alertas de asistencia y bienestar."""
     if session.get('role') != 'docente':
         return redirect(url_for('auth.login'))
 
@@ -72,12 +72,25 @@ def alertas_docente():
 
     materias_con_riesgo = sum(1 for materia in materias if getattr(materia, 'riesgos_count', 0) > 0)
 
+    # Alertas de bienestar para los cursos del docente
+    curso_ids = [m.id for m in materias]
+    alertas_bienestar = []
+    if curso_ids:
+        alertas_bienestar = (
+            AlertaBienestar.query
+            .filter(AlertaBienestar.curso_id.in_(curso_ids))
+            .order_by(AlertaBienestar.fecha.desc())
+            .limit(50)
+            .all()
+        )
+
     return render_template(
         'docente/alertas.html',
         usuario=usuario,
         materias=materias,
         materias_con_riesgo=materias_con_riesgo,
         total_estudiantes_en_riesgo=total_estudiantes_en_riesgo,
+        alertas_bienestar=alertas_bienestar,
     )
 
 

@@ -1,6 +1,7 @@
 import traceback
 from flask import Blueprint, request, jsonify, session
 from chatbot.engine import responder
+from chatbot import bienestar
 
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/api/chatbot')
 
@@ -23,6 +24,21 @@ def mensaje():
     role = session.get('role', '')
 
     historial_ia = session.get('chatbot_historial', [])
+
+    # Detección de bienestar emocional (solo para estudiantes)
+    if texto and role == 'estudiante':
+        nivel, tipo, resumen = bienestar.detectar(texto)
+        if nivel:
+            try:
+                bienestar.crear_alerta(usuario_id, nivel, tipo, resumen)
+            except Exception:
+                traceback.print_exc()
+            respuesta_bio = bienestar.respuesta_empatetica(nivel, tipo)
+            return jsonify({
+                'respuesta': respuesta_bio,
+                'estado': estado_chat,
+                'opciones': []
+            })
 
     try:
         respuesta, nuevo_estado, opciones = responder(

@@ -6,6 +6,59 @@
     <title>Alertas de Riesgo - Docente</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/docente.css') }}">
+    <style>
+        /* ── Alertas de Bienestar ── */
+        .bienestar-section {
+            margin-bottom: 36px;
+        }
+        .bienestar-section-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 1.1rem; font-weight: 700; color: #1e293b;
+            margin-bottom: 16px;
+        }
+        .bienestar-section-title i { color: #e11d48; font-size: 1.2rem; }
+        .bienestar-empty {
+            text-align: center; padding: 24px; color: #94a3b8;
+            background: #f8fafc; border-radius: 10px; font-size: 0.9rem;
+        }
+        .bienestar-card {
+            display: flex; gap: 14px; align-items: flex-start;
+            background: white; border-radius: 10px;
+            border-left: 5px solid #e11d48;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            padding: 16px 18px; margin-bottom: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .bienestar-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .bienestar-card.nivel-critico { border-left-color: #dc2626; background: #fff5f5; }
+        .bienestar-card.nivel-alto    { border-left-color: #ea580c; background: #fff7ed; }
+        .bienestar-card.nivel-medio   { border-left-color: #ca8a04; background: #fefce8; }
+        .bienestar-icon {
+            width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .nivel-critico .bienestar-icon { background: #fecaca; color: #dc2626; }
+        .nivel-alto    .bienestar-icon { background: #fed7aa; color: #ea580c; }
+        .nivel-medio   .bienestar-icon { background: #fef08a; color: #ca8a04; }
+        .bienestar-body { flex: 1; }
+        .bienestar-header {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .bienestar-nombre { font-weight: 700; font-size: 0.95rem; color: #1e293b; }
+        .bienestar-badge {
+            font-size: 0.72rem; font-weight: 700; padding: 2px 9px;
+            border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .badge-critico { background: #fca5a5; color: #991b1b; }
+        .badge-alto    { background: #fdba74; color: #9a3412; }
+        .badge-medio   { background: #fde047; color: #713f12; }
+        .bienestar-tipo { font-size: 0.78rem; color: #64748b; }
+        .bienestar-resumen { font-size: 0.85rem; color: #475569; margin: 6px 0 4px; line-height: 1.5; }
+        .bienestar-meta { font-size: 0.75rem; color: #94a3b8; }
+        .bienestar-curso { font-size: 0.78rem; color: #4a6cf7; font-weight: 600; }
+    </style>
 </head>
 <body class="courses-page">
     <div class="dashboard-header">
@@ -30,6 +83,70 @@
             <a class="course-tab" href="{{ url_for('dashboard.cursos_docente') }}">Mis Cursos</a>
             <a class="course-tab is-active">Alertas</a>
         </div>
+
+        <!-- ══ ALERTAS DE BIENESTAR EMOCIONAL ══ -->
+        {% if alertas_bienestar %}
+        <div class="bienestar-section">
+            <div class="bienestar-section-title">
+                <i class="fas fa-heart-pulse"></i>
+                Alertas de Bienestar Emocional
+                <span style="font-size:0.8rem; font-weight:500; color:#64748b;">
+                    — detectadas por el asistente virtual
+                </span>
+            </div>
+            {% for alerta in alertas_bienestar %}
+            {% set nivel_class = 'nivel-' + alerta.nivel_urgencia %}
+            {% set badge_class = 'badge-' + alerta.nivel_urgencia %}
+            {% set nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'} %}
+            {% set tipo_labels = {
+                'suicida':   'Riesgo de autolesión',
+                'depresion': 'Síntomas de depresión',
+                'ansiedad':  'Ansiedad severa',
+                'estres':    'Estrés extremo'
+            } %}
+            {% set nivel_icons = {'critico': 'fa-triangle-exclamation', 'alto': 'fa-circle-exclamation', 'medio': 'fa-circle-info'} %}
+            <div class="bienestar-card {{ nivel_class }}">
+                <div class="bienestar-icon">
+                    <i class="fas {{ nivel_icons.get(alerta.nivel_urgencia, 'fa-circle-info') }}"></i>
+                </div>
+                <div class="bienestar-body">
+                    <div class="bienestar-header">
+                        <span class="bienestar-nombre">
+                            {{ alerta.estudiante.nombre }} {{ alerta.estudiante.apellido }}
+                        </span>
+                        <span class="bienestar-badge {{ badge_class }}">
+                            {{ nivel_labels.get(alerta.nivel_urgencia, alerta.nivel_urgencia) }}
+                        </span>
+                        <span class="bienestar-tipo">
+                            {{ tipo_labels.get(alerta.tipo, alerta.tipo) }}
+                        </span>
+                    </div>
+                    <div class="bienestar-resumen">{{ alerta.resumen }}</div>
+                    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                        <span class="bienestar-curso">
+                            <i class="fas fa-book"></i> {{ alerta.curso.nombre }}
+                        </span>
+                        <span class="bienestar-meta">
+                            <i class="fas fa-clock"></i>
+                            {{ alerta.fecha.strftime('%d/%m/%Y %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bienestar-section">
+            <div class="bienestar-section-title">
+                <i class="fas fa-heart-pulse"></i>
+                Alertas de Bienestar Emocional
+            </div>
+            <div class="bienestar-empty">
+                <i class="fas fa-check-circle" style="color:#22c55e; font-size:1.5rem; display:block; margin-bottom:8px;"></i>
+                No hay alertas de bienestar emocional recientes. ¡Todo tranquilo!
+            </div>
+        </div>
+        {% endif %}
 
         <div class="alerts-summary">
             <div class="summary-card danger">

@@ -575,6 +575,29 @@ class LoginAuditoria(db.Model):
         return f'<LoginAuditoria Usuario:{self.usuario_id}, {self.fecha_login}>'
 
 # ============================================================================
+# TABLA: ALERTA_BIENESTAR (Alertas emocionales detectadas por el chatbot)
+# ============================================================================
+
+class AlertaBienestar(db.Model):
+    """Alertas de bienestar emocional generadas por el chatbot al detectar señales de riesgo."""
+    __tablename__ = 'alertas_bienestar'
+
+    id = db.Column(db.Integer, primary_key=True)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    tipo = db.Column(db.String(50), nullable=False)          # suicida, depresion, ansiedad, estres
+    nivel_urgencia = db.Column(db.String(20), nullable=False) # critico, alto, medio
+    resumen = db.Column(db.Text, nullable=False)
+    revisada = db.Column(db.Boolean, default=False)
+    fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    estudiante = db.relationship('Usuario', foreign_keys=[estudiante_id], lazy='joined')
+    curso = db.relationship('Curso', foreign_keys=[curso_id], lazy='joined')
+
+    def __repr__(self):
+        return f'<AlertaBienestar Est:{self.estudiante_id} {self.nivel_urgencia}/{self.tipo}>'
+
+# ============================================================================
 # TABLA: NOTIFICACION (Sistema de notificaciones)
 # ============================================================================
 

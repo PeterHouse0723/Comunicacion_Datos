@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 from models import (
     Institucion, Usuario, Periodo, Curso, CursoDocente, EstudianteCurso,
     SolicitudEstudianteMateria, SolicitudNuevoEstudiante, Clase, Nota, Asistencia, AlertaRiesgoAcademico,
-    LoginAuditoria, Notificacion, Mensaje
+    LoginAuditoria, Notificacion, Mensaje, AlertaBienestar
 )
 
 def apply_migrations(app):
@@ -30,7 +30,8 @@ def apply_migrations(app):
         'create_actividades_apoyo.sql',
         'add_archivo_apoyo.sql',
         'add_hora_cierre_apoyo.sql',
-        'add_calificacion_reemplazo_apoyo.sql'
+        'add_calificacion_reemplazo_apoyo.sql',
+        'create_alertas_bienestar.sql',
     ]
     
     for migration_file in migration_files:
