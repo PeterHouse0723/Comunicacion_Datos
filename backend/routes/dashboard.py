@@ -51,8 +51,9 @@ def docente():
     usuario = Usuario.query.get(session.get('usuario_id'))
     materias = Curso.query.filter_by(docente_principal_id=usuario.id, activo=True).all()
 
-    # Contador de alertas de bienestar no revisadas
-    curso_ids = [m.id for m in materias]
+    # Contador de alertas de bienestar no revisadas (todos los cursos del docente)
+    todos_cursos = _obtener_cursos_docente(usuario)
+    curso_ids = [m.id for m in todos_cursos]
     alertas_bienestar_count = 0
     if curso_ids:
         alertas_bienestar_count = (
@@ -180,41 +181,52 @@ def alertas_bienestar_count():
 @login_required
 def alertas_bienestar_recientes():
     """Retorna las alertas de bienestar recientes como JSON para actualización en tiempo real."""
+    import logging as _log
+    _logger = _log.getLogger(__name__)
     if session.get('role') != 'docente':
         return jsonify({'alertas': []})
-    usuario = Usuario.query.get(session.get('usuario_id'))
-    materias = _obtener_cursos_docente(usuario)
-    curso_ids = [m.id for m in materias]
-    alertas = []
-    if curso_ids:
-        rows = (
-            AlertaBienestar.query
-            .filter(AlertaBienestar.curso_id.in_(curso_ids))
-            .order_by(AlertaBienestar.fecha.desc())
-            .limit(50)
-            .all()
-        )
-        nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'}
-        tipo_labels = {
-            'suicida': 'Riesgo de autolesión',
-            'depresion': 'Síntomas de depresión',
-            'ansiedad': 'Ansiedad severa',
-            'estres': 'Estrés extremo',
-        }
-        for a in rows:
-            alertas.append({
-                'id': a.id,
-                'estudiante': f'{a.estudiante.nombre} {a.estudiante.apellido}',
-                'curso': a.curso.nombre,
-                'tipo': tipo_labels.get(a.tipo, a.tipo),
-                'nivel': a.nivel_urgencia,
-                'nivel_label': nivel_labels.get(a.nivel_urgencia, a.nivel_urgencia),
-                'resumen': a.resumen,
-                'extracto': a.extracto or '',
-                'revisada': a.revisada,
-                'fecha': a.fecha.strftime('%d/%m/%Y %H:%M'),
-            })
-    return jsonify({'alertas': alertas})
+    try:
+        usuario = Usuario.query.get(session.get('usuario_id'))
+        materias = _obtener_cursos_docente(usuario)
+        curso_ids = [m.id for m in materias]
+        alertas = []
+        if curso_ids:
+            rows = (
+                AlertaBienestar.query
+                .filter(AlertaBienestar.curso_id.in_(curso_ids))
+                .order_by(AlertaBienestar.fecha.desc())
+                .limit(50)
+                .all()
+            )
+            nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'}
+            tipo_labels = {
+                'suicida': 'Riesgo de autolesión',
+                'depresion': 'Síntomas de depresión',
+                'ansiedad': 'Ansiedad severa',
+                'estres': 'Estrés extremo',
+            }
+            for a in rows:
+                try:
+                    est_nombre = f'{a.estudiante.nombre} {a.estudiante.apellido}' if a.estudiante else f'Estudiante {a.estudiante_id}'
+                    cur_nombre = a.curso.nombre if a.curso else f'Curso {a.curso_id}'
+                    alertas.append({
+                        'id': a.id,
+                        'estudiante': est_nombre,
+                        'curso': cur_nombre,
+                        'tipo': tipo_labels.get(a.tipo, a.tipo),
+                        'nivel': a.nivel_urgencia,
+                        'nivel_label': nivel_labels.get(a.nivel_urgencia, a.nivel_urgencia),
+                        'resumen': a.resumen,
+                        'extracto': a.extracto or '',
+                        'revisada': a.revisada,
+                        'fecha': a.fecha.strftime('%d/%m/%Y %H:%M'),
+                    })
+                except Exception as row_err:
+                    _logger.warning('[BIENESTAR] Alerta id=%s omitida: %s', getattr(a, 'id', '?'), row_err)
+        return jsonify({'alertas': alertas, 'curso_ids': curso_ids})
+    except Exception as e:
+        _logger.error('[BIENESTAR] Error en alertas_bienestar_recientes: %s', e, exc_info=True)
+        return jsonify({'alertas': [], 'error': str(e)})
 
 
 @dashboard_bp.route('/api/alertas-bienestar-revisar', methods=['POST'])
@@ -465,9 +477,18 @@ def _obtener_estudiantes_en_riesgo(curso):
 
 
 def _obtener_cursos_docente(usuario):
-    """Cursos asignados al docente."""
+    """Cursos asignados al docente (como principal o vía CursoDocente)."""
+    ids_principal = {
+        c.id for c in Curso.query.filter_by(docente_principal_id=usuario.id).all()
+    }
+    ids_secundario = {
+        cd.curso_id for cd in CursoDocente.query.filter_by(docente_id=usuario.id).all()
+    }
+    todos_ids = ids_principal | ids_secundario
+    if not todos_ids:
+        return []
     return (
-        Curso.query.filter_by(docente_principal_id=usuario.id)
+        Curso.query.filter(Curso.id.in_(todos_ids))
         .order_by(Curso.activo.desc(), Curso.nombre.asc())
         .all()
     )
