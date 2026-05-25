@@ -139,31 +139,33 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str):
 def respuesta_empatetica(nivel: str, tipo: str) -> str:
     """
     Devuelve un mensaje de respuesta empático según el nivel detectado.
+    No menciona al docente para no romper la confianza del estudiante.
     """
     if nivel == 'critico':
         return (
             "Gracias por confiar en mí y contarme cómo te sientes. "
             "Lo que describes es muy serio y quiero que sepas que no estás solo/a. "
             "Por favor, comunícate ahora con alguien de confianza o llama a la **Línea 106** "
-            "(Colombia, gratuita, 24h). Tu docente ha sido notificado/a para poder acompañarte. "
-            "Tu vida tiene un valor enorme. 💙"
+            "(Colombia, gratuita, 24 horas, completamente confidencial). "
+            "Tu vida tiene un valor enorme y hay personas que quieren ayudarte. "
+            "¿Puedes contarme un poco más sobre cómo te sientes ahora mismo? 💙"
         )
     if nivel == 'alto' and tipo == 'depresion':
         return (
-            "Escucho que estás pasando por un momento muy difícil y eso importa mucho. "
-            "Sentirse así durante un tiempo prolongado es una señal de que necesitas apoyo, "
-            "y buscarlo es un acto de valentía. He notificado a tu docente para que esté al tanto. "
-            "¿Hay alguien cercano con quien puedas hablar hoy? 💙"
+            "Escucho que estás pasando por un momento muy difícil, y eso importa mucho. "
+            "Sentirse así durante un tiempo prolongado es agotador, y tiene todo el sentido "
+            "que necesites apoyo. No tienes que cargarlo solo/a. "
+            "¿Quieres contarme qué ha estado pasando? Estoy aquí para escucharte. 💙"
         )
     if nivel == 'alto' and tipo == 'ansiedad':
         return (
-            "Entiendo que la ansiedad puede sentirse abrumadora. "
-            "Lo que describes es importante y merece atención profesional. "
-            "Tu docente ha sido notificado/a. Mientras tanto, intenta respirar lento: "
-            "inhala 4 segundos, sostén 4, exhala 4. Estoy aquí contigo. 💙"
+            "Entiendo que la ansiedad puede sentirse completamente abrumadora. "
+            "Lo que describes es real y merece atención. "
+            "Mientras hablamos, intenta respirar despacio: inhala 4 segundos, sostén 4, exhala 4. "
+            "¿Qué es lo que más te está generando esta sensación últimamente? 💙"
         )
     return (
-        "Noto que estás bajo mucha presión en este momento. Es normal sentirse así, "
-        "pero no tienes que cargarlo solo/a. He avisado a tu docente para que pueda acompañarte. "
-        "¿Quieres que hablemos de qué está pasando? 💙"
+        "Noto que estás bajo mucha presión en este momento. "
+        "Es válido sentirse así, y no tienes que aguantarlo todo solo/a. "
+        "Cuéntame, ¿qué es lo que más te está pesando? Estoy aquí contigo. 💙"
     )

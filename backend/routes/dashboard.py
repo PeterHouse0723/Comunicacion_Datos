@@ -47,10 +47,26 @@ def docente():
     """Dashboard para docentes"""
     if session.get('role') != 'docente':
         return redirect(url_for('auth.login'))
-    
+
     usuario = Usuario.query.get(session.get('usuario_id'))
     materias = Curso.query.filter_by(docente_principal_id=usuario.id, activo=True).all()
-    return render_template('docente/dashboard.html', usuario=usuario, materias=materias)
+
+    # Contador de alertas de bienestar no revisadas
+    curso_ids = [m.id for m in materias]
+    alertas_bienestar_count = 0
+    if curso_ids:
+        alertas_bienestar_count = (
+            AlertaBienestar.query
+            .filter(AlertaBienestar.curso_id.in_(curso_ids), AlertaBienestar.revisada == False)
+            .count()
+        )
+
+    return render_template(
+        'docente/dashboard.html',
+        usuario=usuario,
+        materias=materias,
+        alertas_bienestar_count=alertas_bienestar_count,
+    )
 
 
 @dashboard_bp.route('/docente/alertas')
