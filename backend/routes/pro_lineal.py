@@ -1156,6 +1156,15 @@ RECURSOS_ACADEMICOS = [
         'banner': 'purple',
         'url_name': 'pro_lineal.solver',
     },
+    {
+        'id': 'cpm-ruta-critica',
+        'nombre': 'Solucionador CPM — Ruta Crítica',
+        'descripcion': 'Calcula ES, EF, LS, LF y holguras para proyectos con redes de actividades. Incluye grafo, tabla de holguras, ruta crítica y diagrama de Gantt en 3 ejercicios paso a paso.',
+        'categoria': 'Gestión de Proyectos',
+        'icono': 'fa-project-diagram',
+        'banner': 'teal',
+        'url_name': 'pro_lineal.cpm',
+    },
 ]
 
 
@@ -1182,4 +1191,11 @@ def recursos():
         categoria_sel=categoria,
         curso_id=curso_id,
     )
+
+
+@pro_lineal_bp.route('/cpm')
+@login_required
+def cpm():
+    curso_id = request.args.get('curso_id', type=int)
+    return render_template('pro_lineal/cpm.html', curso_id=curso_id)
 

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solucionador CPM — Ruta Crítica | Operativa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ── Nav ── */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: #f4f7fb;
+            color: #102030;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at top, #ffffff 0%, #f4f7fb 45%, #eaf1f7 100%);
+        }
+
+        .solver-nav {
+            background: #1e3a8a;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .solver-nav a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: color 0.2s;
+        }
+        .solver-nav a:hover { color: #fff; }
+        .solver-nav .sep { color: rgba(255,255,255,0.35); }
+        .solver-nav .current { color: #fff; font-weight: 700; font-size: 0.85rem; }
+
+        .page-container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.25rem;
+            color: #0f3d91;
+            background-color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #d8e1ea;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+        .subtitle {
+            color: #5f6b7a;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        /* ── Info panel ── */
+        .info-panel {
+            background: #ffffff;
+            border: 1px solid #d3dce7;
+            border-radius: 14px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(15,23,42,0.06);
+        }
+        .info-panel-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1.25rem;
+            cursor: pointer;
+            user-select: none;
+            background: linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 100%);
+            color: #fff;
+        }
+        .info-panel-toggle:hover { filter: brightness(1.05); }
+        .info-toggle-left { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 0.95rem; }
+        .info-toggle-arrow { transition: transform 0.25s; font-size: 0.8rem; }
+        .info-panel.open .info-toggle-arrow { transform: rotate(180deg); }
+        .info-panel-body { display: none; padding: 1.25rem; }
+        .info-panel.open .info-panel-body { display: block; }
+
+        .info-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+        .info-tab {
+            padding: 0.45rem 1rem;
+            border-radius: 20px;
+            border: 1.5px solid #d3dce7;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #f4f7fb;
+            color: #5f6b7a;
+            transition: all 0.18s;
+        }
+        .info-tab.active {
+            background: #1e3a8a;
+            border-color: #1e3a8a;
+            color: #fff;
+        }
+        .info-tab-content { display: none; }
+        .info-tab-content.active { display: block; }
+
+        /* ── Tab: ¿Qué es? ── */
+        .def-intro {
+            font-size: 0.92rem;
+            color: #334155;
+            line-height: 1.65;
+            margin-bottom: 1rem;
+        }
+        .def-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 0.75rem;
+        }
+        .def-card {
+            background: #f4f7fb;
+            border: 1px solid #d3dce7;
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+        }
+        .def-card-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .def-card-body { font-size: 0.8rem; color: #5f6b7a; line-height: 1.5; }
+
+        /* ── Tab: Cómo usar ── */
+        .how-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .how-item {
+            display: flex;
+            gap: 0.9rem;
+            align-items: flex-start;
+            background: #f4f7fb;
+            border: 1px solid #d3dce7;
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+        }
+        .how-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #1e3a8a;
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .how-text { font-size: 0.85rem; color: #334155; line-height: 1.55; }
+        .how-text strong { color: #1e3a8a; }
+
+        /* ── Tab: Términos ── */
+        .term-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+        .term-item {
+            background: #f4f7fb;
+            border-left: 3px solid #1e3a8a;
+            border-radius: 0 8px 8px 0;
+            padding: 0.75rem 0.9rem;
+        }
+        .term-name { font-size: 0.82rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.2rem; }
+        .term-def { font-size: 0.8rem; color: #5f6b7a; line-height: 1.45; }
+
+        /* ── CPM content styles (original) ── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Source+Code+Pro:wght@400;600&display=swap');
+        :root{--font-sans:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;--font-mono:"Source Code Pro",ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;--radius-sm:6px;--radius-md:10px;--radius-lg:14px;--gap-sm:8px;--gap-md:12px;--color-bg:#F6F7FB;--color-surface:#FFFFFF;--color-primary:#534AB7;--color-accent:#1D9E75;--color-muted:#6B6B7A;--color-border:rgba(99,94,183,.12);--color-muted-2:#9AA0B2;--shadow:0 6px 18px rgba(34,38,63,.06)}
+        .app{font-family:var(--font-sans);max-width:1060px;margin:0 auto;padding:0}
+        .hero{position:relative;padding:28px;border-radius:var(--radius-lg);background:linear-gradient(135deg,rgba(83,74,183,.08),rgba(29,158,117,.03));box-shadow:var(--shadow);border:1px solid transparent;margin-bottom:20px;overflow:hidden}
+        .hero::before,.hero::after{content:'';position:absolute;filter:blur(18px);opacity:.22}
+        .hero::before{right:-10%;top:-8%;width:260px;height:160px;border-radius:42%;background:linear-gradient(90deg,#7F77DD,#EEEDFE)}
+        .hero::after{left:-6%;bottom:-6%;width:160px;height:120px;border-radius:40%;background:linear-gradient(90deg,#B8F0DF,#E1F5EE)}
+        .hero-inner{position:relative;z-index:2}
+        .hero-eyebrow{font-size:12px;letter-spacing:.12em;color:var(--color-primary);font-weight:600;text-transform:uppercase;margin-bottom:8px}
+        .hero h1{font-size:24px;font-weight:700;color:#182235;margin-bottom:6px;background:none;border:none;box-shadow:none;padding:0;text-align:left;letter-spacing:0}
+        .hero p{font-size:14px;color:var(--color-muted)}
+        .ex-tabs{display:flex;gap:10px;margin:18px 0}
+        .ex-tab{flex:1;padding:10px 12px;border-radius:12px;background:transparent;border:1px solid var(--color-border);cursor:pointer;text-align:center;transition:all .18s;backdrop-filter:blur(2px)}
+        .ex-tab:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(83,74,183,.06)}
+        .ex-tab.active{background:linear-gradient(90deg,#F0EEFF,#EEF9F3);border-color:transparent;box-shadow:0 8px 20px rgba(83,74,183,.06)}
+        .ex-tab .tab-num{display:block;font-size:16px;font-weight:700;color:var(--color-primary)}
+        .ex-tab .tab-lbl{display:block;font-size:12px;color:#333;margin-top:4px}
+        .ex-tab .tab-sub{display:block;font-size:11px;color:var(--color-muted-2);margin-top:2px}
+        .card{background:var(--color-surface);border-radius:var(--radius-md);padding:16px;margin-bottom:14px;border:1px solid var(--color-border);box-shadow:var(--shadow)}
+        .card-accent-purple{box-shadow:0 6px 18px rgba(127,119,221,.06);border-left:4px solid #7F77DD}
+        .card-accent-teal{box-shadow:0 6px 18px rgba(29,158,117,.06);border-left:4px solid #1D9E75}
+        .card-accent-amber{box-shadow:0 6px 18px rgba(186,117,23,.06);border-left:4px solid #BA7517}
+        .card-accent-red{box-shadow:0 6px 18px rgba(226,75,74,.06);border-left:4px solid #E24B4A}
+        .step-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+        .step-pill{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(180deg,#F0EEFF,#EEEDFE);color:var(--color-primary);font-size:13px;font-weight:700}
+        .step-title{font-size:16px;font-weight:700;color:#172031}
+        .step-body{font-size:14px;color:var(--color-muted);line-height:1.6}
+        .step-body b{color:#172031}
+        .formula-box{background:linear-gradient(90deg,#FBFBFF,#F5FFF6);border:1px solid rgba(127,119,221,.12);border-radius:8px;padding:10px 12px;font-size:13px;color:#3C3489;font-family:var(--font-mono);margin:10px 0}
+        .info-box{background:linear-gradient(90deg,#F3FFFA,#E1F5EE);border:1px solid rgba(29,158,117,.12);border-radius:8px;padding:12px;font-size:14px;color:#075647;margin:10px 0}
+        .warn-box{background:linear-gradient(90deg,#FFF9F3,#FAEEDA);border:1px solid rgba(239,159,39,.12);border-radius:8px;padding:12px;font-size:14px;color:#6B3F05;margin:10px 0}
+        .crit-box{background:linear-gradient(90deg,#FFF5F5,#FCEBEB);border:1px solid rgba(224,75,74,.12);border-radius:8px;padding:12px;font-size:14px;color:#6B2222;margin:10px 0}
+        .tw{overflow-x:auto;margin:12px 0}
+        table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+        thead th{position:sticky;top:0;background:linear-gradient(90deg,#F3F2FF,#EEF9F3);padding:10px 12px;text-align:left;font-weight:700;font-size:12px;color:var(--color-primary);border-bottom:2px solid rgba(0,0,0,.04)}
+        tbody td{padding:10px 12px;border-bottom:1px solid rgba(37,48,59,.06);color:#172031}
+        tr.crit-row td{background:linear-gradient(90deg,#FFF5F5,#FCEBEB);color:#501313}
+        tr.warn-row td{background:linear-gradient(90deg,#FFF9F3,#FAEEDA);color:#412402}
+        .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0}
+        .metric{border-radius:10px;padding:14px;text-align:center}
+        .metric-purple{background:linear-gradient(90deg,#F6F5FF,#EEF6FF)}
+        .metric-teal{background:linear-gradient(90deg,#F3FFFA,#E1F5EE)}
+        .metric-amber{background:linear-gradient(90deg,#FFFAEE,#FFF5EC)}
+        .metric-red{background:linear-gradient(90deg,#FFF6F6,#FFE9E9)}
+        .metric-label{font-size:12px;margin-bottom:6px;color:var(--color-muted)}
+        .metric-value{font-size:24px;font-weight:700;color:#172031}
+        .metric-unit{font-size:12px;color:var(--color-muted)}
+        .step-nav{display:flex;align-items:center;gap:10px;margin:14px 0}
+        .snav-btn{padding:8px 16px;border-radius:10px;border:1px solid transparent;background:linear-gradient(90deg,#F0EEFF,#EEF9F3);color:var(--color-primary);font-size:13px;font-weight:700;cursor:pointer;transition:transform .12s,box-shadow .12s}
+        .snav-btn:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(83,74,183,.06)}
+        .snav-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+        .snav-ind{flex:1;text-align:center;font-size:13px;color:var(--color-muted);font-weight:600}
+        .snav-dots{display:flex;gap:6px;justify-content:center;margin-top:6px}
+        .snav-dot{width:8px;height:8px;border-radius:50%;background:rgba(83,74,183,.12);transition:background .18s}
+        .snav-dot.on{background:var(--color-primary)}
+        .step-content{display:none}
+        .step-content.active{display:block}
+        .path-list{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+        .path-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-border);font-size:13px;color:var(--color-muted)}
+        .path-crit{background:linear-gradient(90deg,#FFF5F5,#FCEBEB);border-color:rgba(226,75,74,.12);color:#7A1F1F;font-weight:700}
+        .path-ok{background:linear-gradient(90deg,#F3FFFA,#E1F5EE);border-color:rgba(29,158,117,.12);color:#075647}
+        .path-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+        .gantt-wrap{margin:12px 0}
+        .gantt-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--color-muted);padding:0 0 6px 36px;margin-bottom:6px}
+        .g-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+        .g-lbl{width:36px;font-size:12px;color:var(--color-muted);text-align:right;font-weight:700;flex-shrink:0}
+        .g-track{flex:1;height:22px;background:linear-gradient(90deg,#FBFBFF,#F6F8FA);border-radius:6px;position:relative;overflow:hidden;border:1px solid rgba(37,48,59,.04)}
+        .g-bar{position:absolute;top:0;height:100%;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;overflow:hidden;white-space:nowrap}
+        .g-crit{background:linear-gradient(90deg,#F6D6D6,#F09595);color:#501313}
+        .g-norm{background:linear-gradient(90deg,#CFF7E8,#9FE1CB);color:#04342C}
+        .g-dashed{position:absolute;top:2px;height:calc(100% - 4px);border:2px dashed rgba(29,158,117,.16);border-radius:6px}
+        .g-dur{width:34px;font-size:11px;color:var(--color-muted);flex-shrink:0}
+        .legend{display:flex;gap:12px;margin:8px 0;flex-wrap:wrap}
+        .leg-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-muted)}
+        .leg-swatch{width:16px;height:12px;border-radius:3px;flex-shrink:0}
+        .leg-crit{background:linear-gradient(90deg,#F6D6D6,#F09595)}
+        .leg-norm{background:linear-gradient(90deg,#CFF7E8,#9FE1CB)}
+        .leg-holg{background:none;border:2px dashed rgba(29,158,117,.16)}
+        .enun-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+        .badge-pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700}
+        .badge-purple{background:linear-gradient(90deg,#F0EEFF,#EEF9F3);color:var(--color-primary);border:1px solid rgba(127,119,221,.06)}
+        .badge-teal{background:linear-gradient(90deg,#F3FFFA,#E1F5EE);color:var(--color-accent);border:1px solid rgba(29,158,117,.06)}
+        svg{display:block}
+    </style>
+</head>
+<body>
+
+    <nav class="solver-nav">
+        {% if curso_id %}
+        <a href="{{ url_for('pro_lineal.recursos', curso_id=curso_id) }}">
+            <i class="fas fa-arrow-left"></i> Recursos
+        </a>
+        {% else %}
+        <a href="{{ url_for('pro_lineal.recursos') }}">
+            <i class="fas fa-arrow-left"></i> Recursos
+        </a>
+        {% endif %}
+        <span class="sep">›</span>
+        <span class="current">Solucionador CPM — Ruta Crítica</span>
+    </nav>
+
+    <div class="page-container">
+        <h1><i class="fas fa-project-diagram" style="margin-right:0.5rem;"></i>Solucionador CPM — Ruta Crítica</h1>
+        <p class="subtitle">Método del Camino Crítico · Hillier &amp; Liebermann · Taha · Juan Prawda Vol. II</p>
+
+        <!-- ── Info panel ── -->
+        <div class="info-panel" id="infoPanelCpm">
+            <div class="info-panel-toggle" onclick="toggleInfoCpm()">
+                <div class="info-toggle-left">
+                    <i class="fas fa-book-open"></i>
+                    Guía de uso y conceptos clave
+                </div>
+                <i class="fas fa-chevron-down info-toggle-arrow"></i>
+            </div>
+            <div class="info-panel-body">
+                <div class="info-tabs">
+                    <button class="info-tab active" onclick="showCpmTab('que-es', this)">¿Qué es CPM?</button>
+                    <button class="info-tab" onclick="showCpmTab('como-usar', this)">Cómo usar este solucionador</button>
+                    <button class="info-tab" onclick="showCpmTab('terminos', this)">Términos clave</button>
+                </div>
+
+                <!-- Tab 1: Qué es -->
+                <div id="cpm-tab-que-es" class="info-tab-content active">
+                    <p class="def-intro">
+                        El <strong>Método de la Ruta Crítica (CPM)</strong> es una técnica de programación de proyectos que identifica
+                        la secuencia de actividades que determina la duración mínima de un proyecto.
+                        Las actividades en la ruta crítica tienen <strong>holgura cero</strong>: cualquier retraso en ellas
+                        retrasa todo el proyecto. Las actividades fuera de la ruta crítica tienen margen de tiempo (holgura)
+                        que permite cierta flexibilidad sin afectar la fecha de entrega.
+                    </p>
+                    <div class="def-grid">
+                        <div class="def-card">
+                            <div class="def-card-title"><i class="fas fa-forward"></i> Paso hacia adelante</div>
+                            <div class="def-card-body">Calcula los tiempos más tempranos de inicio (ES) y fin (EF) de cada actividad, avanzando desde el inicio del proyecto.</div>
+                        </div>
+                        <div class="def-card">
+                            <div class="def-card-title"><i class="fas fa-backward"></i> Paso hacia atrás</div>
+                            <div class="def-card-body">Calcula los tiempos más tardíos de inicio (LS) y fin (LF) partiendo desde el final del proyecto hacia atrás.</div>
+                        </div>
+                        <div class="def-card">
+                            <div class="def-card-title"><i class="fas fa-hourglass-half"></i> Holgura total</div>
+                            <div class="def-card-body">Tiempo que puede retrasarse una actividad sin afectar la duración total. Holgura = LS − ES = LF − EF.</div>
+                        </div>
+                        <div class="def-card">
+                            <div class="def-card-title"><i class="fas fa-route"></i> Ruta crítica</div>
+                            <div class="def-card-body">Secuencia de actividades con holgura = 0. Es la trayectoria más larga de inicio a fin del proyecto.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Cómo usar -->
+                <div id="cpm-tab-como-usar" class="info-tab-content">
+                    <div class="how-list">
+                        <div class="how-item">
+                            <div class="how-num">1</div>
+                            <div class="how-text">
+                                <strong>Selecciona un ejercicio</strong> usando las pestañas: Básico (5 actos., red lineal),
+                                Intermedio (7 actos., ramas paralelas) o Avanzado (9 actos., holguras reales).
+                            </div>
+                        </div>
+                        <div class="how-item">
+                            <div class="how-num">2</div>
+                            <div class="how-text">
+                                <strong>Lee el enunciado</strong> en la tabla de actividades (descripción, duración y predecesores).
+                                Los predecesores indican qué actividades deben completarse antes de iniciar la actual.
+                            </div>
+                        </div>
+                        <div class="how-item">
+                            <div class="how-num">3</div>
+                            <div class="how-text">
+                                <strong>Navega paso a paso</strong> con los botones "Anterior / Siguiente":
+                                Paso 1 = Grafo de red · Paso 2 = Tiempos tempranos (ES/EF) · Paso 3 = Tiempos tardíos (LS/LF) ·
+                                Paso 4 = Tabla de holguras · Paso 5 = Ruta crítica · Paso 6 = Métricas y Gantt.
+                            </div>
+                        </div>
+                        <div class="how-item">
+                            <div class="how-num">4</div>
+                            <div class="how-text">
+                                <strong>Interpreta los colores</strong>: filas en <span style="color:#501313;font-weight:600;">rojo</span>
+                                son actividades críticas (holgura = 0); filas en
+                                <span style="color:#412402;font-weight:600;">naranja</span> tienen holgura disponible.
+                                En el Gantt, barras rojas = críticas, barras verdes = con margen.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Términos -->
+                <div id="cpm-tab-terminos" class="info-tab-content">
+                    <div class="term-grid">
+                        <div class="term-item">
+                            <div class="term-name">ES — Early Start</div>
+                            <div class="term-def">Tiempo más temprano en que puede iniciar una actividad. ES = max(EF de predecesores).</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">EF — Early Finish</div>
+                            <div class="term-def">Tiempo más temprano en que puede terminar. EF = ES + Duración.</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">LS — Late Start</div>
+                            <div class="term-def">Tiempo más tardío en que puede iniciar sin retrasar el proyecto. LS = LF − Duración.</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">LF — Late Finish</div>
+                            <div class="term-def">Tiempo más tardío en que puede terminar. LF = min(LS de sucesores).</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">Holgura total</div>
+                            <div class="term-def">Margen de retraso permitido: H = LS − ES. H = 0 → actividad crítica.</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">Convergencia</div>
+                            <div class="term-def">Cuando múltiples actividades desembocan en un mismo nodo. El ES del sucesor = max(EF de todos).</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">Divergencia</div>
+                            <div class="term-def">Cuando una actividad da origen a varias ramas paralelas que pueden ejecutarse simultáneamente.</div>
+                        </div>
+                        <div class="term-item">
+                            <div class="term-name">Gantt</div>
+                            <div class="term-def">Diagrama de barras que muestra el calendario de actividades y su posición temporal en el proyecto.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CPM Tool ── -->
+        <div class="app">
+
+        <div class="ex-tabs">
+          <div class="ex-tab active" onclick="showEx(1,this)">
+            <span class="tab-num">01</span>
+            <span class="tab-lbl">Básico</span>
+            <span class="tab-sub">5 actividades</span>
+          </div>
+          <div class="ex-tab" onclick="showEx(2,this)">
+            <span class="tab-num">02</span>
+            <span class="tab-lbl">Intermedio</span>
+            <span class="tab-sub">7 actividades</span>
+          </div>
+          <div class="ex-tab" onclick="showEx(3,this)">
+            <span class="tab-num">03</span>
+            <span class="tab-lbl">Avanzado</span>
+            <span class="tab-sub">9 actividades</span>
+          </div>
+        </div>
+
+        <!-- ══════════ EX 1 ══════════ -->
+        <div id="ex1" class="ex-content">
+          <div class="card">
+            <div class="enun-header">
+              <span class="step-title">Construcción de una bodega</span>
+              <span class="badge-pill badge-purple">Red lineal · 5 actos</span>
+            </div>
+            <div class="tw"><table>
+              <thead><tr><th>Act.</th><th>Descripción</th><th>Duración (días)</th><th>Predecesores</th></tr></thead>
+              <tbody>
+                <tr><td><b>A</b></td><td>Preparar terreno</td><td>3</td><td>—</td></tr>
+                <tr><td><b>B</b></td><td>Cimentar</td><td>5</td><td>A</td></tr>
+                <tr><td><b>C</b></td><td>Levantar muros</td><td>4</td><td>B</td></tr>
+                <tr><td><b>D</b></td><td>Instalar techo</td><td>3</td><td>C</td></tr>
+                <tr><td><b>E</b></td><td>Acabados finales</td><td>2</td><td>D</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+
+          <div class="step-nav">
+            <button class="snav-btn" onclick="ps(1)" id="p1" disabled>← Anterior</button>
+            <div style="flex:1;text-align:center">
+              <div class="snav-ind" id="i1">Paso 1 de 6</div>
+              <div class="snav-dots" id="d1"></div>
+            </div>
+            <button class="snav-btn" onclick="ns(1)" id="n1">Siguiente →</button>
+          </div>
+
+          <div id="s1-1" class="step-content active">
+            <div class="card card-accent-purple">
+              <div class="step-header"><div class="step-pill">1</div><div class="step-title">Grafo de red — nodos y aristas</div></div>
+              <div class="step-body">Un <b>nodo</b> representa un evento (inicio/fin de actividad). Una <b>arista dirigida</b> representa una actividad con su duración. Esta red es completamente lineal: <b>6 nodos</b> y <b>5 aristas</b>.</div>
+            </div>
+            <svg width="100%" viewBox="0 0 680 145" role="img"><title>Grafo lineal ejercicio 1</title><desc>Red CPM con 6 nodos en línea y 5 aristas A=3, B=5, C=4, D=3, E=2</desc>
+              <defs><marker id="am1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+              <circle cx="50" cy="72" r="24" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="50" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#3C3489">0</text>
+              <circle cx="162" cy="72" r="24" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="162" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#3C3489">1</text>
+              <circle cx="274" cy="72" r="24" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="274" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#3C3489">2</text>
+              <circle cx="386" cy="72" r="24" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="386" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#3C3489">3</text>
+              <circle cx="498" cy="72" r="24" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="498" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#3C3489">4</text>
+              <circle cx="630" cy="72" r="24" fill="#1D9E75" stroke="#0F6E56" stroke-width="1.5"/>
+              <text x="630" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#E1F5EE">5</text>
+              <line x1="74" y1="72" x2="136" y2="72" stroke="#534AB7" stroke-width="2" marker-end="url(#am1)"/>
+              <rect x="88" y="50" width="36" height="18" rx="9" fill="#534AB7"/><text x="106" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#EEEDFE">A=3</text>
+              <line x1="186" y1="72" x2="248" y2="72" stroke="#534AB7" stroke-width="2" marker-end="url(#am1)"/>
+              <rect x="200" y="50" width="36" height="18" rx="9" fill="#534AB7"/><text x="218" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#EEEDFE">B=5</text>
+              <line x1="298" y1="72" x2="360" y2="72" stroke="#534AB7" stroke-width="2" marker-end="url(#am1)"/>
+              <rect x="312" y="50" width="36" height="18" rx="9" fill="#534AB7"/><text x="330" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#EEEDFE">C=4</text>
+              <line x1="410" y1="72" x2="472" y2="72" stroke="#534AB7" stroke-width="2" marker-end="url(#am1)"/>
+              <rect x="424" y="50" width="36" height="18" rx="9" fill="#534AB7"/><text x="442" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#EEEDFE">D=3</text>
+              <line x1="522" y1="72" x2="604" y2="72" stroke="#534AB7" stroke-width="2" marker-end="url(#am1)"/>
+              <rect x="541" y="50" width="36" height="18" rx="9" fill="#534AB7"/><text x="559" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#EEEDFE">E=2</text>
+              <text x="50" y="108" text-anchor="middle" style="font-size:10px;fill:#7F77DD">Inicio</text>
+              <text x="630" y="108" text-anchor="middle" style="font-size:10px;fill:#0F6E56">Fin</text>
+            </svg>
+            <div class="info-box">Red lineal: cada actividad depende de la anterior. No hay paralelismo.</div>
+          </div>
+
+          <div id="s1-2" class="step-content">
+            <div class="card card-accent-teal">
+              <div class="step-header"><div class="step-pill">2</div><div class="step-title">Paso hacia adelante — ES y EF (tiempos tempranos)</div></div>
+              <div class="step-body">¿Cuándo puede <b>iniciar más temprano</b> (ES) y <b>terminar más temprano</b> (EF) cada actividad?</div>
+              <div class="formula-box">EF = ES + Duración &nbsp;·&nbsp; ES = max(EF de predecesores)</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>ES</th><th>Duración</th><th>EF = ES + Dur</th><th>Razón del ES</th></tr></thead>
+                <tbody>
+                  <tr><td><b>A</b></td><td>0</td><td>3</td><td><b>3</b></td><td>Inicio del proyecto</td></tr>
+                  <tr><td><b>B</b></td><td>3</td><td>5</td><td><b>8</b></td><td>EF(A) = 3</td></tr>
+                  <tr><td><b>C</b></td><td>8</td><td>4</td><td><b>12</b></td><td>EF(B) = 8</td></tr>
+                  <tr><td><b>D</b></td><td>12</td><td>3</td><td><b>15</b></td><td>EF(C) = 12</td></tr>
+                  <tr><td><b>E</b></td><td>15</td><td>2</td><td><b>17</b></td><td>EF(D) = 15</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="info-box">Duración mínima del proyecto: <b>17 días</b>.</div>
+          </div>
+
+          <div id="s1-3" class="step-content">
+            <div class="card card-accent-amber">
+              <div class="step-header"><div class="step-pill">3</div><div class="step-title">Paso hacia atrás — LS y LF (tiempos tardíos)</div></div>
+              <div class="step-body">¿Cuándo puede <b>comenzar más tarde</b> (LS) y <b>terminar más tarde</b> (LF) sin retrasar el proyecto? Partimos desde el final: <b>LF(E) = 17</b></div>
+              <div class="formula-box">LS = LF − Duración &nbsp;·&nbsp; LF = min(LS de sucesores)</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>LF</th><th>Duración</th><th>LS = LF − Dur</th><th>Razón del LF</th></tr></thead>
+                <tbody>
+                  <tr><td><b>E</b></td><td>17</td><td>2</td><td><b>15</b></td><td>Fin del proyecto</td></tr>
+                  <tr><td><b>D</b></td><td>15</td><td>3</td><td><b>12</b></td><td>LS(E) = 15</td></tr>
+                  <tr><td><b>C</b></td><td>12</td><td>4</td><td><b>8</b></td><td>LS(D) = 12</td></tr>
+                  <tr><td><b>B</b></td><td>8</td><td>5</td><td><b>3</b></td><td>LS(C) = 8</td></tr>
+                  <tr><td><b>A</b></td><td>3</td><td>3</td><td><b>0</b></td><td>LS(B) = 3</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <div id="s1-4" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">4</div><div class="step-title">Holguras — ¿cuánto puede retrasarse cada actividad?</div></div>
+              <div class="formula-box">Holgura Total = LS − ES = LF − EF</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>ES</th><th>EF</th><th>LS</th><th>LF</th><th>Holgura</th><th>Crítica</th></tr></thead>
+                <tbody>
+                  <tr class="crit-row"><td><b>A</b></td><td>0</td><td>3</td><td>0</td><td>3</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>B</b></td><td>3</td><td>8</td><td>3</td><td>8</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>C</b></td><td>8</td><td>12</td><td>8</td><td>12</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>D</b></td><td>12</td><td>15</td><td>12</td><td>15</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>E</b></td><td>15</td><td>17</td><td>15</td><td>17</td><td><b>0</b></td><td>✓</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="crit-box">Holgura = 0 en todas las actividades. Cualquier retraso en cualquier actividad retrasa el proyecto completo.</div>
+          </div>
+
+          <div id="s1-5" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">5</div><div class="step-title">Ruta crítica identificada</div></div>
+              <div class="step-body">La ruta crítica es la secuencia con <b>holgura = 0</b> de inicio a fin.</div>
+            </div>
+            <div class="path-list">
+              <div class="path-item path-crit"><div class="path-dot" style="background:#E24B4A"></div><b>A → B → C → D → E</b> &nbsp;=&nbsp; 3+5+4+3+2 = <b>17 días</b> ← RUTA CRÍTICA</div>
+            </div>
+            <svg width="100%" viewBox="0 0 680 145" role="img"><title>Ruta crítica ejercicio 1</title>
+              <defs><marker id="am1r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+              <circle cx="50" cy="72" r="24" fill="#FCEBEB" stroke="#E24B4A" stroke-width="2.5"/>
+              <text x="50" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#A32D2D">0</text>
+              <circle cx="162" cy="72" r="24" fill="#FCEBEB" stroke="#E24B4A" stroke-width="2.5"/>
+              <text x="162" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#A32D2D">1</text>
+              <circle cx="274" cy="72" r="24" fill="#FCEBEB" stroke="#E24B4A" stroke-width="2.5"/>
+              <text x="274" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#A32D2D">2</text>
+              <circle cx="386" cy="72" r="24" fill="#FCEBEB" stroke="#E24B4A" stroke-width="2.5"/>
+              <text x="386" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#A32D2D">3</text>
+              <circle cx="498" cy="72" r="24" fill="#FCEBEB" stroke="#E24B4A" stroke-width="2.5"/>
+              <text x="498" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#A32D2D">4</text>
+              <circle cx="630" cy="72" r="24" fill="#E24B4A" stroke="#A32D2D" stroke-width="2.5"/>
+              <text x="630" y="72" text-anchor="middle" dominant-baseline="central" style="font-size:13px;font-weight:500;fill:#FCEBEB">5</text>
+              <line x1="74" y1="72" x2="136" y2="72" stroke="#E24B4A" stroke-width="3" marker-end="url(#am1r)"/>
+              <rect x="88" y="50" width="36" height="18" rx="9" fill="#E24B4A"/><text x="106" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FCEBEB">A=3</text>
+              <line x1="186" y1="72" x2="248" y2="72" stroke="#E24B4A" stroke-width="3" marker-end="url(#am1r)"/>
+              <rect x="200" y="50" width="36" height="18" rx="9" fill="#E24B4A"/><text x="218" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FCEBEB">B=5</text>
+              <line x1="298" y1="72" x2="360" y2="72" stroke="#E24B4A" stroke-width="3" marker-end="url(#am1r)"/>
+              <rect x="312" y="50" width="36" height="18" rx="9" fill="#E24B4A"/><text x="330" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FCEBEB">C=4</text>
+              <line x1="410" y1="72" x2="472" y2="72" stroke="#E24B4A" stroke-width="3" marker-end="url(#am1r)"/>
+              <rect x="424" y="50" width="36" height="18" rx="9" fill="#E24B4A"/><text x="442" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FCEBEB">D=3</text>
+              <line x1="522" y1="72" x2="604" y2="72" stroke="#E24B4A" stroke-width="3" marker-end="url(#am1r)"/>
+              <rect x="541" y="50" width="36" height="18" rx="9" fill="#E24B4A"/><text x="559" y="59" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FCEBEB">E=2</text>
+            </svg>
+          </div>
+
+          <div id="s1-6" class="step-content">
+            <div class="metrics-grid">
+              <div class="metric metric-purple"><div class="metric-label">Duración total</div><div class="metric-value">17<span class="metric-unit"> días</span></div></div>
+              <div class="metric metric-red"><div class="metric-label">Actos. críticas</div><div class="metric-value">5<span class="metric-unit"> / 5</span></div></div>
+              <div class="metric metric-teal"><div class="metric-label">Holgura máx.</div><div class="metric-value">0<span class="metric-unit"> días</span></div></div>
+              <div class="metric metric-amber"><div class="metric-label">Rutas</div><div class="metric-value">1</div></div>
+            </div>
+            <div class="card">
+              <div class="step-header"><div class="step-pill">6</div><div class="step-title">Diagrama de Gantt</div></div>
+              <div class="legend"><div class="leg-item"><div class="leg-swatch leg-crit"></div>Actividad crítica</div></div>
+              <div class="gantt-wrap">
+                <div class="gantt-scale"><span>0</span><span>5</span><span>10</span><span>15</span><span>17</span></div>
+                <div class="g-row"><span class="g-lbl">A</span><div class="g-track"><div class="g-bar g-crit" style="left:0%;width:17.6%">A</div></div><span class="g-dur">3d</span></div>
+                <div class="g-row"><span class="g-lbl">B</span><div class="g-track"><div class="g-bar g-crit" style="left:17.6%;width:29.4%">B</div></div><span class="g-dur">5d</span></div>
+                <div class="g-row"><span class="g-lbl">C</span><div class="g-track"><div class="g-bar g-crit" style="left:47%;width:23.5%">C</div></div><span class="g-dur">4d</span></div>
+                <div class="g-row"><span class="g-lbl">D</span><div class="g-track"><div class="g-bar g-crit" style="left:70.6%;width:17.6%">D</div></div><span class="g-dur">3d</span></div>
+                <div class="g-row"><span class="g-lbl">E</span><div class="g-track"><div class="g-bar g-crit" style="left:88.2%;width:11.8%">E</div></div><span class="g-dur">2d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════ EX 2 ══════════ -->
+        <div id="ex2" class="ex-content" style="display:none">
+          <div class="card">
+            <div class="enun-header">
+              <span class="step-title">Desarrollo de software</span>
+              <span class="badge-pill badge-teal">Paralelo · 7 actos</span>
+            </div>
+            <div class="tw"><table>
+              <thead><tr><th>Act.</th><th>Descripción</th><th>Semanas</th><th>Predecesores</th></tr></thead>
+              <tbody>
+                <tr><td><b>A</b></td><td>Análisis requerimientos</td><td>4</td><td>—</td></tr>
+                <tr><td><b>B</b></td><td>Diseño base de datos</td><td>3</td><td>A</td></tr>
+                <tr><td><b>C</b></td><td>Diseño de interfaz</td><td>5</td><td>A</td></tr>
+                <tr><td><b>D</b></td><td>Programación backend</td><td>6</td><td>B</td></tr>
+                <tr><td><b>E</b></td><td>Programación frontend</td><td>4</td><td>C</td></tr>
+                <tr><td><b>F</b></td><td>Integración del sistema</td><td>3</td><td>D, E</td></tr>
+                <tr><td><b>G</b></td><td>Pruebas y despliegue</td><td>2</td><td>F</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+
+          <div class="step-nav">
+            <button class="snav-btn" onclick="ps(2)" id="p2" disabled>← Anterior</button>
+            <div style="flex:1;text-align:center"><div class="snav-ind" id="i2">Paso 1 de 6</div><div class="snav-dots" id="d2"></div></div>
+            <button class="snav-btn" onclick="ns(2)" id="n2">Siguiente →</button>
+          </div>
+
+          <div id="s2-1" class="step-content active">
+            <div class="card card-accent-purple">
+              <div class="step-header"><div class="step-pill">1</div><div class="step-title">Grafo con ramificaciones paralelas</div></div>
+              <div class="step-body">A se bifurca en B y C (ramas paralelas). B→D y C→E. Luego <b>D y E convergen en F</b>: F no puede iniciar hasta que <b>ambas</b> terminen.</div>
+            </div>
+            <svg width="100%" viewBox="0 0 680 260" role="img"><title>Grafo ejercicio 2</title>
+              <defs><marker id="am2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+              <circle cx="50" cy="130" r="22" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="50" y="130" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#3C3489">0</text>
+              <circle cx="180" cy="130" r="22" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="180" y="130" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#3C3489">1</text>
+              <circle cx="300" cy="60" r="22" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1.5"/>
+              <text x="300" y="60" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#085041">2</text>
+              <circle cx="300" cy="200" r="22" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1.5"/>
+              <text x="300" y="200" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#085041">3</text>
+              <circle cx="430" cy="60" r="22" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="430" y="60" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#3C3489">4</text>
+              <circle cx="430" cy="200" r="22" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="430" y="200" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#3C3489">5</text>
+              <circle cx="560" cy="130" r="22" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="560" y="130" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#3C3489">6</text>
+              <circle cx="640" cy="130" r="22" fill="#1D9E75" stroke="#0F6E56" stroke-width="1.5"/>
+              <text x="640" y="130" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:500;fill:#E1F5EE">7</text>
+              <line x1="72" y1="130" x2="156" y2="130" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="96" y="115" width="36" height="16" rx="8" fill="#534AB7"/><text x="114" y="123" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#EEEDFE">A=4</text>
+              <line x1="197" y1="116" x2="282" y2="74" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="217" y="82" width="36" height="16" rx="8" fill="#534AB7"/><text x="235" y="90" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#EEEDFE">B=3</text>
+              <line x1="197" y1="144" x2="282" y2="186" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="217" y="172" width="36" height="16" rx="8" fill="#1D9E75"/><text x="235" y="180" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#E1F5EE">C=5</text>
+              <line x1="322" y1="60" x2="406" y2="60" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="342" y="45" width="36" height="16" rx="8" fill="#534AB7"/><text x="360" y="53" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#EEEDFE">D=6</text>
+              <line x1="322" y1="200" x2="406" y2="200" stroke="#1D9E75" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="342" y="207" width="36" height="16" rx="8" fill="#1D9E75"/><text x="360" y="215" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#E1F5EE">E=4</text>
+              <line x1="449" y1="76" x2="541" y2="116" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <line x1="449" y1="184" x2="541" y2="144" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="496" y="115" width="36" height="16" rx="8" fill="#534AB7"/><text x="514" y="123" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#EEEDFE">F=3</text>
+              <line x1="582" y1="130" x2="616" y2="130" stroke="#534AB7" stroke-width="2" marker-end="url(#am2)"/>
+              <rect x="589" y="115" width="36" height="16" rx="8" fill="#1D9E75"/><text x="607" y="123" text-anchor="middle" dominant-baseline="central" style="font-size:10px;font-weight:500;fill:#E1F5EE">G=2</text>
+            </svg>
+            <div class="info-box">F requiere que <b>tanto D como E hayan terminado</b>. Convergencia de dos ramas en un nodo → ES(F) = max(EF(D), EF(E)).</div>
+          </div>
+
+          <div id="s2-2" class="step-content">
+            <div class="card card-accent-teal">
+              <div class="step-header"><div class="step-pill">2</div><div class="step-title">Forward pass — ES y EF</div></div>
+              <div class="formula-box">ES(F) = max(EF(D), EF(E)) → espera al predecesor más lento</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>Dur.</th><th>Predecesores → EF</th><th>ES</th><th>EF</th></tr></thead>
+                <tbody>
+                  <tr><td><b>A</b></td><td>4</td><td>—</td><td>0</td><td><b>4</b></td></tr>
+                  <tr><td><b>B</b></td><td>3</td><td>A→4</td><td>4</td><td><b>7</b></td></tr>
+                  <tr><td><b>C</b></td><td>5</td><td>A→4</td><td>4</td><td><b>9</b></td></tr>
+                  <tr><td><b>D</b></td><td>6</td><td>B→7</td><td>7</td><td><b>13</b></td></tr>
+                  <tr><td><b>E</b></td><td>4</td><td>C→9</td><td>9</td><td><b>13</b></td></tr>
+                  <tr><td><b>F</b></td><td>3</td><td>D→13, E→13 → max=13</td><td><b>13</b></td><td><b>16</b></td></tr>
+                  <tr><td><b>G</b></td><td>2</td><td>F→16</td><td>16</td><td><b>18</b></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="info-box">D y E terminan exactamente al mismo tiempo (semana 13). F puede iniciar de inmediato. Duración total: <b>18 semanas</b>.</div>
+          </div>
+
+          <div id="s2-3" class="step-content">
+            <div class="card card-accent-amber">
+              <div class="step-header"><div class="step-pill">3</div><div class="step-title">Backward pass — LS y LF</div></div>
+              <div class="formula-box">LF(A) = min(LS(B), LS(C)) → se elige el sucesor más urgente</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>Dur.</th><th>Sucesores → LS</th><th>LF</th><th>LS</th></tr></thead>
+                <tbody>
+                  <tr><td><b>G</b></td><td>2</td><td>Fin → 18</td><td>18</td><td><b>16</b></td></tr>
+                  <tr><td><b>F</b></td><td>3</td><td>G→16</td><td>16</td><td><b>13</b></td></tr>
+                  <tr><td><b>D</b></td><td>6</td><td>F→13</td><td>13</td><td><b>7</b></td></tr>
+                  <tr><td><b>E</b></td><td>4</td><td>F→13</td><td>13</td><td><b>9</b></td></tr>
+                  <tr><td><b>B</b></td><td>3</td><td>D→7</td><td>7</td><td><b>4</b></td></tr>
+                  <tr><td><b>C</b></td><td>5</td><td>E→9</td><td>9</td><td><b>4</b></td></tr>
+                  <tr><td><b>A</b></td><td>4</td><td>B→4, C→4 → min=4</td><td><b>4</b></td><td><b>0</b></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <div id="s2-4" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">4</div><div class="step-title">Tabla de holguras completa</div></div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>ES</th><th>EF</th><th>LS</th><th>LF</th><th>Holgura</th><th>Crítica</th></tr></thead>
+                <tbody>
+                  <tr class="crit-row"><td><b>A</b></td><td>0</td><td>4</td><td>0</td><td>4</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>B</b></td><td>4</td><td>7</td><td>4</td><td>7</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>C</b></td><td>4</td><td>9</td><td>4</td><td>9</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>D</b></td><td>7</td><td>13</td><td>7</td><td>13</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>E</b></td><td>9</td><td>13</td><td>9</td><td>13</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>F</b></td><td>13</td><td>16</td><td>13</td><td>16</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>G</b></td><td>16</td><td>18</td><td>16</td><td>18</td><td><b>0</b></td><td>✓</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="warn-box">Todas las holguras son 0 porque ambas ramas tienen la misma duración acumulada. Coincidencia del enunciado.</div>
+          </div>
+
+          <div id="s2-5" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">5</div><div class="step-title">Rutas y doble ruta crítica</div></div>
+            </div>
+            <div class="path-list">
+              <div class="path-item path-crit"><div class="path-dot" style="background:#E24B4A"></div><b>Ruta 1:</b> A→B→D→F→G = 4+3+6+3+2 = <b>18 sem.</b> ← CRÍTICA</div>
+              <div class="path-item path-crit"><div class="path-dot" style="background:#E24B4A"></div><b>Ruta 2:</b> A→C→E→F→G = 4+5+4+3+2 = <b>18 sem.</b> ← TAMBIÉN CRÍTICA</div>
+            </div>
+            <div class="crit-box"><b>Doble ruta crítica:</b> un retraso en cualquiera de las dos rutas demora el proyecto entero. Mayor riesgo que con una sola ruta crítica.</div>
+          </div>
+
+          <div id="s2-6" class="step-content">
+            <div class="metrics-grid">
+              <div class="metric metric-purple"><div class="metric-label">Duración total</div><div class="metric-value">18<span class="metric-unit"> sem.</span></div></div>
+              <div class="metric metric-red"><div class="metric-label">Rutas críticas</div><div class="metric-value">2</div></div>
+              <div class="metric metric-teal"><div class="metric-label">Actividades</div><div class="metric-value">7</div></div>
+              <div class="metric metric-amber"><div class="metric-label">Holgura máx.</div><div class="metric-value">0<span class="metric-unit"> sem.</span></div></div>
+            </div>
+            <div class="card">
+              <div class="step-header"><div class="step-pill">6</div><div class="step-title">Diagrama de Gantt</div></div>
+              <div class="legend"><div class="leg-item"><div class="leg-swatch leg-crit"></div>Crítica</div></div>
+              <div class="gantt-wrap">
+                <div class="gantt-scale"><span>0</span><span>4</span><span>9</span><span>13</span><span>16</span><span>18</span></div>
+                <div class="g-row"><span class="g-lbl">A</span><div class="g-track"><div class="g-bar g-crit" style="left:0%;width:22.2%">A</div></div><span class="g-dur">4s</span></div>
+                <div class="g-row"><span class="g-lbl">B</span><div class="g-track"><div class="g-bar g-crit" style="left:22.2%;width:16.7%">B</div></div><span class="g-dur">3s</span></div>
+                <div class="g-row"><span class="g-lbl">C</span><div class="g-track"><div class="g-bar g-crit" style="left:22.2%;width:27.8%">C</div></div><span class="g-dur">5s</span></div>
+                <div class="g-row"><span class="g-lbl">D</span><div class="g-track"><div class="g-bar g-crit" style="left:38.9%;width:33.3%">D</div></div><span class="g-dur">6s</span></div>
+                <div class="g-row"><span class="g-lbl">E</span><div class="g-track"><div class="g-bar g-crit" style="left:50%;width:22.2%">E</div></div><span class="g-dur">4s</span></div>
+                <div class="g-row"><span class="g-lbl">F</span><div class="g-track"><div class="g-bar g-crit" style="left:72.2%;width:16.7%">F</div></div><span class="g-dur">3s</span></div>
+                <div class="g-row"><span class="g-lbl">G</span><div class="g-track"><div class="g-bar g-crit" style="left:88.9%;width:11.1%">G</div></div><span class="g-dur">2s</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════ EX 3 ══════════ -->
+        <div id="ex3" class="ex-content" style="display:none">
+          <div class="card">
+            <div class="enun-header">
+              <span class="step-title">Planta industrial</span>
+              <span class="badge-pill badge-purple">Red compleja · 9 actos · holguras reales</span>
+            </div>
+            <div class="tw"><table>
+              <thead><tr><th>Act.</th><th>Descripción</th><th>Días</th><th>Predecesores</th></tr></thead>
+              <tbody>
+                <tr><td><b>A</b></td><td>Estudios de suelo</td><td>5</td><td>—</td></tr>
+                <tr><td><b>B</b></td><td>Diseño estructural</td><td>8</td><td>A</td></tr>
+                <tr><td><b>C</b></td><td>Trámites legales</td><td>10</td><td>A</td></tr>
+                <tr><td><b>D</b></td><td>Excavación</td><td>6</td><td>B</td></tr>
+                <tr><td><b>E</b></td><td>Compra materiales</td><td>4</td><td>B, C</td></tr>
+                <tr><td><b>F</b></td><td>Cimentación</td><td>7</td><td>D, E</td></tr>
+                <tr><td><b>G</b></td><td>Estructura metálica</td><td>9</td><td>F</td></tr>
+                <tr><td><b>H</b></td><td>Inst. eléctricas</td><td>5</td><td>F</td></tr>
+                <tr><td><b>I</b></td><td>Entrega final</td><td>3</td><td>G, H</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+
+          <div class="step-nav">
+            <button class="snav-btn" onclick="ps(3)" id="p3" disabled>← Anterior</button>
+            <div style="flex:1;text-align:center"><div class="snav-ind" id="i3">Paso 1 de 6</div><div class="snav-dots" id="d3"></div></div>
+            <button class="snav-btn" onclick="ns(3)" id="n3">Siguiente →</button>
+          </div>
+
+          <div id="s3-1" class="step-content active">
+            <div class="card card-accent-purple">
+              <div class="step-header"><div class="step-pill">1</div><div class="step-title">Análisis de dependencias y grafo</div></div>
+              <div class="step-body"><b>Divergencias:</b> A→{B,C} y F→{G,H}<br><b>Convergencias:</b> {B,C}→E · {D,E}→F · {G,H}→I<br>E depende de B <b>y</b> C: debe esperar al más tardío (C=10 días vs B=8).</div>
+            </div>
+            <svg width="100%" viewBox="0 0 680 275" role="img"><title>Grafo ejercicio 3 — planta industrial</title>
+              <defs><marker id="am3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+              <circle cx="40" cy="138" r="19" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="40" y="138" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#3C3489">0</text>
+              <circle cx="125" cy="138" r="19" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="125" y="138" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#3C3489">1</text>
+              <circle cx="218" cy="68" r="19" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1.5"/>
+              <text x="218" y="68" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#085041">2</text>
+              <circle cx="218" cy="208" r="19" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.5"/>
+              <text x="218" y="208" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#633806">3</text>
+              <circle cx="330" cy="68" r="19" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1.5"/>
+              <text x="330" y="68" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#085041">4</text>
+              <circle cx="330" cy="208" r="19" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.5"/>
+              <text x="330" y="208" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#633806">5</text>
+              <circle cx="430" cy="138" r="19" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+              <text x="430" y="138" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#3C3489">6</text>
+              <circle cx="535" cy="68" r="19" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1.5"/>
+              <text x="535" y="68" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#085041">7</text>
+              <circle cx="535" cy="208" r="19" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.5"/>
+              <text x="535" y="208" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#633806">8</text>
+              <circle cx="635" cy="138" r="19" fill="#1D9E75" stroke="#0F6E56" stroke-width="1.5"/>
+              <text x="635" y="138" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#E1F5EE">9</text>
+              <line x1="59" y1="138" x2="104" y2="138" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="81" y="127" text-anchor="middle" style="font-size:9px;fill:#534AB7;font-weight:500">A=5</text>
+              <line x1="140" y1="123" x2="203" y2="81" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="158" y="93" text-anchor="middle" style="font-size:9px;fill:#534AB7;font-weight:500">B=8</text>
+              <line x1="140" y1="153" x2="203" y2="195" stroke="#BA7517" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="158" y="185" text-anchor="middle" style="font-size:9px;fill:#BA7517;font-weight:500">C=10</text>
+              <line x1="237" y1="68" x2="309" y2="68" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="273" y="57" text-anchor="middle" style="font-size:9px;fill:#1D9E75;font-weight:500">D=6</text>
+              <line x1="234" y1="80" x2="314" y2="196" stroke="#BA7517" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#am3)"/>
+              <line x1="237" y1="208" x2="309" y2="208" stroke="#BA7517" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="290" y="170" text-anchor="middle" style="font-size:9px;fill:#BA7517;font-weight:500">E=4</text>
+              <line x1="347" y1="82" x2="413" y2="124" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <line x1="347" y1="194" x2="413" y2="152" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="405" y="128" text-anchor="middle" style="font-size:9px;fill:#534AB7;font-weight:500">F=7</text>
+              <line x1="447" y1="123" x2="518" y2="81" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="480" y="92" text-anchor="middle" style="font-size:9px;fill:#1D9E75;font-weight:500">G=9</text>
+              <line x1="447" y1="153" x2="518" y2="195" stroke="#BA7517" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="480" y="186" text-anchor="middle" style="font-size:9px;fill:#BA7517;font-weight:500">H=5</text>
+              <line x1="552" y1="82" x2="618" y2="124" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <line x1="552" y1="194" x2="618" y2="152" stroke="#534AB7" stroke-width="1.5" marker-end="url(#am3)"/>
+              <text x="597" y="130" text-anchor="middle" style="font-size:9px;fill:#534AB7;font-weight:500">I=3</text>
+            </svg>
+            <div class="warn-box">Línea punteada naranja: dependencia adicional de E con respecto a B. E espera tanto a B como a C.</div>
+          </div>
+
+          <div id="s3-2" class="step-content">
+            <div class="card card-accent-teal">
+              <div class="step-header"><div class="step-pill">2</div><div class="step-title">Forward pass — tiempos tempranos</div></div>
+              <div class="formula-box">ES(E) = max(EF(B), EF(C)) = max(13, 15) = 15 ← el crítico es C</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>Dur.</th><th>ES — explicación</th><th>ES</th><th>EF</th></tr></thead>
+                <tbody>
+                  <tr><td><b>A</b></td><td>5</td><td>Inicio</td><td>0</td><td><b>5</b></td></tr>
+                  <tr><td><b>B</b></td><td>8</td><td>EF(A)=5</td><td>5</td><td><b>13</b></td></tr>
+                  <tr><td><b>C</b></td><td>10</td><td>EF(A)=5</td><td>5</td><td><b>15</b></td></tr>
+                  <tr><td><b>D</b></td><td>6</td><td>EF(B)=13</td><td>13</td><td><b>19</b></td></tr>
+                  <tr><td><b>E</b></td><td>4</td><td>max(EF(B)=13, EF(C)=15) = <b>15</b></td><td><b>15</b></td><td><b>19</b></td></tr>
+                  <tr><td><b>F</b></td><td>7</td><td>max(EF(D)=19, EF(E)=19) = 19</td><td>19</td><td><b>26</b></td></tr>
+                  <tr><td><b>G</b></td><td>9</td><td>EF(F)=26</td><td>26</td><td><b>35</b></td></tr>
+                  <tr><td><b>H</b></td><td>5</td><td>EF(F)=26</td><td>26</td><td><b>31</b></td></tr>
+                  <tr><td><b>I</b></td><td>3</td><td>max(EF(G)=35, EF(H)=31) = <b>35</b></td><td><b>35</b></td><td><b>38</b></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="info-box">G (9 días) es la actividad más larga y fuerza I a esperar hasta el día 35. H termina en el día 31 (4 días antes). Duración total: <b>38 días</b>.</div>
+          </div>
+
+          <div id="s3-3" class="step-content">
+            <div class="card card-accent-amber">
+              <div class="step-header"><div class="step-pill">3</div><div class="step-title">Backward pass — tiempos tardíos</div></div>
+              <div class="formula-box">LF(F) = min(LS(G), LS(H)) = min(26, 30) = 26 ← G es el sucesor urgente</div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>Dur.</th><th>LF — explicación</th><th>LF</th><th>LS</th></tr></thead>
+                <tbody>
+                  <tr><td><b>I</b></td><td>3</td><td>Fin: 38</td><td>38</td><td><b>35</b></td></tr>
+                  <tr><td><b>G</b></td><td>9</td><td>LS(I)=35</td><td>35</td><td><b>26</b></td></tr>
+                  <tr><td><b>H</b></td><td>5</td><td>LS(I)=35</td><td>35</td><td><b>30</b></td></tr>
+                  <tr><td><b>F</b></td><td>7</td><td>min(LS(G)=26, LS(H)=30) = <b>26</b></td><td><b>26</b></td><td><b>19</b></td></tr>
+                  <tr><td><b>D</b></td><td>6</td><td>LS(F)=19</td><td>19</td><td><b>13</b></td></tr>
+                  <tr><td><b>E</b></td><td>4</td><td>LS(F)=19</td><td>19</td><td><b>15</b></td></tr>
+                  <tr><td><b>B</b></td><td>8</td><td>min(LS(D)=13, LS(E)=15) = <b>13</b></td><td><b>13</b></td><td><b>5</b></td></tr>
+                  <tr><td><b>C</b></td><td>10</td><td>LS(E)=15</td><td>15</td><td><b>5</b></td></tr>
+                  <tr><td><b>A</b></td><td>5</td><td>min(LS(B)=5, LS(C)=5) = 5</td><td><b>5</b></td><td><b>0</b></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <div id="s3-4" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">4</div><div class="step-title">Holguras — ¡H tiene 4 días de margen!</div></div>
+              <div class="tw"><table>
+                <thead><tr><th>Act.</th><th>ES</th><th>EF</th><th>LS</th><th>LF</th><th>Holgura</th><th>Crítica</th></tr></thead>
+                <tbody>
+                  <tr class="crit-row"><td><b>A</b></td><td>0</td><td>5</td><td>0</td><td>5</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>B</b></td><td>5</td><td>13</td><td>5</td><td>13</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>C</b></td><td>5</td><td>15</td><td>5</td><td>15</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>D</b></td><td>13</td><td>19</td><td>13</td><td>19</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>E</b></td><td>15</td><td>19</td><td>15</td><td>19</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>F</b></td><td>19</td><td>26</td><td>19</td><td>26</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="crit-row"><td><b>G</b></td><td>26</td><td>35</td><td>26</td><td>35</td><td><b>0</b></td><td>✓</td></tr>
+                  <tr class="warn-row"><td><b>H</b></td><td>26</td><td>31</td><td>30</td><td>35</td><td><b>4 días</b></td><td>✗</td></tr>
+                  <tr class="crit-row"><td><b>I</b></td><td>35</td><td>38</td><td>35</td><td>38</td><td><b>0</b></td><td>✓</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="warn-box"><b>H (instalaciones eléctricas)</b> puede retrasarse hasta 4 días. Esto permite reasignar personal de H hacia G para acortar la ruta crítica.</div>
+          </div>
+
+          <div id="s3-5" class="step-content">
+            <div class="card card-accent-red">
+              <div class="step-header"><div class="step-pill">5</div><div class="step-title">Las 4 rutas del proyecto</div></div>
+            </div>
+            <div class="path-list">
+              <div class="path-item path-crit"><div class="path-dot" style="background:#E24B4A"></div><b>Ruta 1:</b> A→B→D→F→G→I = 5+8+6+7+9+3 = <b>38 días</b> ← CRÍTICA</div>
+              <div class="path-item path-crit"><div class="path-dot" style="background:#E24B4A"></div><b>Ruta 2:</b> A→C→E→F→G→I = 5+10+4+7+9+3 = <b>38 días</b> ← CRÍTICA</div>
+              <div class="path-item path-ok"><div class="path-dot" style="background:#1D9E75"></div><b>Ruta 3:</b> A→B→D→F→H→I = 5+8+6+7+5+3 = <b>34 días</b> — holgura 4d</div>
+              <div class="path-item path-ok"><div class="path-dot" style="background:#1D9E75"></div><b>Ruta 4:</b> A→C→E→F→H→I = 5+10+4+7+5+3 = <b>34 días</b> — holgura 4d</div>
+            </div>
+            <div class="crit-box"><b>Conclusión gerencial:</b> para acortar el proyecto hay que comprimir G (9 días) o las rutas que pasan por D/E. H puede atrasar sin consecuencias.</div>
+          </div>
+
+          <div id="s3-6" class="step-content">
+            <div class="metrics-grid">
+              <div class="metric metric-purple"><div class="metric-label">Duración total</div><div class="metric-value">38<span class="metric-unit"> días</span></div></div>
+              <div class="metric metric-red"><div class="metric-label">Actos. críticas</div><div class="metric-value">8<span class="metric-unit"> / 9</span></div></div>
+              <div class="metric metric-teal"><div class="metric-label">No críticas</div><div class="metric-value">1<span class="metric-unit"> (H)</span></div></div>
+              <div class="metric metric-amber"><div class="metric-label">Holgura máx.</div><div class="metric-value">4<span class="metric-unit"> días</span></div></div>
+            </div>
+            <div class="card">
+              <div class="step-header"><div class="step-pill">6</div><div class="step-title">Diagrama de Gantt</div></div>
+              <div class="legend">
+                <div class="leg-item"><div class="leg-swatch leg-crit"></div>Crítica</div>
+                <div class="leg-item"><div class="leg-swatch leg-norm"></div>Con holgura</div>
+                <div class="leg-item"><div class="leg-swatch leg-holg" style="width:20px;height:10px"></div>Margen disponible</div>
+              </div>
+              <div class="gantt-wrap">
+                <div class="gantt-scale"><span>0</span><span>5</span><span>13</span><span>19</span><span>26</span><span>35</span><span>38</span></div>
+                <div class="g-row"><span class="g-lbl">A</span><div class="g-track"><div class="g-bar g-crit" style="left:0%;width:13.2%">A</div></div><span class="g-dur">5d</span></div>
+                <div class="g-row"><span class="g-lbl">B</span><div class="g-track"><div class="g-bar g-crit" style="left:13.2%;width:21%">B</div></div><span class="g-dur">8d</span></div>
+                <div class="g-row"><span class="g-lbl">C</span><div class="g-track"><div class="g-bar g-crit" style="left:13.2%;width:26.3%">C</div></div><span class="g-dur">10d</span></div>
+                <div class="g-row"><span class="g-lbl">D</span><div class="g-track"><div class="g-bar g-crit" style="left:34.2%;width:15.8%">D</div></div><span class="g-dur">6d</span></div>
+                <div class="g-row"><span class="g-lbl">E</span><div class="g-track"><div class="g-bar g-crit" style="left:39.5%;width:10.5%">E</div></div><span class="g-dur">4d</span></div>
+                <div class="g-row"><span class="g-lbl">F</span><div class="g-track"><div class="g-bar g-crit" style="left:50%;width:18.4%">F</div></div><span class="g-dur">7d</span></div>
+                <div class="g-row"><span class="g-lbl">G</span><div class="g-track"><div class="g-bar g-crit" style="left:68.4%;width:23.7%">G</div></div><span class="g-dur">9d</span></div>
+                <div class="g-row"><span class="g-lbl">H</span><div class="g-track"><div class="g-bar g-norm" style="left:68.4%;width:13.2%">H</div><div class="g-dashed" style="left:81.6%;width:10.5%"></div></div><span class="g-dur">5d+4</span></div>
+                <div class="g-row"><span class="g-lbl">I</span><div class="g-track"><div class="g-bar g-crit" style="left:92.1%;width:7.9%">I</div></div><span class="g-dur">3d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        </div><!-- end .app -->
+    </div><!-- end .page-container -->
+
+<script>
+const st={1:1,2:1,3:1},mx={1:6,2:6,3:6};
+
+function initDots(ex){
+  const el=document.getElementById('d'+ex);
+  el.innerHTML='';
+  for(let i=1;i<=mx[ex];i++){
+    const d=document.createElement('div');
+    d.className='snav-dot'+(i===st[ex]?' on':'');
+    d.id='dot'+ex+'-'+i;
+    el.appendChild(d);
+  }
+}
+
+function upd(ex){
+  const s=st[ex],m=mx[ex];
+  document.getElementById('p'+ex).disabled=s===1;
+  document.getElementById('n'+ex).disabled=s===m;
+  document.getElementById('i'+ex).textContent='Paso '+s+' de '+m;
+  for(let i=1;i<=m;i++){
+    const el=document.getElementById('s'+ex+'-'+i);
+    if(el)el.classList.toggle('active',i===s);
+    const dot=document.getElementById('dot'+ex+'-'+i);
+    if(dot)dot.classList.toggle('on',i===s);
+  }
+}
+
+function ns(ex){if(st[ex]<mx[ex]){st[ex]++;upd(ex);}}
+function ps(ex){if(st[ex]>1){st[ex]--;upd(ex);}}
+
+function showEx(n,el){
+  document.querySelectorAll('.ex-content').forEach(e=>e.style.display='none');
+  document.getElementById('ex'+n).style.display='block';
+  document.querySelectorAll('.ex-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+[1,2,3].forEach(e=>{initDots(e);});
+
+// Info panel
+function toggleInfoCpm(){
+  document.getElementById('infoPanelCpm').classList.toggle('open');
+}
+
+function showCpmTab(id, btn){
+  document.querySelectorAll('.info-tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.info-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('cpm-tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+
+</body>
+</html>
