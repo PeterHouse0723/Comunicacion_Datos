@@ -1149,8 +1149,8 @@ def solver():
 RECURSOS_ACADEMICOS = [
     {
         'id': 'solver-pl',
-        'nombre': 'Solver de Programación Lineal',
-        'descripcion': 'Resuelve problemas de optimización con Simplex, Dos Fases, Método Gráfico y Dualidad.',
+        'nombre': 'Calculadora de Programación Lineal',
+        'descripcion': 'Optimiza funciones lineales con Simplex, Dos Fases, Método Gráfico y Dualidad. Incluye guía de uso y ejemplos.',
         'categoria': 'Optimización',
         'icono': 'fa-calculator',
         'banner': 'purple',

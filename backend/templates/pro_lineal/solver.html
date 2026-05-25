@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solver Programación Lineal — Operativa</title>
+    <title>Calculadora de Programación Lineal — Operativa</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -346,12 +346,225 @@
         <i class="fas fa-arrow-left"></i> Volver al Dashboard
     </a>
     <span class="sep">›</span>
-    <span class="current">Solver — Programación Lineal</span>
+    <span class="current">Calculadora de Programación Lineal</span>
 </nav>
 
 <div class="container">
-    <h1>Solver de Programación Lineal</h1>
+    <h1>Calculadora de Programación Lineal</h1>
     <p class="subtitle">simplex &nbsp;·&nbsp; dos fases &nbsp;·&nbsp; dualidad &nbsp;·&nbsp; método gráfico</p>
+
+    <!-- ══ PANEL DE INFORMACIÓN ══ -->
+    <style>
+        .info-card {
+            background: #fff; border: 1px solid #d3dce7;
+            border-radius: 14px; margin-bottom: 1.75rem;
+            box-shadow: 0 4px 18px rgba(15,23,42,0.06); overflow: hidden;
+        }
+        .info-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.5rem; cursor: pointer;
+            background: linear-gradient(135deg, #1e3a8a08, #2563eb08);
+            border-bottom: 1px solid #e8edf5;
+            user-select: none; transition: background 0.15s;
+        }
+        .info-header:hover { background: linear-gradient(135deg, #1e3a8a12, #2563eb12); }
+        .info-header-left { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #0f3d91; font-size: 0.95rem; }
+        .info-header-left i { font-size: 1.1rem; color: #2563eb; }
+        .info-arrow { color: #94a3b8; font-size: 0.85rem; transition: transform 0.25s; }
+        .info-arrow.open { transform: rotate(180deg); }
+
+        .info-body { display: none; }
+        .info-body.open { display: block; }
+
+        .info-tabs { display: flex; gap: 0; border-bottom: 1px solid #e8edf5; }
+        .info-tab {
+            padding: 0.7rem 1.4rem; background: none; border: none;
+            font-size: 0.85rem; font-weight: 600; color: #64748b;
+            cursor: pointer; border-bottom: 3px solid transparent;
+            transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+        }
+        .info-tab:hover { color: #2563eb; }
+        .info-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+        .tab-content { display: none; padding: 1.4rem 1.5rem; }
+        .tab-content.active { display: block; }
+
+        /* Definición */
+        .def-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.8rem; }
+        @media(max-width:640px){ .def-grid { grid-template-columns: 1fr; } }
+        .def-item { background: #f4f7fb; border-radius: 10px; padding: 0.9rem 1.1rem; border: 1px solid #e2e8f0; }
+        .def-item-title { font-weight: 700; color: #0f3d91; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+        .def-item-body { font-size: 0.85rem; color: #475569; line-height: 1.55; }
+
+        /* Métodos */
+        .met-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.6rem; }
+        .met-item { display: flex; gap: 12px; align-items: flex-start; }
+        .met-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+        .met-text { font-size: 0.855rem; color: #475569; line-height: 1.5; }
+        .met-text strong { color: #1e293b; }
+
+        /* Ejemplo */
+        .ej-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.8rem; }
+        @media(max-width:640px){ .ej-split { grid-template-columns: 1fr; } }
+        .ej-box { background: #f4f7fb; border-radius: 10px; padding: 1rem 1.2rem; border: 1px solid #e2e8f0; }
+        .ej-box-title { font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px; }
+        .ej-math { font-size: 0.9rem; color: #1e293b; line-height: 1.9; font-family: 'JetBrains Mono', monospace; }
+        .ej-math .obj { color: #0f3d91; font-weight: 700; }
+        .ej-math .rest { color: #166534; }
+        .ej-field { margin-bottom: 0.7rem; }
+        .ej-field-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+        .ej-field-val { font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; background: white; border: 1px solid #d3dce7; border-radius: 6px; padding: 0.4rem 0.7rem; color: #2563eb; font-weight: 600; display: inline-block; }
+        .ej-field-val.block { display: block; white-space: pre; }
+        .btn-cargar {
+            margin-top: 1rem; padding: 0.55rem 1.2rem;
+            background: #2563eb; color: white; border: none;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 700;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .btn-cargar:hover { opacity: 0.85; }
+    </style>
+
+    <div class="info-card">
+        <div class="info-header" onclick="toggleInfo()">
+            <div class="info-header-left">
+                <i class="fas fa-circle-info"></i>
+                ¿Cómo funciona la Calculadora de Programación Lineal?
+            </div>
+            <i class="fas fa-chevron-down info-arrow" id="infoArrow"></i>
+        </div>
+        <div class="info-body" id="infoBody">
+            <div class="info-tabs">
+                <button class="info-tab active" onclick="showInfoTab('def',this)">¿Qué es?</button>
+                <button class="info-tab" onclick="showInfoTab('met',this)">Métodos disponibles</button>
+                <button class="info-tab" onclick="showInfoTab('ej',this)">Ejemplo paso a paso</button>
+            </div>
+
+            <!-- TAB: QUÉ ES -->
+            <div class="tab-content active" id="tab-def">
+                <p style="font-size:0.9rem;color:#334155;line-height:1.65;margin-bottom:0.9rem;">
+                    La <strong>Programación Lineal (PL)</strong> es una técnica matemática para
+                    <strong>optimizar</strong> (maximizar o minimizar) una <em>función objetivo lineal</em>
+                    sujeta a un conjunto de <em>restricciones lineales</em>. Se aplica en logística,
+                    producción, finanzas, redes y muchos problemas de toma de decisiones.
+                </p>
+                <div class="def-grid">
+                    <div class="def-item">
+                        <div class="def-item-title"><i class="fas fa-bullseye"></i> Función objetivo</div>
+                        <div class="def-item-body">Expresión lineal que se quiere maximizar o minimizar. Ejemplo: <code>Z = 3x₁ + 5x₂</code>. En la calculadora se ingresan solo los coeficientes: <code>3 5</code>.</div>
+                    </div>
+                    <div class="def-item">
+                        <div class="def-item-title"><i class="fas fa-not-equal"></i> Restricciones</div>
+                        <div class="def-item-body">Desigualdades o igualdades que limitan las variables. Cada una en una línea con formato <code>coef1 coef2 … op RHS</code>. Operadores: <code>&lt;=</code>, <code>&gt;=</code>, <code>=</code>.</div>
+                    </div>
+                    <div class="def-item">
+                        <div class="def-item-title"><i class="fas fa-check-circle"></i> Variables de decisión</div>
+                        <div class="def-item-body">Las incógnitas del problema (x₁, x₂, …). Se asume que son <strong>≥ 0</strong> (no negatividad). La cantidad de variables la determina el número de coeficientes en la función objetivo.</div>
+                    </div>
+                    <div class="def-item">
+                        <div class="def-item-title"><i class="fas fa-star"></i> Solución óptima</div>
+                        <div class="def-item-body">El punto dentro de la región factible donde la función objetivo alcanza su valor máximo o mínimo. La calculadora muestra cada iteración del método elegido.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: MÉTODOS -->
+            <div class="tab-content" id="tab-met">
+                <div class="met-list">
+                    <div class="met-item">
+                        <span class="met-badge" style="background:#dbeafe;color:#1e40af;">Simplex</span>
+                        <div class="met-text"><strong>Método algebraico clásico.</strong> Ideal para problemas con restricciones <code>≤</code> y variables no negativas. Parte de una solución básica factible y mejora iterativamente hasta el óptimo. <em>Recomendado para la mayoría de problemas.</em></div>
+                    </div>
+                    <div class="met-item">
+                        <span class="met-badge" style="background:#fef3c7;color:#92400e;">Dos Fases</span>
+                        <div class="met-text"><strong>Para problemas con restricciones <code>≥</code> o <code>=</code>.</strong> Fase 1: minimiza variables artificiales para encontrar una solución factible. Fase 2: optimiza la función objetivo real. Muestra ambas fases en detalle.</div>
+                    </div>
+                    <div class="met-item">
+                        <span class="met-badge" style="background:#d1fae5;color:#065f46;">Gráfico</span>
+                        <div class="met-text"><strong>Solo para 2 variables.</strong> Dibuja la región factible, los vértices y el punto óptimo. Excelente para <em>entender visualmente</em> el problema antes de usar métodos algebraicos.</div>
+                    </div>
+                    <div class="met-item">
+                        <span class="met-badge" style="background:#ede9fe;color:#5b21b6;">Dualidad</span>
+                        <div class="met-text"><strong>Análisis primal–dual.</strong> Resuelve simultáneamente el problema original (primal) y su dual. Útil para análisis de sensibilidad: muestra precios sombra y holguras de las restricciones.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: EJEMPLO -->
+            <div class="tab-content" id="tab-ej">
+                <p style="font-size:0.85rem;color:#64748b;margin-bottom:0.9rem;">
+                    Supón que una empresa fabrica dos productos. Cada unidad de <strong>x₁</strong> genera $3 de ganancia y cada unidad de <strong>x₂</strong> genera $5. Las restricciones son capacidad de máquinas.
+                </p>
+                <div class="ej-split">
+                    <div class="ej-box">
+                        <div class="ej-box-title"><i class="fas fa-square-root-alt"></i> Forma matemática</div>
+                        <div class="ej-math">
+                            <span class="obj">Max Z = 3x₁ + 5x₂</span><br>
+                            Sujeto a:<br>
+                            <span class="rest">&nbsp;&nbsp;x₁ + 2x₂ ≤ 12</span><br>
+                            <span class="rest">&nbsp;2x₁ +  x₂ ≤ 10</span><br>
+                            &nbsp;&nbsp;x₁, x₂ ≥ 0
+                        </div>
+                    </div>
+                    <div class="ej-box">
+                        <div class="ej-box-title"><i class="fas fa-keyboard"></i> Cómo ingresarlo en la calculadora</div>
+                        <div class="ej-field">
+                            <div class="ej-field-label">Función objetivo</div>
+                            <span class="ej-field-val">3 5</span>
+                            <span style="font-size:0.75rem;color:#94a3b8;margin-left:8px;">← coeficientes de x₁ y x₂</span>
+                        </div>
+                        <div class="ej-field">
+                            <div class="ej-field-label">Tipo</div>
+                            <span class="ej-field-val">Maximizar</span>
+                        </div>
+                        <div class="ej-field">
+                            <div class="ej-field-label">Restricciones (una por línea)</div>
+                            <span class="ej-field-val block">1 2 &lt;= 12
+2 1 &lt;= 10</span>
+                            <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">formato: <code>coef1 coef2 op RHS</code></div>
+                        </div>
+                        <button class="btn-cargar" onclick="cargarEjemplo()">
+                            <i class="fas fa-bolt"></i> Cargar este ejemplo
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-top:1rem;padding:0.75rem 1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:0.83rem;color:#166534;">
+                    <strong><i class="fas fa-lightbulb"></i> Resultado esperado:</strong>
+                    x₁ ≈ 2.67, x₂ ≈ 4.67, <strong>Z = 31.33</strong> (solución óptima en el vértice de la región factible)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function toggleInfo() {
+        const body  = document.getElementById('infoBody');
+        const arrow = document.getElementById('infoArrow');
+        const open  = body.classList.toggle('open');
+        arrow.classList.toggle('open', open);
+    }
+    function showInfoTab(id, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.info-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.add('active');
+        btn.classList.add('active');
+        // Si el panel está cerrado, abrirlo
+        const body = document.getElementById('infoBody');
+        if (!body.classList.contains('open')) {
+            body.classList.add('open');
+            document.getElementById('infoArrow').classList.add('open');
+        }
+    }
+    function cargarEjemplo() {
+        document.querySelector('input[name="objetivo"]').value   = '3 5';
+        document.querySelector('select[name="tipo"]').value      = 'max';
+        document.querySelector('select[name="metodo"]').value    = 'simplex';
+        document.querySelector('textarea[name="restricciones"]').value = '1 2 <= 12\n2 1 <= 10';
+        // Scroll al formulario
+        document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    </script>
+    <!-- ══ FIN PANEL DE INFORMACIÓN ══ -->
 
     <div class="form-card">
         <form method="POST" action="{{ url_for('pro_lineal.solver') }}">
