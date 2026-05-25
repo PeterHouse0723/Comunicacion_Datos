@@ -33,6 +33,7 @@ def apply_migrations(app):
         'add_calificacion_reemplazo_apoyo.sql',
         'create_alertas_bienestar.sql',
         'add_extracto_bienestar.sql',
+        'alter_alertas_bienestar_curso_nullable.sql',
     ]
     
     for migration_file in migration_files:

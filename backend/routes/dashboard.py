@@ -164,16 +164,15 @@ def alertas_bienestar_count():
     """Retorna el conteo de alertas de bienestar no revisadas para el docente (polling)."""
     if session.get('role') != 'docente':
         return jsonify({'count': 0})
+    from sqlalchemy import or_
     usuario = Usuario.query.get(session.get('usuario_id'))
     materias = _obtener_cursos_docente(usuario)
     curso_ids = [m.id for m in materias]
-    count = 0
-    if curso_ids:
-        count = (
-            AlertaBienestar.query
-            .filter(AlertaBienestar.curso_id.in_(curso_ids), AlertaBienestar.revisada == False)
-            .count()
-        )
+    filtro = or_(
+        AlertaBienestar.curso_id.in_(curso_ids) if curso_ids else False,
+        AlertaBienestar.curso_id.is_(None),
+    )
+    count = AlertaBienestar.query.filter(filtro, AlertaBienestar.revisada == False).count()
     return jsonify({'count': count})
 
 
@@ -189,40 +188,47 @@ def alertas_bienestar_recientes():
         usuario = Usuario.query.get(session.get('usuario_id'))
         materias = _obtener_cursos_docente(usuario)
         curso_ids = [m.id for m in materias]
+
+        # Alertas de cursos asignados + alertas genéricas (curso_id=None) visibles a todos
+        from sqlalchemy import or_
+        filtro = or_(
+            AlertaBienestar.curso_id.in_(curso_ids) if curso_ids else False,
+            AlertaBienestar.curso_id.is_(None),
+        )
+        rows = (
+            AlertaBienestar.query
+            .filter(filtro)
+            .order_by(AlertaBienestar.fecha.desc())
+            .limit(50)
+            .all()
+        )
+
+        nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'}
+        tipo_labels = {
+            'suicida': 'Riesgo de autolesión',
+            'depresion': 'Síntomas de depresión',
+            'ansiedad': 'Ansiedad severa',
+            'estres': 'Estrés extremo',
+        }
         alertas = []
-        if curso_ids:
-            rows = (
-                AlertaBienestar.query
-                .filter(AlertaBienestar.curso_id.in_(curso_ids))
-                .order_by(AlertaBienestar.fecha.desc())
-                .limit(50)
-                .all()
-            )
-            nivel_labels = {'critico': 'CRÍTICO', 'alto': 'ALTO', 'medio': 'MEDIO'}
-            tipo_labels = {
-                'suicida': 'Riesgo de autolesión',
-                'depresion': 'Síntomas de depresión',
-                'ansiedad': 'Ansiedad severa',
-                'estres': 'Estrés extremo',
-            }
-            for a in rows:
-                try:
-                    est_nombre = f'{a.estudiante.nombre} {a.estudiante.apellido}' if a.estudiante else f'Estudiante {a.estudiante_id}'
-                    cur_nombre = a.curso.nombre if a.curso else f'Curso {a.curso_id}'
-                    alertas.append({
-                        'id': a.id,
-                        'estudiante': est_nombre,
-                        'curso': cur_nombre,
-                        'tipo': tipo_labels.get(a.tipo, a.tipo),
-                        'nivel': a.nivel_urgencia,
-                        'nivel_label': nivel_labels.get(a.nivel_urgencia, a.nivel_urgencia),
-                        'resumen': a.resumen,
-                        'extracto': a.extracto or '',
-                        'revisada': a.revisada,
-                        'fecha': a.fecha.strftime('%d/%m/%Y %H:%M'),
-                    })
-                except Exception as row_err:
-                    _logger.warning('[BIENESTAR] Alerta id=%s omitida: %s', getattr(a, 'id', '?'), row_err)
+        for a in rows:
+            try:
+                est_nombre = f'{a.estudiante.nombre} {a.estudiante.apellido}' if a.estudiante else f'Estudiante {a.estudiante_id}'
+                cur_nombre = a.curso.nombre if a.curso else ('Sin materia asignada' if a.curso_id is None else f'Curso {a.curso_id}')
+                alertas.append({
+                    'id': a.id,
+                    'estudiante': est_nombre,
+                    'curso': cur_nombre,
+                    'tipo': tipo_labels.get(a.tipo, a.tipo),
+                    'nivel': a.nivel_urgencia,
+                    'nivel_label': nivel_labels.get(a.nivel_urgencia, a.nivel_urgencia),
+                    'resumen': a.resumen,
+                    'extracto': a.extracto or '',
+                    'revisada': a.revisada,
+                    'fecha': a.fecha.strftime('%d/%m/%Y %H:%M'),
+                })
+            except Exception as row_err:
+                _logger.warning('[BIENESTAR] Alerta id=%s omitida: %s', getattr(a, 'id', '?'), row_err)
         return jsonify({'alertas': alertas, 'curso_ids': curso_ids})
     except Exception as e:
         _logger.error('[BIENESTAR] Error en alertas_bienestar_recientes: %s', e, exc_info=True)
@@ -232,18 +238,20 @@ def alertas_bienestar_recientes():
 @dashboard_bp.route('/api/alertas-bienestar-revisar', methods=['POST'])
 @login_required
 def marcar_alertas_revisadas():
-    """Marca todas las alertas del docente como revisadas."""
+    """Marca todas las alertas visibles del docente como revisadas."""
     if session.get('role') != 'docente':
         return jsonify({'ok': False})
+    from sqlalchemy import or_
     usuario = Usuario.query.get(session.get('usuario_id'))
     materias = _obtener_cursos_docente(usuario)
     curso_ids = [m.id for m in materias]
-    if curso_ids:
-        AlertaBienestar.query.filter(
-            AlertaBienestar.curso_id.in_(curso_ids),
-            AlertaBienestar.revisada == False
-        ).update({'revisada': True}, synchronize_session=False)
-        db.session.commit()
+    filtro = or_(
+        AlertaBienestar.curso_id.in_(curso_ids) if curso_ids else False,
+        AlertaBienestar.curso_id.is_(None),
+    )
+    AlertaBienestar.query.filter(filtro, AlertaBienestar.revisada == False)\
+        .update({'revisada': True}, synchronize_session=False)
+    db.session.commit()
     return jsonify({'ok': True})
 
 

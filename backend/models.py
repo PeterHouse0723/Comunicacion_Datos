@@ -584,7 +584,7 @@ class AlertaBienestar(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False, index=True)
-    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=False, index=True)
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=True, index=True)
     tipo = db.Column(db.String(50), nullable=False)          # suicida, depresion, ansiedad, estres
     nivel_urgencia = db.Column(db.String(20), nullable=False) # critico, alto, medio
     resumen = db.Column(db.Text, nullable=False)

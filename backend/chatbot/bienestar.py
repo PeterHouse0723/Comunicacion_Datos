@@ -123,28 +123,38 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str,
                  historial=None):
     """
     Crea una AlertaBienestar para todos los cursos activos del estudiante.
-    Idempotente: no crea duplicados en <6 horas por el mismo tipo.
+    Si el estudiante no tiene cursos activos, crea una alerta genérica (curso_id=None)
+    para que el docente siempre pueda verla.
+    Idempotente: no crea duplicados en <1 hora por el mismo tipo+curso.
     """
     from models import AlertaBienestar, EstudianteCurso, db
     from datetime import timedelta
+    import logging as _log
+    _logger = _log.getLogger(__name__)
 
     extracto = _formatear_extracto(historial or [])
     reciente = datetime.utcnow() - timedelta(hours=1)
     inscripciones = EstudianteCurso.query.filter_by(estudiante_id=estudiante_id).all()
     cursos_activos = [i for i in inscripciones if i.curso and i.curso.activo]
 
+    if not cursos_activos:
+        _logger.warning('[BIENESTAR] estudiante_id=%s sin cursos activos — creando alerta genérica', estudiante_id)
+
+    # Construir lista de pares (curso_id_o_None, clave_dedup)
+    targets = [(insc.curso_id, insc.curso_id) for insc in cursos_activos] or [(None, None)]
+
     nuevas = []
-    for insc in cursos_activos:
+    for curso_id, clave_curso in targets:
         existe = (
             AlertaBienestar.query
-            .filter_by(estudiante_id=estudiante_id, curso_id=insc.curso_id, tipo=tipo)
+            .filter_by(estudiante_id=estudiante_id, curso_id=clave_curso, tipo=tipo)
             .filter(AlertaBienestar.fecha >= reciente)
             .first()
         )
         if not existe:
             alerta = AlertaBienestar(
                 estudiante_id=estudiante_id,
-                curso_id=insc.curso_id,
+                curso_id=curso_id,
                 tipo=tipo,
                 nivel_urgencia=nivel,
                 resumen=resumen,
@@ -157,7 +167,6 @@ def crear_alerta(estudiante_id: int, nivel: str, tipo: str, resumen: str,
         try:
             db.session.commit()
         except Exception as commit_err:
-            # Si falla por columna extracto faltante, reintenta sin extracto
             db.session.rollback()
             err_str = str(commit_err).lower()
             if 'extracto' in err_str or 'column' in err_str:
