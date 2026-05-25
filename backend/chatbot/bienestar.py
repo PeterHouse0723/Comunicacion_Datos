@@ -16,9 +16,12 @@ _CRITICO = re.compile(
     r'\b('
     r'me\s+quiero?\s+morir|quiero?\s+morir(me)?|no\s+quiero?\s+vivir'
     r'|quitarme\s+la\s+vida|acabar\s+con\s+(mi\s+)?vida|acabar\s+con\s+todo'
-    r'|suicid(io|arme|ar(se)?)|matarme|no\s+quiero?\s+(estar\s+aqu[íi]|seguir\s+viviendo)'
+    r'|suicid\w*|matarme|me\s+quiero?\s+matar|quiero?\s+matarme'
+    r'|no\s+quiero?\s+(estar\s+aqu[íi]|seguir\s+viviendo|seguir\s+aqu[íi])'
     r'|desaparecer\s+para\s+siempre|mejor\s+estar\s+muerto|prefiero\s+morir'
-    r'|pensar\s+en\s+quitarme|hacerme\s+da[ñn]o|autolesion|cortarme'
+    r'|pensar\s+en\s+quitarme|hacerme\s+da[ñn]o|autolesion\w*|cortarme'
+    r'|ya\s+no\s+quiero\s+vivir|ganas\s+de\s+morir|quisiera\s+morir'
+    r'|no\s+quiero\s+despertar|mejor\s+muerto|me\s+da\s+igual\s+morir'
     r')',
     re.IGNORECASE,
 )
@@ -28,10 +31,12 @@ _ALTO_DEP = re.compile(
     r'deprimi(do|da|endo)|depresi[oó]n|me\s+siento\s+mal\s+(todo|siempre)'
     r'|no\s+tengo\s+ganas\s+de\s+nada|todo\s+es\s+in[uú]til|sin\s+esperanza'
     r'|no\s+vale\s+la\s+pena\s+vivir|desesperado|desesperanza'
-    r'|lloro\s+(mucho|todo\s+el\s+tiempo|sin\s+parar|constantemente)'
+    r'|lloro\s+(mucho|todo\s+el\s+tiempo|sin\s+parar|constantemente|a\s+diario)'
     r'|me\s+siento\s+vac[ií]o|vac[ií]o\s+interior|no\s+me\s+importa\s+(nada|vivir)'
     r'|ya\s+no\s+puedo\s+m[aá]s|no\s+aguanto\s+m[aá]s|estoy\s+harto\s+de\s+todo'
     r'|no\s+sirvo\s+para\s+nada|soy\s+un\s+fracaso|fracasado'
+    r'|me\s+siento\s+muy\s+mal|todo\s+me\s+da\s+igual|nada\s+me\s+importa'
+    r'|no\s+tengo\s+fuerzas|perdido\s+(la\s+)?esperanza|no\s+hay\s+salida'
     r')',
     re.IGNORECASE,
 )
@@ -44,6 +49,8 @@ _ALTO_ANS = re.compile(
     r'|angustia\s+(mucha|terrible|constante)|angustiad[ao]'
     r'|miedo\s+de\s+todo|me\s+preocupa\s+todo\s+el\s+tiempo'
     r'|estr[eé]s\s+(extremo|insoportable|muy\s+grande)'
+    r'|me\s+siento\s+muy\s+ansios[ao]|sufro\s+de\s+ansiedad'
+    r'|tengo\s+ansiedad|me\s+da\s+ansiedad|ataques\s+de\s+ansiedad'
     r')',
     re.IGNORECASE,
 )
@@ -51,12 +58,14 @@ _ALTO_ANS = re.compile(
 _MEDIO = re.compile(
     r'\b('
     r'muy\s+estresad[ao]|estresad[ao]\s+al\s+m[aá]ximo|me\s+estreso\s+mucho'
-    r'|no\s+puedo\s+con\s+(tant[ao]|todo\s+esto|el\s+estudio)'
-    r'|me\s+siento\s+solo|me\s+siento\s+sola|nadie\s+me\s+entiende'
+    r'|no\s+puedo\s+con\s+(tant[ao]|todo\s+esto|el\s+estudio|todo)'
+    r'|me\s+siento\s+sol[ao]|nadie\s+me\s+entiende|me\s+siento\s+incomprendid[ao]'
     r'|siento\s+que\s+fallo\s+a\s+(todos|mi\s+familia)'
     r'|me\s+da\s+miedo\s+el\s+futuro|no\s+s[eé]\s+si\s+puedo\s+(seguir|continuar)'
     r'|estoy\s+agotad[ao]|agotamiento\s+total|burnout'
     r'|me\s+cuesta\s+mucho\s+levantarme|no\s+quiero\s+salir|encerrad[ao]'
+    r'|me\s+siento\s+muy\s+triste|muy\s+triste|llorando\s+mucho|no\s+puedo\s+m[aá]s'
+    r'|todo\s+me\s+pesa|no\s+tengo\s+[aá]nimo|sin\s+motivaci[oó]n'
     r')',
     re.IGNORECASE,
 )

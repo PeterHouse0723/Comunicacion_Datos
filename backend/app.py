@@ -89,7 +89,7 @@ def apply_migrations(app):
             except Exception as e:
                 logger.error(f"✗ Error en migración {migration_file}: {str(e)}")
                 db.session.rollback()
-                raise
+                # Continuar con la siguiente migración (no re-lanzar)
         else:
             logger.warning(f"Archivo de migración no encontrado: {migration_file}")
 
