@@ -3,17 +3,18 @@
 /* Burbuja flotante */
 .chatbot-bubble {
     position: fixed; bottom: 28px; right: 28px;
-    width: 56px; height: 56px;
+    width: 58px; height: 58px;
     background: linear-gradient(135deg, #1976D2 0%, #0D47A1 100%);
     border-radius: 50%;
     box-shadow: 0 4px 18px rgba(25,118,210,0.45);
     cursor: pointer; border: none;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; color: white;
+    font-size: 26px; color: white;
     transition: transform 0.2s, box-shadow 0.2s;
     z-index: 1100;
+    line-height: 1;
 }
-.chatbot-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(25,118,210,0.55); }
+.chatbot-bubble:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(25,118,210,0.55); }
 .chatbot-bubble .cb-badge {
     position: absolute; top: -4px; right: -4px;
     background: #f44336; color: white;
@@ -47,10 +48,12 @@
     flex-shrink: 0;
 }
 .cb-header-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: rgba(255,255,255,0.22);
+    width: 42px; height: 42px; border-radius: 50%;
+    background: white;
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
+    font-size: 24px; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    line-height: 1;
 }
 .chatbot-panel-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
 .chatbot-panel-header p  { margin: 1px 0 0; font-size: 11px; opacity: 0.8; }
@@ -143,17 +146,17 @@
 
 <!-- Botón flotante -->
 <button class="chatbot-bubble" id="cbBubble" onclick="cbToggle()" title="Asistente virtual">
-    <i class="fas fa-robot"></i>
+    🤗
     <span class="cb-badge" id="cbBadge"></span>
 </button>
 
 <!-- Panel del chat -->
 <div class="chatbot-panel" id="cbPanel">
     <div class="chatbot-panel-header">
-        <div class="cb-header-avatar"><i class="fas fa-robot"></i></div>
+        <div class="cb-header-avatar">🤗</div>
         <div>
-            <h4>Asistente Académico</h4>
-            <p>Responde tus consultas al instante</p>
+            <h4>Sofia — Asistente Académico</h4>
+            <p>Hola, ¿en qué te puedo ayudar hoy?</p>
         </div>
         <button class="cb-close" onclick="cbToggle()" title="Cerrar">&times;</button>
     </div>
