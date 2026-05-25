@@ -10,24 +10,29 @@
         /* ===== CARDS DE ACCESO RÁPIDO ===== */
         .acceso-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 14px;
             margin-top: 28px;
         }
+        @media (max-width: 540px) { .acceso-cards-grid { grid-template-columns: 1fr; } }
         .acceso-card {
             display: flex; align-items: center; gap: 14px;
             background: white;
-            border: 1px solid #e8ecf0;
+            border: 1.5px solid #e8ecf0;
             border-radius: 14px;
             padding: 16px 18px;
-            text-decoration: none; color: inherit;
+            text-decoration: none; color: inherit; cursor: pointer;
             transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         .acceso-card:hover {
             box-shadow: 0 8px 28px rgba(0,0,0,0.11);
             transform: translateY(-3px);
-            border-color: #c5cede;
+            border-color: #b0bcdb;
+        }
+        .acceso-card.open {
+            border-color: #667eea;
+            box-shadow: 0 4px 20px rgba(102,126,234,0.18);
         }
         .acceso-card-icon {
             width: 50px; height: 50px; border-radius: 13px;
@@ -37,11 +42,86 @@
         .acceso-icon-notas      { background: linear-gradient(135deg, #667eea, #764ba2); }
         .acceso-icon-asistencia { background: linear-gradient(135deg, #11998e, #38ef7d); }
         .acceso-icon-recursos   { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+        .acceso-icon-repaso     { background: linear-gradient(135deg, #f59e0b, #ef4444); }
         .acceso-card-body { flex: 1; min-width: 0; }
         .acceso-card-title { font-weight: 600; color: #1a202c; font-size: 15px; margin-bottom: 3px; }
         .acceso-card-desc  { font-size: 12px; color: #718096; }
-        .acceso-card-arrow { color: #cbd5e0; font-size: 13px; flex-shrink: 0; transition: color 0.2s; }
+        .acceso-card-arrow { color: #cbd5e0; font-size: 13px; flex-shrink: 0; transition: color 0.2s, transform 0.25s; }
         .acceso-card:hover .acceso-card-arrow { color: #667eea; }
+        .acceso-card.open .acceso-card-arrow { transform: rotate(90deg); color: #667eea; }
+
+        /* ===== PANEL ACTIVIDADES DE REPASO ===== */
+        .repaso-panel {
+            display: none; margin-top: 16px;
+            background: white; border: 1.5px solid #667eea;
+            border-radius: 16px; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(102,126,234,0.12);
+            animation: slideDown 0.22s ease;
+        }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        .repaso-panel-header {
+            padding: 14px 20px; background: linear-gradient(135deg, #667eea10, #764ba210);
+            border-bottom: 1px solid #e8ecf0;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .filtro-btn {
+            padding: 6px 14px; border-radius: 20px; border: 1.5px solid #e8ecf0;
+            background: white; color: #64748b; font-size: 12px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .filtro-btn:hover { border-color: #667eea; color: #667eea; }
+        .filtro-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .filtro-badge {
+            background: rgba(255,255,255,0.3); color: inherit;
+            font-size: 10px; font-weight: 700;
+            padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center;
+        }
+        .filtro-btn:not(.active) .filtro-badge { background: #f1f5f9; color: #94a3b8; }
+        .repaso-panel-body { padding: 16px 20px; }
+        .repaso-empty {
+            text-align: center; padding: 32px 20px; color: #aaa;
+        }
+        .repaso-empty i { font-size: 32px; margin-bottom: 10px; display: block; }
+
+        /* Cards de actividad */
+        .repaso-card {
+            background: white; border: 1px solid #e8ecf0;
+            border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+        }
+        .repaso-card:last-child { margin-bottom: 0; }
+        .repaso-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+        .repaso-card-title { font-weight: 600; color: #1a202c; font-size: 14px; display: flex; align-items: center; gap: 7px; }
+        .repaso-card-desc { font-size: 12px; color: #718096; margin-top: 5px; line-height: 1.45; }
+        .repaso-card-meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .repaso-status {
+            padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .st-pendiente   { background:#fef3c7; color:#92400e; }
+        .st-completada  { background:#d1fae5; color:#065f46; }
+        .st-vencida     { background:#fee2e2; color:#991b1b; }
+        .st-nota        { background:#dbeafe; color:#1e40af; }
+        .repaso-date { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+        .repaso-card-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+        .btn-entregar {
+            background: linear-gradient(135deg,#667eea,#764ba2); color: white;
+            border: none; padding: 7px 14px; border-radius: 8px;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: opacity 0.2s;
+        }
+        .btn-entregar:hover { opacity: 0.85; }
+        .tag-archivo {
+            font-size: 11px; color: #059669; background: #d1fae5;
+            padding: 3px 8px; border-radius: 20px;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .tag-nota-nueva {
+            font-size: 11px; color: #1d4ed8; background: #dbeafe;
+            padding: 3px 8px; border-radius: 20px;
+            display: inline-flex; align-items: center; gap: 5px; font-weight: 600;
+        }
 
         .btn-mensajes-campana {
             position: relative;
@@ -322,110 +402,116 @@
                     <i class="fas fa-chevron-right acceso-card-arrow"></i>
                 </a>
                 {% endif %}
+
+                {% if actividades_apoyo %}
+                {% set n_pend = actividades_apoyo | selectattr('nota_nueva', 'none') | selectattr('completada', 'equalto', false) | list | length %}
+                <div class="acceso-card" id="cardRepaso" onclick="toggleRepaso()">
+                    <div class="acceso-card-icon acceso-icon-repaso">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <div class="acceso-card-body">
+                        <div class="acceso-card-title">Actividades de Repaso</div>
+                        <div class="acceso-card-desc">{{ actividades_apoyo | length }} actividad{{ 'es' if actividades_apoyo | length != 1 else '' }}{% if n_pend %} · {{ n_pend }} pendiente{{ 's' if n_pend != 1 else '' }}{% endif %}</div>
+                    </div>
+                    <i class="fas fa-chevron-right acceso-card-arrow" id="arrowRepaso"></i>
+                </div>
+                {% endif %}
             </div>
 
             {% if actividades_apoyo %}
-            <div style="margin-top: 32px;">
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
-                    <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-sync-alt" style="color:white;font-size:16px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-weight:700;color:#1a202c;font-size:16px;">Actividades de Repaso / Refuerzo</div>
-                        <div style="font-size:12px;color:#718096;">{{ actividades_apoyo | length }} actividad{{ 'es' if actividades_apoyo | length != 1 else '' }} asignada{{ 's' if actividades_apoyo | length != 1 else '' }}</div>
-                    </div>
+            {# Conteos por estado para los filtros #}
+            {% set ns = namespace(pend=0, comp=0, venc=0, nota=0) %}
+            {% for asig in actividades_apoyo %}
+                {% if asig.nota_nueva %}{% set ns.nota = ns.nota + 1 %}
+                {% elif asig.completada %}{% set ns.comp = ns.comp + 1 %}
+                {% elif asig.actividad_apoyo.esta_vencida() %}{% set ns.venc = ns.venc + 1 %}
+                {% else %}{% set ns.pend = ns.pend + 1 %}{% endif %}
+            {% endfor %}
+            <div class="repaso-panel" id="panelRepaso">
+                <div class="repaso-panel-header">
+                    <button class="filtro-btn active" onclick="filtrarRepaso('todas',this)">
+                        Todas <span class="filtro-badge">{{ actividades_apoyo | length }}</span>
+                    </button>
+                    {% if ns.pend %}<button class="filtro-btn" onclick="filtrarRepaso('pendiente',this)">
+                        <i class="fas fa-clock"></i> Pendientes <span class="filtro-badge">{{ ns.pend }}</span>
+                    </button>{% endif %}
+                    {% if ns.comp %}<button class="filtro-btn" onclick="filtrarRepaso('completada',this)">
+                        <i class="fas fa-check"></i> Completadas <span class="filtro-badge">{{ ns.comp }}</span>
+                    </button>{% endif %}
+                    {% if ns.venc %}<button class="filtro-btn" onclick="filtrarRepaso('vencida',this)">
+                        <i class="fas fa-calendar-times"></i> Vencidas <span class="filtro-badge">{{ ns.venc }}</span>
+                    </button>{% endif %}
+                    {% if ns.nota %}<button class="filtro-btn" onclick="filtrarRepaso('nota',this)">
+                        <i class="fas fa-star"></i> Nota cambiada <span class="filtro-badge">{{ ns.nota }}</span>
+                    </button>{% endif %}
                 </div>
-
-                {% for asig in actividades_apoyo %}
-                {% if asig.nota_nueva %}
-                    {% set card_border = '#3b82f6' %}
-                    {% set card_bg = '#eff6ff' %}
-                    {% set status_bg = '#dbeafe' %}
-                    {% set status_color = '#1e40af' %}
-                    {% set status_icon = 'fa-exchange-alt' %}
-                    {% set status_text = 'Nota cambiada' %}
-                {% elif asig.completada %}
-                    {% set card_border = '#10b981' %}
-                    {% set card_bg = '#f0fdf4' %}
-                    {% set status_bg = '#d1fae5' %}
-                    {% set status_color = '#065f46' %}
-                    {% set status_icon = 'fa-check' %}
-                    {% set status_text = 'Completada' %}
-                {% else %}
-                    {% set card_border = '#f59e0b' %}
-                    {% set card_bg = 'white' %}
-                    {% set status_bg = '#fef3c7' %}
-                    {% set status_color = '#92400e' %}
-                    {% set status_icon = 'fa-clock' %}
-                    {% set status_text = 'Pendiente' %}
-                {% endif %}
-                <div style="background:{{ card_bg }};border:1px solid #e8ecf0;border-left:4px solid {{ card_border }};border-radius:12px;padding:16px 18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-                        <!-- Lado izquierdo -->
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-weight:600;color:#1a202c;font-size:15px;margin-bottom:6px;display:flex;align-items:center;gap:7px;">
-                                <i class="fas {{ status_icon }}" style="color:{{ card_border }};font-size:13px;"></i>
-                                {{ asig.actividad_apoyo.titulo }}
-                            </div>
-                            {% if asig.actividad_apoyo.descripcion %}
-                            <div style="font-size:13px;color:#555;margin-bottom:8px;line-height:1.5;">{{ asig.actividad_apoyo.descripcion }}</div>
-                            {% endif %}
-
-                            {% if asig.archivo_nombre %}
-                            <div style="font-size:12px;color:#059669;background:#d1fae5;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;margin-bottom:4px;">
-                                <i class="fas fa-paperclip"></i> {{ asig.archivo_nombre }}
-                                {% if asig.fecha_entrega %}<span style="color:#888;margin-left:2px;">· {{ asig.fecha_entrega.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}
-                            </div>
-                            {% endif %}
-
-                            {% if asig.nota_nueva %}
-                            <div style="font-size:12px;color:#1d4ed8;background:#dbeafe;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;">
-                                <i class="fas fa-star"></i> Nota actualizada a <strong>{{ asig.nota_nueva }}/5.0</strong>
-                                {% if asig.motivo_reemplazo %} — {{ asig.motivo_reemplazo }}{% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Lado derecho -->
-                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
-                            <span style="background:{{ status_bg }};color:{{ status_color }};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;">
-                                <i class="fas {{ status_icon }}"></i> {{ status_text }}
-                            </span>
-
-                            {% if asig.actividad_apoyo.fecha_vencimiento %}
-                            <div style="font-size:12px;color:#888;display:flex;align-items:center;gap:5px;">
-                                {% if asig.actividad_apoyo.esta_vencida() %}
-                                    <i class="fas fa-calendar-times" style="color:#dc2626;"></i>
-                                    <span style="color:#dc2626;">Venció {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if asig.actividad_apoyo.hora_cierre %} {{ asig.actividad_apoyo.hora_cierre.strftime('%H:%M') }}{% endif %}</span>
-                                {% else %}
-                                    <i class="fas fa-calendar-alt" style="color:#667eea;"></i>
-                                    Vence {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if asig.actividad_apoyo.hora_cierre %} {{ asig.actividad_apoyo.hora_cierre.strftime('%H:%M') }}{% endif %}
+                <div class="repaso-panel-body">
+                    {% for asig in actividades_apoyo %}
+                    {% if asig.nota_nueva %}{% set estado='nota' %}{% set st_cls='st-nota' %}{% set st_icon='fa-exchange-alt' %}{% set st_txt='Nota cambiada' %}
+                    {% elif asig.completada %}{% set estado='completada' %}{% set st_cls='st-completada' %}{% set st_icon='fa-check' %}{% set st_txt='Completada' %}
+                    {% elif asig.actividad_apoyo.esta_vencida() %}{% set estado='vencida' %}{% set st_cls='st-vencida' %}{% set st_icon='fa-calendar-times' %}{% set st_txt='Vencida' %}
+                    {% else %}{% set estado='pendiente' %}{% set st_cls='st-pendiente' %}{% set st_icon='fa-clock' %}{% set st_txt='Pendiente' %}
+                    {% endif %}
+                    <div class="repaso-card" data-estado="{{ estado }}">
+                        <div class="repaso-card-top">
+                            <div style="flex:1;min-width:0;">
+                                <div class="repaso-card-title">
+                                    <i class="fas {{ st_icon }}" style="font-size:12px;opacity:0.7;"></i>
+                                    {{ asig.actividad_apoyo.titulo }}
+                                </div>
+                                {% if asig.actividad_apoyo.descripcion %}
+                                <div class="repaso-card-desc">{{ asig.actividad_apoyo.descripcion }}</div>
                                 {% endif %}
                             </div>
+                            <span class="repaso-status {{ st_cls }}">
+                                <i class="fas {{ st_icon }}"></i> {{ st_txt }}
+                            </span>
+                        </div>
+                        <div class="repaso-card-meta">
+                            {% if asig.actividad_apoyo.fecha_vencimiento %}
+                            <span class="repaso-date {% if asig.actividad_apoyo.esta_vencida() %}" style="color:#dc2626;">
+                                <i class="fas fa-calendar-times"></i>
+                            {% else %}">
+                                <i class="fas fa-calendar-alt" style="color:#667eea;"></i>
                             {% endif %}
-
-                            {% if asig._puede_entregar %}
-                            <button onclick="abrirEntrega({{ asig.actividad_apoyo_id }}, {{ curso.id }}, '{{ asig.archivo_nombre or '' }}')"
-                                style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity 0.2s;"
-                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            {% if asig.actividad_apoyo.esta_vencida() %}Venció{% else %}Vence{% endif %}
+                            {{ asig.actividad_apoyo.fecha_vencimiento.strftime('%d/%m/%Y') }}{% if asig.actividad_apoyo.hora_cierre %} {{ asig.actividad_apoyo.hora_cierre.strftime('%H:%M') }}{% endif %}
+                            </span>
+                            {% endif %}
+                            {% if asig.archivo_nombre %}
+                            <span class="tag-archivo"><i class="fas fa-paperclip"></i> {{ asig.archivo_nombre }}</span>
+                            {% endif %}
+                            {% if asig.nota_nueva %}
+                            <span class="tag-nota-nueva"><i class="fas fa-star"></i> Nota: {{ asig.nota_nueva }}/5.0{% if asig.motivo_reemplazo %} — {{ asig.motivo_reemplazo }}{% endif %}</span>
+                            {% endif %}
+                        </div>
+                        {% if asig._puede_entregar %}
+                        <div class="repaso-card-actions">
+                            <button class="btn-entregar" onclick="abrirEntrega({{ asig.actividad_apoyo_id }}, {{ curso.id }}, '{{ asig.archivo_nombre or '' }}')">
                                 <i class="fas fa-upload"></i> {% if asig.archivo_nombre %}Reemplazar archivo{% else %}Entregar actividad{% endif %}
                             </button>
-                            {% elif not asig.nota_nueva %}
-                                {% if asig.completada %}
-                                <span style="font-size:11px;color:#6b7280;font-style:italic;display:flex;align-items:center;gap:4px;"><i class="fas fa-lock"></i> Cerrada por el docente</span>
-                                {% elif asig.actividad_apoyo.esta_vencida() %}
-                                <span style="font-size:11px;color:#dc2626;font-style:italic;display:flex;align-items:center;gap:4px;"><i class="fas fa-calendar-times"></i> Plazo vencido</span>
-                                {% endif %}
-                            {% endif %}
                         </div>
+                        {% elif not asig.nota_nueva %}
+                            {% if asig.completada %}
+                            <div class="repaso-card-actions"><span style="font-size:11px;color:#6b7280;font-style:italic;"><i class="fas fa-lock"></i> Cerrada por el docente</span></div>
+                            {% elif asig.actividad_apoyo.esta_vencida() %}
+                            <div class="repaso-card-actions"><span style="font-size:11px;color:#dc2626;font-style:italic;"><i class="fas fa-calendar-times"></i> Plazo vencido</span></div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <div id="repasoEmpty" style="display:none;" class="repaso-empty">
+                        <i class="fas fa-filter"></i>
+                        No hay actividades con este filtro
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% endif %}
 
+            {% if actividades_apoyo %}
             <!-- Modal entrega de archivo -->
             <div id="modalEntrega" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:2000; justify-content:center; align-items:center;">
-                <div style="background:#fff; border-radius:12px; padding:28px; width:100%; max-width:420px; position:relative;">
+                <div style="background:#fff; border-radius:16px; padding:28px; width:100%; max-width:420px; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
                     <button onclick="cerrarEntrega()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888;">&times;</button>
                     <h3 style="margin:0 0 16px; font-size:17px;"><i class="fas fa-upload" style="color:#667eea;"></i> Entregar actividad</h3>
                     <p style="font-size:13px;color:#666;margin-bottom:16px;">Sube un PDF o imagen con tu trabajo. El docente lo revisará y podrá reconocer tu esfuerzo.</p>
@@ -442,6 +528,28 @@
             </div>
             <script>
             let _actividadEntregaId = null, _cursoEntregaId = null;
+
+            function toggleRepaso() {
+                const panel = document.getElementById('panelRepaso');
+                const card  = document.getElementById('cardRepaso');
+                const arrow = document.getElementById('arrowRepaso');
+                const abierto = panel.style.display !== 'none';
+                panel.style.display = abierto ? 'none' : 'block';
+                card.classList.toggle('open', !abierto);
+            }
+
+            function filtrarRepaso(estado, btn) {
+                document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                let vis = 0;
+                document.querySelectorAll('.repaso-card').forEach(c => {
+                    const show = estado === 'todas' || c.dataset.estado === estado;
+                    c.style.display = show ? 'block' : 'none';
+                    if (show) vis++;
+                });
+                document.getElementById('repasoEmpty').style.display = vis === 0 ? 'block' : 'none';
+            }
+
             function abrirEntrega(actividadId, cursoId, archivoActual) {
                 _actividadEntregaId = actividadId; _cursoEntregaId = cursoId;
                 document.getElementById('inputArchivo').value = '';
@@ -657,6 +765,7 @@
 
         window.onclick = function(event) {
             if (event.target === document.getElementById('modalMensajes')) cerrarModalMensajes();
+            if (event.target === document.getElementById('modalEntrega')) cerrarEntrega();
         };
 
         setInterval(actualizarBadgeMensajes, 30000);
